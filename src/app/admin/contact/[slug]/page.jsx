@@ -251,11 +251,12 @@ export default function AddContact({ params }) {
               >{`${
                 slug == "create" ? "Select Contact Name" : contact.contact_name
               }`}</option>
-              <option value="instagram">instagram</option>
+              <option value="instagram">Instagram</option>
               <option value="Whatsapp">Whatsapp</option>
               <option value="Facebook">Facebook</option>
               <option value="Twiter">Twiter</option>
               <option value="Tik Tok">Tik Tok</option>
+              <option value="Tik Tok">Youtube</option>
             </select>
           </div>
           <div className="flex gap-4 mb-2">
@@ -293,11 +294,18 @@ export default function AddContact({ params }) {
               Pilih Logo:
             </label>
             <div className="flex gap-2 flex-wrap ">
-              {["instagram.png", "contact.png", "facebook.png"].map((image) => (
+              {[
+                "instagram.png",
+                "tiktok.png",
+                "facebook.png",
+                "whatsapp.png",
+                "twitter.png",
+                "youtube.png",
+              ].map((image) => (
                 <button
                   key={image}
                   type="button"
-                  className="border p-2 rounded-lg"
+                  className="border p-2 rounded-lg hover:bg-yellow-700"
                   onClick={() => handleSelectImage(image)}
                 >
                   <img

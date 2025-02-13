@@ -26,7 +26,7 @@ export default function Menu() {
   //use state untuk pagination
   const [rows, setRows] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(2); // 5 item per halaman
+  const [itemsPerPage] = useState(7); // 5 item per halaman
   const targetRef = useRef(null);
 
   // Menghitung indeks awal dan akhir untuk menampilkan nomber
@@ -294,7 +294,7 @@ export default function Menu() {
               />
               <button
                 onClick={searchData}
-                className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] text-white text-xl body-text-sm-bold font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
+                className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px]  text-xl text-white body-text-sm-bold font-nunitoSans rounded-md shadow-md bg-yellow-700 hover:bg-yellow-600 transition-all duration-300"
               >
                 <IoSearch />
               </button>

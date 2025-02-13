@@ -186,8 +186,6 @@ export default function AddEvent({ params }) {
     }));
   };
 
-  console.log(event);
-
   // Handle pilihan gambar dari folder
   const handleFileChange = (e) => {
     const file = e.target.files[0];

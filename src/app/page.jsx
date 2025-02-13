@@ -294,17 +294,18 @@ export default function Transaction() {
   };
 
   //function format tanggal
-  const formatTanggalDenganHari = (tanggal) => {
-    if (tanggal !== null) {
-      const options = {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      };
-      return new Date(tanggal).toLocaleDateString("id-ID", options);
-    }
-  };
+  function formatTanggal(isoString) {
+    const date = new Date(isoString);
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // getMonth() dimulai dari 0
+    const year = date.getFullYear();
+
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+
+    return `${day}-${month}-${year} ${hours}:${minutes}`;
+  }
 
   //handle close modal
   const closeModal = () => {
@@ -318,7 +319,7 @@ export default function Transaction() {
     );
   };
 
-  console.log(orders);
+  console.log(searchQuery);
 
   return (
     <div ref={targetRef} className="   pb-8 w-full ">
@@ -612,23 +613,40 @@ export default function Transaction() {
                   className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50"
                 >
                   <div className="max-w-sm  p-4  bg-white shadow-md rounded-md font-mono text-sm">
-                    <div className="text-center">
-                      <h1 className="font-bold text-lg">
+                    <div className="flex justify-center ">
+                      <div className="flex p-1 w-14 h-10">
+                        {/* Ganti placeholder dengan logo jika ada */}
+                        {item.outlet.profile.logo ? (
+                          <img
+                            src={`${process.env.NEXT_PUBLIC_BASE_API_URL}/${item.outlet.profile.logo}`}
+                            className="w-full h-full object-contain"
+                            alt="Logo"
+                          />
+                        ) : (
+                          <h1 className=" text-xl  text-yellow-700 font-pacifico">
+                            {item.outlet.profile.cafe_name}
+                          </h1>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <h1 className="font-bold text-lg w-full text-center">
                         {item.outlet.outlet_name}
                       </h1>
-                      {/* <p>Jl. Medayu Utara 50, Surabaya</p>
-                      <p>81529620220414142434</p> */}
+                      <p className="text-center">
+                        {item.outlet.profile.address}
+                      </p>
                     </div>
 
                     <div className="border-t border-dashed my-2"></div>
 
                     <div className="flex justify-between">
-                      <p>{formatTanggalDenganHari(item.updatedAt)}</p>
+                      <p className="w-20">{formatTanggal(item.updatedAt)}</p>
+                      <p className="w-24 text-end">{item.by_name}</p>
                     </div>
                     <div className="flex justify-between">
-                      <p>{item.by_name}</p>
+                      <p>No.{item.table.number_table}</p>
                     </div>
-                    <p>No.{item.table.number_table}</p>
 
                     <div className="border-t border-dashed my-2"></div>
 
@@ -657,15 +675,23 @@ export default function Transaction() {
 
                     <div className="border-t border-dashed my-2"></div>
 
-                    <div className="text-center">
-                      <p>Link Kritik dan Saran:</p>
-                      <p>olshopin.com/f/748488</p>
+                    <div>
+                      <p className="text-center">- Thank You -</p>
+
+                      {item.outlet.contacts.map((contact) => {
+                        return (
+                          <div key={contact.id} className="flex text-xs">
+                            <p className="w-20  ">{contact.contact_name}</p>
+                            <p>: {contact.value}</p>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
                   <button
                     onClick={closeModal}
-                    className=" -mt-72 ml-10 h-8 pb-4 w-8 bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full  text-red-600 text-2xl flex text-center justify-center"
+                    className=" -mt-96 ml-10 h-8 pb-4 w-8 bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full  text-red-600 text-2xl flex text-center justify-center"
                   >
                     &times;
                   </button>

@@ -1,73 +1,92 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 
 const Pagination = ({ itemsPerPage, paginate, rows, currentPage }) => {
-  const pageNumbers = [];
-  const totalPages = Math.ceil(rows / itemsPerPage); // Total halaman
-  const [isActive, setIsActive] = useState(currentPage);
-  for (let i = 1; i <= Math.ceil(rows / itemsPerPage); i++) {
-    pageNumbers.push(i);
-  }
+  const totalPages = Math.ceil(rows / itemsPerPage);
 
-  useEffect(() => {
-    setIsActive(currentPage);
-  }, [currentPage]);
-  // Fungsi untuk mengurangi halaman
   const handleKurang = () => {
-    if (isActive > 1) {
-      const prevPage = isActive - 1;
-      setIsActive(prevPage);
-      paginate(prevPage);
+    if (currentPage > 1) {
+      paginate(currentPage - 1);
     }
   };
 
-  // Fungsi untuk menambah halaman
   const handleTambah = () => {
-    if (isActive < totalPages) {
-      const nextPage = isActive + 1;
-      setIsActive(nextPage);
-      paginate(nextPage);
+    if (currentPage < totalPages) {
+      paginate(currentPage + 1);
     }
+  };
+
+  const renderPageNumbers = () => {
+    let pageNumbers = [];
+
+    if (totalPages <= 8) {
+      pageNumbers = [...Array(totalPages).keys()].map((n) => n + 1);
+    } else {
+      if (currentPage <= 3) {
+        pageNumbers = [1, 2, 3, 4, 5, "...", totalPages];
+      } else if (currentPage >= totalPages - 2) {
+        pageNumbers = [
+          1,
+          "...",
+
+          totalPages - 4,
+          totalPages - 3,
+          totalPages - 2,
+          totalPages - 1,
+          totalPages,
+        ];
+      } else {
+        pageNumbers = [
+          1,
+          "...",
+          currentPage - 2,
+          currentPage,
+          currentPage + 1,
+          "...",
+          totalPages,
+        ];
+      }
+    }
+    return pageNumbers;
   };
 
   return (
     <nav className="mt-5">
-      <ul className="flex justify-center gap-3">
+      <ul className="flex justify-center gap-2">
         <li>
           <button
             onClick={handleKurang}
             className={`${
-              pageNumbers.length <= 1 ? "hidden" : "block"
-            } p-1  w-8 h-8 border rounded bg-gray-200 hover:bg-gray-300`}
-            disabled={isActive === 1} // Nonaktifkan tombol jika di halaman pertama
+              currentPage === 1 ? "hidden" : ""
+            } p-1 w-8 h-8 border rounded bg-gray-200 hover:bg-gray-300`}
           >
             <img src="/img/arah.png" alt="person" className="w-full h-full" />
           </button>
         </li>
-        {/* Nomor Halaman */}
-        {pageNumbers.map((number) => (
+        {renderPageNumbers().map((number, index) => (
           <li
-            key={number}
+            key={index}
             onClick={() => {
-              setIsActive(number);
-              paginate(number);
+              if (number !== "...") {
+                paginate(number);
+              }
             }}
             className={`${
-              isActive === number ? "bg-slate-500 text-white" : "bg-gray-200"
-            }  w-8 h-8 border-2 flex items-center justify-center rounded cursor-pointer`}
+              currentPage === number
+                ? "bg-yellow-700 text-white"
+                : "bg-gray-200"
+            } w-8 h-8 flex items-center justify-center rounded cursor-pointer`}
           >
             {number}
           </li>
         ))}
-
         <li>
           <button
             onClick={handleTambah}
             className={`${
-              pageNumbers.length <= 1 ? "hidden" : "block"
+              currentPage === totalPages ? "hidden" : ""
             } p-1 w-8 h-8 border rounded bg-gray-200 hover:bg-gray-300`}
-            disabled={isActive === totalPages} // Nonaktifkan tombol jika di halaman terakhir
           >
             <img src="/img/arah.png" alt="person" className="rotate-180" />
           </button>

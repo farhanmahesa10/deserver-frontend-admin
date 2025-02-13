@@ -6,10 +6,11 @@ import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../adminSkeleton/editDataSkeleton";
 import { getNewAccessToken } from "../../refreshToken";
-
+import { Toaster, toast } from "react-hot-toast";
 export default function AddMenu({ params }) {
   const [transition, setTransition] = useState({
     id_table: "",
+    by_name: "",
     status: "not yet paid",
     pays_method: "cashier",
     total_pay: "",
@@ -27,9 +28,6 @@ export default function AddMenu({ params }) {
 
   const router = useRouter();
   const { slug } = React.use(params);
-
-  console.log(transition, "ini data transaksi");
-  console.log(pesanan, "ini data pesanan");
 
   // cek token
   useEffect(() => {
@@ -170,6 +168,17 @@ export default function AddMenu({ params }) {
 
   //handle chekout
   const handleSubmit = async () => {
+    if (!transition.id_table) {
+      toast.error("please fill in the table");
+      setLoadingButton(false);
+      return;
+    }
+    if (!transition.by_name) {
+      toast.error("please fill in the name");
+      setLoadingButton(false);
+      return;
+    }
+    setLoadingButton(true);
     try {
       const total = pesanan.reduce(
         (total, item) => total + item.qty * item.price,
@@ -177,6 +186,7 @@ export default function AddMenu({ params }) {
       );
       const dataTransaksi = {
         id_table: transition.id_table,
+        by_name: transition.by_name,
         id_outlet: "1",
         status: "not yet paid",
         pays_method: "cashier",
@@ -190,7 +200,6 @@ export default function AddMenu({ params }) {
       );
 
       const transaksiId = response.data.data.id;
-      console.log(response);
 
       if (!transaksiId) {
         console.error("transaksi_id tidak tersedia");
@@ -217,6 +226,7 @@ export default function AddMenu({ params }) {
       }
     } catch (error) {
       console.log(error);
+      setLoadingButton(false);
     }
   };
 
@@ -272,6 +282,7 @@ export default function AddMenu({ params }) {
 
   return (
     <div className="p-8 pt-20 w-full">
+      <Toaster position="top-center" reverseOrder={false} />
       <h2 className="text-xl font-nunito">Manage menu</h2>
       {isLoading ? (
         <EditDataSkeleton />
@@ -436,11 +447,25 @@ export default function AddMenu({ params }) {
                 </select>
               </div>
 
-              <div className="flex items-center">
-                <label
-                  htmlFor="note"
-                  className="body-text-sm-normal md:body-text-base-normal font-nunitoSans min-w-16 "
-                >
+              {/* nama */}
+
+              <div className="flex items-center gap-4 mb-2">
+                <label htmlFor="by_name" className="font-nunitoSans min-w-16 ">
+                  nama:
+                </label>
+                <input
+                  type="text"
+                  placeholder="By name"
+                  name="by_name"
+                  value={transition.by_name}
+                  onChange={handleChange}
+                  className="border rounded-md p-1 w-full shadow-inner focus:outline-primary100"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center gap-4">
+                <label htmlFor="note" className=" font-nunitoSans min-w-16 ">
                   catatan
                 </label>
                 <input
@@ -449,7 +474,8 @@ export default function AddMenu({ params }) {
                   name="note"
                   value={transition.note}
                   onChange={handleChange}
-                  className="body-text-xs-normal md:body-text-base-normal font-poppins border-[1px] focus:outline-primary100 border-darkgray100 rounded-md  px-3 py-2 h-[20] md:h-[40px] w-full shadow-inner"
+                  className="border rounded-md p-1 w-full shadow-inner focus:outline-primary100"
+                  required
                 />
               </div>
               <div className="flex justify-between mt-5 border-t">
@@ -466,7 +492,7 @@ export default function AddMenu({ params }) {
             </div>
             <div className="flex gap-8 text-white justify-center">
               <button
-                //   type={loadingButton ? "button" : "submit"}
+                disabled={loadingButton}
                 onClick={() => handleSubmit()}
                 className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
               >

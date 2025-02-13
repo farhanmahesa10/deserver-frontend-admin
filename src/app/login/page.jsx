@@ -34,35 +34,17 @@ export default function Login() {
         login
       );
 
-      const token = response.data.accessToken;
-      const refreshToken = response.data.refreshToken;
+      if (response.status === 200) {
+        const token = response.data.accessToken;
+        const refreshToken = response.data.refreshToken;
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("refreshToken", refreshToken);
+        localStorage.setItem("token", token);
+        localStorage.setItem("refreshToken", refreshToken);
 
-      const decoded = jwtDecode(token);
-      const outlet_id = decoded.id;
-
-      //request ke api agar mengaetahui role nya admin atau user
-      axios
-        .get(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-        )
-        .then((response) => {
-          const data = response.data;
-
-          if (data.role === "admin") {
-            router.push("/");
-          } else {
-            router.push("/");
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching data:", error);
-        });
+        router.push("/");
+      }
     } catch (error) {
       setMsgError("email atau password salah!");
-    } finally {
       setLoadingButton(false);
     }
   };

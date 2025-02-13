@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
+import { IoExit } from "react-icons/io5";
 
 export default function Header({ isOpen, onClickHeader }) {
   const router = useRouter();
@@ -13,23 +14,21 @@ export default function Header({ isOpen, onClickHeader }) {
   return (
     <header className="fixed top-0 left-0 w-full h-20 flex items-center z-10 shadow-md bg-white">
       <div className="container flex justify-between items-center">
-        <div>
-          <h1 className=" md:dekstop-display-h2 text-yellow-700 font-pacifico">
-            MenuCafeKu
-          </h1>
+        <div className="flex p-1 w-28 h-16 ml-8 ">
+          <img
+            src={`/img/logo.png`}
+            className="w-full h-full object-contain"
+            alt="Logo"
+          />
         </div>
         <div className="flex gap-5  mr-16 lg:mr-0">
-          <div className="flex gap-2 items-center cursor-pointer rounded-md h-8 p-4 shadow-inner border-[1px] border-lightgray hover:bg-red-600">
-            <div className="w-[16px] h-[16px]">
-              <img src="/img/logout.png" alt="vector" className="" />
-            </div>
-            <h1
-              className="body-text-sm-normal font-nunitoSans text-primary50"
-              onClick={handleLogout}
-            >
-              Logout
-            </h1>
-          </div>
+          <button
+            onClick={handleLogout}
+            className="flex gap-2 items-center cursor-pointer rounded-md h-8 p-4 shadow-inner border-[1px] border-lightgray hover:bg-red-600"
+          >
+            <IoExit />
+            <h1 className="body-text-sm-normal font-nunitoSans ">Logout</h1>
+          </button>
         </div>
         <button
           onClick={onClickHeader}

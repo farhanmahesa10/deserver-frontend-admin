@@ -16,6 +16,7 @@ export default function AddTable({ params }) {
   const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
+
   const router = useRouter();
   const { slug } = React.use(params);
 
