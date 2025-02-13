@@ -7,8 +7,8 @@ import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../adminSkeleton/editDataSkeleton";
 import { getNewAccessToken } from "../../refreshToken";
 import { Toaster, toast } from "react-hot-toast";
-export default function AddMenu({ params }) {
-  const [transition, setTransition] = useState({
+export default function AddOrder({ params }) {
+  const [transaction, setTransaction] = useState({
     id_table: "",
     by_name: "",
     status: "not yet paid",
@@ -78,7 +78,7 @@ export default function AddMenu({ params }) {
   //         );
 
   //         const data = response.data.transactions[0];
-  //         setTransition(data);
+  //         setTransaction(data);
   //         setPesanan(data.orders);
 
   //         setIsLoading(false);
@@ -168,12 +168,12 @@ export default function AddMenu({ params }) {
 
   //handle chekout
   const handleSubmit = async () => {
-    if (!transition.id_table) {
+    if (!transaction.id_table) {
       toast.error("please fill in the table");
       setLoadingButton(false);
       return;
     }
-    if (!transition.by_name) {
+    if (!transaction.by_name) {
       toast.error("please fill in the name");
       setLoadingButton(false);
       return;
@@ -185,13 +185,13 @@ export default function AddMenu({ params }) {
         0
       );
       const dataTransaksi = {
-        id_table: transition.id_table,
-        by_name: transition.by_name,
+        id_table: transaction.id_table,
+        by_name: transaction.by_name,
         id_outlet: "1",
         status: "not yet paid",
         pays_method: "cashier",
         total_pay: total,
-        note: transition.note,
+        note: transaction.note,
       };
 
       const response = await axios.post(
@@ -239,7 +239,7 @@ export default function AddMenu({ params }) {
   // Handler untuk perubahan nilai input
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setTransition((transaction) => ({
+    setTransaction((transaction) => ({
       ...transaction,
       [name]: value,
     }));
@@ -433,11 +433,11 @@ export default function AddMenu({ params }) {
                   className="border p-1 rounded-lg border-primary50 w-full h-8"
                   id="id_table"
                   name="id_table"
-                  value={transition.id_table}
+                  value={transaction.id_table}
                   onChange={handleChange}
                 >
                   <option value="" className="bg-primary50 " disabled>{`${
-                    slug == "create" ? "Select table Number" : transition.title
+                    slug == "create" ? "Select table Number" : transaction.title
                   }`}</option>
                   {table.map((value) => (
                     <option key={value.id} value={value.id}>
@@ -457,7 +457,7 @@ export default function AddMenu({ params }) {
                   type="text"
                   placeholder="By name"
                   name="by_name"
-                  value={transition.by_name}
+                  value={transaction.by_name}
                   onChange={handleChange}
                   className="border rounded-md p-1 w-full shadow-inner focus:outline-primary100"
                   required
@@ -472,7 +472,7 @@ export default function AddMenu({ params }) {
                   type="text"
                   placeholder="Catatan"
                   name="note"
-                  value={transition.note}
+                  value={transaction.note}
                   onChange={handleChange}
                   className="border rounded-md p-1 w-full shadow-inner focus:outline-primary100"
                   required
