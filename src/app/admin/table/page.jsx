@@ -5,10 +5,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 
-import AdminSkeleton from "../adminSkeleton/adminSkeleton";
-import { getNewAccessToken } from "../refreshToken";
-import Pagination from "../paginate";
-import Modal from "../modal";
+import AdminSkeleton from "../../component/skeleton/adminSkeleton";
+import { getNewAccessToken } from "../../component/refreshToken/refreshToken";
+import Pagination from "../../component/paginate/paginate";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 
@@ -20,8 +19,6 @@ export default function Table() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState([]);
   const [query, setQuery] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentImage, setCurrentImage] = useState("");
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
@@ -221,12 +218,6 @@ export default function Table() {
     );
   };
 
-  // haldle untuk memperbesar gambar
-  const handleImageClick = (imageUrl) => {
-    setCurrentImage(imageUrl); // Menyimpan URL gambar yang diklik
-    setIsModalOpen(true); // Membuka modal
-  };
-
   return (
     <div
       ref={targetRef}
@@ -324,14 +315,6 @@ export default function Table() {
                   })}
               </tbody>
             </table>
-            {/* Modal */}
-            {isModalOpen && (
-              <Modal
-                currentImage={currentImage}
-                setIsModalOpen={setIsModalOpen}
-                setCurrentImage={setCurrentImage}
-              />
-            )}
           </div>
 
           {/* Tampilkan navigasi pagination */}

@@ -1,19 +1,17 @@
 "use client";
 
 import axios from "axios";
-import Pagination from "./admin/paginate";
+import Pagination from "./component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-// import Modal from "../modal";
-import AdminSkeleton from "./admin/adminSkeleton/adminSkeleton";
-import { getNewAccessToken } from "./admin/refreshToken";
+import AdminSkeleton from "./component/skeleton/adminSkeleton";
+import { getNewAccessToken } from "./component/refreshToken/refreshToken";
 import { Toaster, toast } from "react-hot-toast";
 import { io } from "socket.io-client";
 import { IoSearch, IoMedkit, IoTrash, IoPrint } from "react-icons/io5";
 import { AiFillEdit } from "react-icons/ai";
-
-import Layout2 from "./admin/layout2";
+import Layout2 from "./component/layout/layout2";
 
 export default function Transaction() {
   const [transaction, setTransaction] = useState([]);
@@ -108,7 +106,7 @@ export default function Transaction() {
         if (orderData) {
           toast.success("Successfully toasted!");
         }
-        console.log("Pesanan Baru Diterima:", orderData);
+
         setOrders((prevOrders) => [...prevOrders, orderData]); // Tambah pesanan baru ke state
       });
 
@@ -319,8 +317,6 @@ export default function Transaction() {
     );
   };
 
-  console.log(searchQuery);
-
   return (
     <div ref={targetRef} className="   pb-8 w-full ">
       {isLoading ? (
@@ -393,7 +389,7 @@ export default function Transaction() {
                                 <span className="font-semibold text-sm">
                                   Pelanggan:
                                 </span>{" "}
-                                {item.by_name}
+                                {highlightText(item.by_name, by_name)}
                               </p>
                               <p className="text-sm">
                                 <span className="font-semibold">No Meja:</span>{" "}
@@ -528,7 +524,7 @@ export default function Transaction() {
                                 className="bg-gray-800 text-white text-sm rounded-lg py-2 w-full hover:bg-gray-700 transition-colors duration-300 mt-2"
                                 onClick={() =>
                                   handleUpdate(
-                                    item.id,
+                                    item.id_transaction,
                                     item.status === "not yet paid"
                                       ? "lunas"
                                       : "not yet paid"
@@ -541,11 +537,11 @@ export default function Transaction() {
                               </button>
                               <div className="flex justify-between mt-2">
                                 <a
-                                  href={`/admin/transaction/edit?id=${item.id}`}
+                                  href={`/admin/transaction/edit?id=${item.id_transaction}`}
                                   onClick={() => {
                                     localStorage.setItem(
                                       "id_transaction",
-                                      item.id
+                                      item.id_transaction
                                     );
                                     localStorage.setItem(
                                       "outlet_name",
@@ -564,7 +560,9 @@ export default function Transaction() {
                                 </button>
                                 <button
                                   className=" text-sm text-white p-1 rounded-sm bg-red-600"
-                                  onClick={() => handleRemove(item.id)}
+                                  onClick={() =>
+                                    handleRemove(item.id_transaction)
+                                  }
                                 >
                                   <IoTrash />
                                 </button>

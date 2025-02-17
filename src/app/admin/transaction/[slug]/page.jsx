@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import EditDataSkeleton from "../../adminSkeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../refreshToken";
+import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
+import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
 import { Toaster, toast } from "react-hot-toast";
 export default function AddOrder({ params }) {
   const [transaction, setTransaction] = useState({
@@ -22,7 +22,6 @@ export default function AddOrder({ params }) {
   const [pesanan, setPesanan] = useState([]);
   const [table, setTable] = useState([]);
   const [dataMenu, setDataMenu] = useState([]);
-  const [selectedFile, setSelectedFile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
 

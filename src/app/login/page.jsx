@@ -3,8 +3,6 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-// import { Toaster, toast } from "react-hot-toast";
-import { jwtDecode } from "jwt-decode";
 
 export default function Login() {
   const [login, setLogin] = useState([]);

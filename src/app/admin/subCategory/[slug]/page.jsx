@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import EditDataSkeleton from "../../adminSkeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../refreshToken";
+import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
+import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
 
 export default function AddsubCategory({ params }) {
   const [subCategory, setSubCategory] = useState({
@@ -208,8 +208,6 @@ export default function AddsubCategory({ params }) {
       [name]: value,
     }));
   };
-
-  console.log(subCategory);
 
   return (
     <div className="p-8 pt-20 w-full">
