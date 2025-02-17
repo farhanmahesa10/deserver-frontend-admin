@@ -1,14 +1,13 @@
 "use client";
 
-import Image from "next/image";
 import axios from "axios";
-import Pagination from "../paginate";
+import Pagination from "../../component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import Modal from "../modal";
-import AdminSkeleton from "../adminSkeleton/adminSkeleton";
-import { getNewAccessToken } from "../refreshToken";
+import Modal from "../../component/modal/modal";
+import AdminSkeleton from "../../component/skeleton/adminSkeleton";
+import { getNewAccessToken } from "../../component/refreshToken/refreshToken";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 

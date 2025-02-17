@@ -28,6 +28,7 @@ function Sidebar({ isOpen, setIsOpen }) {
   useEffect(() => {
     setUrl(pathname);
   }, [pathname]);
+
   const handleSetIsOpen = () => {
     setIsOpen(false);
   };
@@ -61,7 +62,7 @@ function Sidebar({ isOpen, setIsOpen }) {
     <div
       className={`${
         isOpen ? "" : "hidden"
-      } absolute p-5 bg-white shadow-lg rounded-lg lg:shadow-none lg:rounded-none right-4 max-w-[250px] w-[200px] lg:flex lg:static lg:w-[250px] lg:border-r lg:border-lightgray mt-20 lg:h-[630px] h-[530px] transition-all duration-300`}
+      } absolute p-5 bg-white shadow-lg rounded-lg lg:shadow-none lg:rounded-none right-4 max-w-[250px] w-[200px] lg:flex lg:static lg:w-[250px] lg:border-r lg:border-lightgray mt-20 lg:h-[630px] h-[610px] transition-all duration-300`}
     >
       <div className="flex flex-wrap gap-5 pt-4 h-[500px]">
         <Link

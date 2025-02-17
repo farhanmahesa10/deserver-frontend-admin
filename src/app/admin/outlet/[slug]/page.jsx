@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import EditDataSkeleton from "../../adminSkeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../refreshToken";
+import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
+import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
 
 export default function AddProfile({ params }) {
   const [outlet, setOutlet] = useState({
@@ -30,7 +30,6 @@ export default function AddProfile({ params }) {
   const [loadingButton, setLoadingButton] = useState(false);
   const router = useRouter();
   const { slug } = React.use(params);
-  console.log(outlet);
 
   //function untuk password terlihat atau tidak
   const onClickPassword = () => {
