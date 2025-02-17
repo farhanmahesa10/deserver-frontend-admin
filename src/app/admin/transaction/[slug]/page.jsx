@@ -28,7 +28,7 @@ export default function AddOrder({ params }) {
   const router = useRouter();
   const { slug } = React.use(params);
 
-  // cek token ada atau tidak
+  // cek token
   useEffect(() => {
     const savedToken = localStorage.getItem("refreshToken");
     const outletName = localStorage.getItem("outlet_name");
