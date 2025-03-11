@@ -5,20 +5,30 @@ import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 
-import AdminSkeleton from "../../component/skeleton/adminSkeleton";
 import { getNewAccessToken } from "../../component/refreshToken/refreshToken";
 import Pagination from "../../component/paginate/paginate";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 
+import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
+import { NotData } from "@/app/component/notData/notData";
+
 export default function Table() {
   const [table, setTable] = useState([]);
   const [outletName, setOutletName] = useState("");
   const [role, setRole] = useState("");
+  const [idOutlet, setIdOutlet] = useState("");
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState([]);
   const [query, setQuery] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editRowId, setEditRowId] = useState(null);
+  const [formData, setFormData] = useState({
+    id: "",
+    id_outlet: "",
+    number_table: "",
+  });
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
@@ -51,9 +61,10 @@ export default function Table() {
             `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
           )
           .then((response) => {
-            const data = response.data;
+            const data = response.data.data;
             setOutletName(data.outlet_name);
             setRole(data.role);
+            setIdOutlet(data.id);
           })
           .catch((error) => console.error("Error fetching data:", error));
       }
@@ -86,9 +97,9 @@ export default function Table() {
           }
         );
 
-        const data = response.data.table;
+        const data = response.data.data;
         setTable(data);
-        setRows(response.data.totalItems);
+        setRows(response.data.pagination.totalItems);
       } catch (error) {
         console.error("Error fetching transaction data:", error);
       }
@@ -114,9 +125,9 @@ export default function Table() {
         }
       );
 
-      const data = response.data.table;
+      const data = response.data.data;
       setTable(data);
-      setRows(response.data.totalItems);
+      setRows(response.data.pagination.totalItems);
     } catch (error) {
       console.error("Error fetching transaction data:", error);
     }
@@ -152,7 +163,7 @@ export default function Table() {
         ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/showcafename/${outletName}`
       );
 
-      const data = response.data;
+      const data = response.data.data;
 
       setTable(data);
     } catch (error) {
@@ -218,125 +229,266 @@ export default function Table() {
     );
   };
 
+  const handleOpenModal = (
+    data = { id: "", id_outlet: idOutlet, number_table: "" }
+  ) => {
+    setFormData(data);
+    setModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setFormData({ id: "", id_outlet: "", number_table: "" });
+  };
+  console.log(formData);
+
+  //handle edit dan create
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // if (!table.number_table) {
+    //   alert("Harap isi semua field!");
+    //   return;
+    // }
+
+    // const formData = {
+    //   id_outlet: table.id_outlet,
+    //   number_table: table.number_table,
+    // };
+
+    const handleError = async (error) => {
+      if (error.response?.status === 401) {
+        try {
+          const newToken = await getNewAccessToken();
+          localStorage.setItem("token", newToken); // Simpan token baru
+          await handleSubmit(e); // Ulangi proses dengan token baru
+        } catch (err) {
+          console.error("Failed to refresh token:", err);
+          alert("Session Anda telah berakhir. Silakan login ulang.");
+          localStorage.clear();
+          router.push("/login");
+        }
+      } else {
+        console.error("Error deleting table:", error);
+      }
+    };
+
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+
+      if (formData.id) {
+        // setLoadingButton(true);
+        await axios.put(
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/update/${formData.id}`,
+          formData,
+          { headers }
+        );
+        localStorage.removeItem("id_table");
+        alert("Data berhasil diperbarui!");
+      } else {
+        // setLoadingButton(true);
+        await axios.post(
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/create`,
+          formData,
+          { headers }
+        );
+        alert("Data berhasil ditambahkan!");
+      }
+
+      router.push("/admin/table");
+      // setLoadingButton(false);
+    } catch (error) {
+      await handleError(error);
+    }
+  };
+
   return (
     <div
       ref={targetRef}
       className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
     >
-      {isLoading ? (
-        <AdminSkeleton />
-      ) : (
-        <>
-          <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
-            table Data Settings
-          </h1>
-          <div
-            className={`flex flex-wrap justify-between items-center lg:w-full gap-4 md:gap-6 w-full mb-6`}
+      <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
+        table Data Settings
+      </h1>
+      <div
+        className={`flex flex-wrap justify-between items-center lg:w-full gap-4 md:gap-6 w-full mb-6`}
+      >
+        <div
+          className={`${
+            role == "admin" ? "flex" : "hidden"
+          }  gap-3 items-center`}
+        >
+          <input
+            type="text"
+            placeholder="outlet Name. . ."
+            id="search"
+            className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[200px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <button
+            onClick={searchData}
+            className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
           >
-            <div
-              className={`${
-                role == "admin" ? "flex" : "hidden"
-              }  gap-3 items-center`}
-            >
+            <IoSearch />
+          </button>
+        </div>
+
+        <button
+          className={` bg-yellow-700 text-white body-text-sm-bold font-nunitoSans px-4 py-2 md:px-5 md:py-3 rounded-md shadow-md hover:bg-yellow-700 transition-all duration-300`}
+          onClick={() => handleOpenModal()}
+        >
+          <IoMedkit />
+        </button>
+      </div>
+
+      <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
+        {isLoading ? (
+          <TableSkeleton />
+        ) : (
+          <table className="min-w-full border-collapse border border-gray-200">
+            <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans">
+              <tr>
+                <th className="px-4 py-3 ">No</th>
+                <th className="px-4 py-3">outlet Name</th>
+                <th className="px-4 py-3">Number Room</th>
+                <th className="px-4 py-3 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="text-gray-700 font-nunitoSans">
+              {searchQuery &&
+                searchQuery.map((item, index) => {
+                  const number = index + 1;
+                  const numberPaginate = indexOfFirstItem + index + 1;
+
+                  return (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-gray-100 transition-all duration-300 border-b-2"
+                    >
+                      <td className="px-4 py-3 text-center">
+                        {role !== "admin" ? number : numberPaginate}
+                      </td>
+
+                      <td className="px-4 py-3 text-center">
+                        {editRowId === item.id ? (
+                          <input
+                            type="text"
+                            value={formData.outlet_name}
+                            className="border p-2 w-full"
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                outlet_name: e.target.value,
+                              })
+                            }
+                          />
+                        ) : (
+                          item.Outlet.outlet_name
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3 text-center">
+                        {editRowId === item.id ? (
+                          <input
+                            type="text"
+                            value={formData.number_table}
+                            className="border p-2 w-full"
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                number_table: e.target.value,
+                              })
+                            }
+                          />
+                        ) : (
+                          item.number_table
+                        )}
+                      </td>
+
+                      <td className="px-4 py-3 flex justify-center gap-2 text-center">
+                        {editRowId === item.id ? (
+                          <>
+                            <button
+                              onClick={handleSubmit}
+                              className="bg-green-500 text-white p-1 rounded-sm"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditRowId(null)}
+                              className="bg-gray-500 text-white p-1 rounded-sm"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => {
+                                setEditRowId(item.id);
+                                setFormData({
+                                  id: item.id,
+                                  id_outlet: item.id_outlet,
+                                  outlet_name: item.Outlet.outlet_name,
+                                  number_table: item.number_table,
+                                });
+                              }}
+                              className="text-sm text-white p-1 rounded-sm bg-blue-500"
+                            >
+                              <AiFillEdit />
+                            </button>
+                            <button
+                              className="text-sm text-white p-1 rounded-sm bg-red-500"
+                              onClick={() => handleRemove(item.id)}
+                            >
+                              <IoTrash />
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        )}
+        {modalOpen && (
+          <div className="modal">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <input
                 type="text"
-                placeholder="outlet Name. . ."
-                id="search"
-                className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[200px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                value={formData.number_table}
+                onChange={(e) =>
+                  setFormData({ ...formData, number_table: e.target.value })
+                }
+                placeholder="Enter Table Number"
               />
-              <button
-                onClick={searchData}
-                className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
-              >
-                <IoSearch />
-              </button>
-            </div>
-
-            <a
-              className={` bg-yellow-700 text-white body-text-sm-bold font-nunitoSans px-4 py-2 md:px-5 md:py-3 rounded-md shadow-md hover:bg-yellow-700 transition-all duration-300`}
-              href="/admin/table/create"
-            >
-              <IoMedkit />
-            </a>
+              <div className="flex gap-4">
+                <button type="submit">Save</button>
+                <button type="button" onClick={handleCloseModal}>
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
+        )}
+      </div>
 
-          <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
-            <table className="min-w-full border-collapse border border-gray-200">
-              <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans">
-                <tr>
-                  <th className="px-4 py-3 ">No</th>
-                  <th className="px-4 py-3">outlet Name</th>
-                  <th className="px-4 py-3">Number Table</th>
-                  <th className="px-4 py-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="text-gray-700 font-nunitoSans">
-                {searchQuery &&
-                  searchQuery.map((item, index) => {
-                    const number = index + 1;
-                    const numberPaginate = indexOfFirstItem + index + 1;
-
-                    return (
-                      <tr
-                        key={item.id}
-                        className="hover:bg-gray-100 transition-all duration-300 border-b-2"
-                      >
-                        <td className="px-4 py-3 text-center">
-                          {role !== "admin" ? number : numberPaginate}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {highlightText(item.outlet.outlet_name, query)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {item.number_table}
-                        </td>
-
-                        <td className="px-4 py-3 flex justify-center gap-2 text-center">
-                          <a
-                            href={`/admin/table/edit?id=${item.id}`}
-                            onClick={() =>
-                              localStorage.setItem("id_table", item.id)
-                            }
-                            className="text-sm text-white p-1 rounded-sm bg-blue-500"
-                          >
-                            <AiFillEdit />
-                          </a>
-                          <button
-                            className="text-sm text-white p-1 rounded-sm bg-red-500"
-                            onClick={() => handleRemove(item.id)}
-                          >
-                            <IoTrash />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Tampilkan navigasi pagination */}
-          {searchQuery && searchQuery.length > 0 && (
-            <Pagination
-              itemsPerPage={itemsPerPage}
-              rows={rows}
-              paginate={paginate}
-              currentPage={currentPage}
-            />
-          )}
-
-          {/* Tampilkan pesan data kosong jika tidak ada data */}
-          {searchQuery && searchQuery.length === 0 && (
-            <div className="flex justify-center mt-6">
-              <p className="italic text-red-500 border-b border-red-500">
-                Data tidak ditemukan!
-              </p>
-            </div>
-          )}
-        </>
+      {/* Tampilkan navigasi pagination */}
+      {searchQuery && searchQuery.length > 0 && (
+        <Pagination
+          itemsPerPage={itemsPerPage}
+          rows={rows}
+          paginate={paginate}
+          currentPage={currentPage}
+          isLoading={isLoading}
+        />
       )}
+
+      {/* Tampilkan pesan data kosong jika tidak ada data */}
+      {isLoading === false && searchQuery.length === 0 && <NotData />}
     </div>
   );
 }

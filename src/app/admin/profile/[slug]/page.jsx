@@ -6,6 +6,7 @@ import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
 import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
+import ButtonCreateUpdate from "@/app/component/button/button";
 
 export default function AddProfile({ params }) {
   const [profile, setProfile] = useState({
@@ -376,21 +377,10 @@ export default function AddProfile({ params }) {
               />
             </div>
           )}
-          <div className="flex gap-8 text-white justify-end">
-            <button
-              type={loadingButton ? "button" : "submit"}
-              className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-            >
-              {loadingButton ? "Loading..." : "Simpan"}
-            </button>
-            <button
-              type="button"
-              className="bg-red-500 border-red-5bg-red-500 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-              onClick={handleCancel}
-            >
-              Cancel
-            </button>
-          </div>
+          <ButtonCreateUpdate
+            loadingButton={loadingButton}
+            handleCancel={handleCancel}
+          />
         </form>
       )}
     </div>

@@ -6,6 +6,11 @@ import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
 import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
+import ButtonCreateUpdate from "@/app/component/button/button";
+import { useFormik } from "formik";
+import * as yup from "yup";
+import Input from "@/app/component/form/input";
+import Select from "@/app/component/form/select";
 
 export default function AddMenu({ params }) {
   const [menu, setMenu] = useState({
@@ -13,6 +18,7 @@ export default function AddMenu({ params }) {
     title: "",
     price: "",
     details: "",
+    status: "",
     best_seller: "",
   });
   const [outletName, setoutletName] = useState("");
@@ -46,13 +52,13 @@ export default function AddMenu({ params }) {
             `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
           )
           .then((response) => {
-            const data = response.data;
+            const data = response.data.data;
             if (data.role === "admin") {
               if (slug == "edit") {
-                setoutletName(outletName);
+                formik.setFieldValue(outletName);
               }
             } else {
-              setoutletName(data.outlet_name);
+              formik.setFieldValue("outlet_name", data.outlet_name);
             }
             setRole(data.role);
           })
@@ -63,107 +69,15 @@ export default function AddMenu({ params }) {
     }
   }, [router]);
 
-  //menampilkan semua DATA OUTLET
-  useEffect(() => {
-    setIsLoading(true);
-    const fetchData = async () => {
-      try {
-        // Mengambil data transaksi menggunakan axios dengan query params
-        const response = await axios.get(
-          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`
-        );
-
-        const data = response.data;
-
-        setOutlet(data);
-      } catch (error) {
-        console.error("Error fetching transaction data:", error);
-      }
-    };
-
-    setIsLoading(false);
-
-    fetchData();
-  }, []);
-
-  //menampilkan semua sub category
-  useEffect(() => {
-    setIsLoading(true);
-    const fetchData = async () => {
-      if (outletName) {
-        try {
-          // Mengambil data transaksi menggunakan axios dengan query params
-          const response = await axios.get(
-            ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showcafename/${outletName}`
-          );
-
-          const data = response.data;
-
-          setSubCategory(data);
-        } catch (error) {
-          console.error("Error fetching transaction data:", error);
-        }
-      }
-    };
-
-    setIsLoading(false);
-
-    fetchData();
-  }, [outletName]);
-
-  //MENAMPILKAN DATA MENU KETIKA EDIT
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (slug === "edit") {
-          const savedToken = localStorage.getItem("token");
-          const idMenu = localStorage.getItem("id_menu");
-
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/showbyid/${idMenu}`
-          );
-
-          const data = response.data;
-          setMenu(data[0]);
-
-          setSelectedFile(data[0].photo);
-          setIsLoading(false);
-        } else {
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-
-    fetchData();
-  }, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (
-      !menu.id_subcategory ||
-      !menu.title ||
-      !menu.price ||
-      !menu.details ||
-      !menu.best_seller
-    ) {
-      alert("Harap isi semua field!");
-      return;
-    }
-
+  const onSubmit = async (e) => {
     const formData = new FormData();
-    formData.append("id_subcategory", menu.id_subcategory);
-    formData.append("title", menu.title);
-    formData.append("price", menu.price);
-    formData.append("details", menu.details);
-    formData.append("best_seller", menu.best_seller);
-
-    if (selectedFile) {
-      formData.append("photo", selectedFile);
-    } else if (menu.photo) {
-      formData.append("photo", menu.photo);
-    }
+    formData.append("id_subcategory", formik.values.id_subcategory);
+    formData.append("title", formik.values.title);
+    formData.append("price", formik.values.price);
+    formData.append("details", formik.values.details);
+    formData.append("status", formik.values.status);
+    formData.append("best_seller", formik.values.best_seller);
+    formData.append("photo", formik.values.photo);
 
     const handleError = async (error) => {
       if (error.response?.status === 401) {
@@ -186,10 +100,10 @@ export default function AddMenu({ params }) {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
 
-      if (menu.id) {
+      if (formik.values.id) {
         setLoadingButton(true);
         await axios.put(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/update/${menu.id}`,
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/update/${formik.values.id}`,
           formData,
           { headers }
         );
@@ -213,6 +127,117 @@ export default function AddMenu({ params }) {
     }
   };
 
+  const formik = useFormik({
+    initialValues: {
+      outlet_name: "",
+      id_subcategory: "",
+      title: "",
+      price: "",
+      details: "",
+      status: "",
+      best_seller: "",
+      photo: "",
+    },
+    onSubmit,
+    validationSchema: yup.object({
+      // id_outlet: yup.string().required(),
+      id_subcategory: yup.number().required(),
+      title: yup.string().required(),
+      price: yup.number().required(),
+      details: yup.string().required(),
+      status: yup.string().required(),
+      best_seller: yup.string().required(),
+      photo: yup
+        .mixed()
+        .required()
+        .test(
+          "fileType",
+          "Format gambar tidak valid (hanya jpg, jpeg, png)",
+          (value) =>
+            ["image/jpeg", "image/png", "image/jpg"].includes(value?.type)
+        )
+        .test(
+          "fileSize",
+          "Ukuran gambar maksimal 2MB",
+          (value) => value && value.size <= 2 * 1024 * 1024
+        ),
+    }),
+  });
+
+  //menampilkan semua DATA OUTLET
+  useEffect(() => {
+    setIsLoading(true);
+    const fetchData = async () => {
+      try {
+        // Mengambil data transaksi menggunakan axios dengan query params
+        const response = await axios.get(
+          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`
+        );
+
+        const data = response.data.data;
+
+        setOutlet(data);
+      } catch (error) {
+        console.error("Error fetching transaction data:", error);
+      }
+    };
+
+    setIsLoading(false);
+
+    fetchData();
+  }, []);
+
+  //menampilkan semua sub category
+  useEffect(() => {
+    setIsLoading(true);
+    const fetchData = async () => {
+      if (formik.values.outlet_name) {
+        try {
+          // Mengambil data transaksi menggunakan axios dengan query params
+          const response = await axios.get(
+            ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showcafename/${formik.values.outlet_name}`
+          );
+
+          const data = response.data.data;
+
+          setSubCategory(data);
+        } catch (error) {
+          console.error("Error fetching transaction data:", error);
+        }
+      }
+    };
+
+    setIsLoading(false);
+
+    fetchData();
+  }, [formik.values.outlet_name]);
+
+  //MENAMPILKAN DATA MENU KETIKA EDIT
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (slug === "edit") {
+          const savedToken = localStorage.getItem("token");
+          const idMenu = localStorage.getItem("id_menu");
+
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/showbyid/${idMenu}`
+          );
+
+          const data = response.data.data;
+          formik.setValues(data);
+          setIsLoading(false);
+        } else {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchData();
+  }, [slug]);
+
   const handleCancel = () => {
     router.push("/admin/menu");
     localStorage.removeItem("id_menu");
@@ -221,58 +246,47 @@ export default function AddMenu({ params }) {
 
   // Handler untuk perubahan nilai input
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setMenu((menu) => ({
-      ...menu,
-      [name]: value,
-    }));
+    const { target } = e;
+    formik.setFieldValue(target.name, target.value);
   };
 
+  // Handle pilihan gambar dari folder
   const handleFileChange = (e) => {
     const file = e.target.files[0];
-    if (file && file.size > 2 * 1024 * 1024) {
-      alert("Ukuran file terlalu besar (maksimal 2MB)!");
-      return;
-    }
-    setSelectedFile(file);
+    formik.setFieldValue("photo", file);
   };
-
   return (
     <div className="p-8 pt-20 w-full">
       <h2 className="text-xl font-nunito">Manage menu</h2>
       {isLoading ? (
         <EditDataSkeleton />
       ) : (
-        <form className="mt-4 border p-8 grid gap-4" onSubmit={handleSubmit}>
-          <div
-            className={`${role !== "admin" ? "hidden" : "flex"} ${
-              slug === "edit" ? "hidden" : "flex"
-            } gap-4 mb-2`}
-          >
-            <label
-              htmlFor="id_outlet"
-              className="body-text-sm-normal md:body-text-base-normal font-nunitoSans min-w-28 lg:w-52"
-            >
-              Outlate Name:
-            </label>
-            <select
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="id_outlet"
-              name="id_outlet"
-              value={outletName}
-              onChange={(e) => setoutletName(e.target.value)}
-            >
-              <option value="" className="bg-primary50 " disabled>{`${
-                slug == "create" ? "Select Outlet Name" : outletName
-              }`}</option>
-              {outlet.map((value) => (
+        <form
+          className="mt-4 border p-8 grid gap-4"
+          onSubmit={formik.handleSubmit}
+        >
+          <div className={`${role !== "admin" ? "hidden" : "flex"} gap-4 mb-2`}>
+            <Select
+              label="Outlate Name:"
+              id="outlet_name"
+              name="outlet_name"
+              value={formik.values.outlet_name}
+              options={outlet.map((value) => (
                 <option key={value.id} value={value.outlet_name}>
                   {value.outlet_name}
                 </option>
               ))}
-            </select>
+              placeholder={"Select Outlet Name"}
+              onChange={handleChange}
+              errorMessage={formik.errors.outlet_name}
+              isError={
+                formik.touched.outlet_name && formik.errors.outlet_name
+                  ? true
+                  : false
+              }
+            />
           </div>
-          <div className={` flex gap-4 mb-2`}>
+          {/* <div className={` flex gap-4 mb-2`}>
             <label htmlFor="id_subcategory" className="min-w-28 lg:w-52">
               Subcategory:
             </label>
@@ -292,53 +306,101 @@ export default function AddMenu({ params }) {
                 </option>
               ))}
             </select>
-          </div>
-          <div className="flex gap-4 mb-2">
-            <label htmlFor="title" className="min-w-28 lg:w-52">
-              Title:
+          </div> */}
+
+          <Select
+            label="Subcategory:"
+            id="id_subcategory"
+            name="id_subcategory"
+            value={formik.values.id_subcategory}
+            options={subCategory.map((value) => (
+              <option key={value.id} value={value.id}>
+                {value.title}
+              </option>
+            ))}
+            placeholder={"Select Subcategory Name"}
+            onChange={handleChange}
+            errorMessage={formik.errors.id_subcategory}
+            isError={
+              formik.touched.id_subcategory && formik.errors.id_subcategory
+                ? true
+                : false
+            }
+          />
+          <Input
+            label="Title :"
+            id="title"
+            placeholder="title"
+            name="title"
+            type="text"
+            value={formik.values.title}
+            onChange={handleChange}
+            errorMessage={formik.errors.title}
+            isError={formik.touched.title && formik.errors.title ? true : false}
+          />
+          <Input
+            label="Details :"
+            id="details"
+            placeholder="details"
+            name="details"
+            type="text"
+            value={formik.values.details}
+            onChange={handleChange}
+            errorMessage={formik.errors.details}
+            isError={
+              formik.touched.details && formik.errors.details ? true : false
+            }
+          />
+
+          <Input
+            label="Price :"
+            id="price"
+            placeholder="price"
+            name="price"
+            type="number"
+            value={formik.values.price}
+            onChange={handleChange}
+            errorMessage={formik.errors.price}
+            isError={formik.touched.price && formik.errors.price ? true : false}
+          />
+          {/* <div className="flex gap-4 mb-2">
+            <label htmlFor="status" className="min-w-28 lg:w-52">
+              status:
             </label>
-            <input
+            <select
               className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="title"
-              placeholder="Title"
-              type="text"
-              name="title"
-              value={menu.title}
+              id="status"
+              name="status"
+              value={menu.status}
               onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="flex gap-4 mb-2">
-            <label htmlFor="details" className="min-w-28 lg:w-52">
-              Details:
-            </label>
-            <input
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="details"
-              placeholder="details"
-              type="text"
-              name="details"
-              value={menu.details}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="flex gap-4 mb-2">
-            <label htmlFor="price" className="min-w-28 lg:w-52">
-              Price:
-            </label>
-            <input
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="price"
-              placeholder="Price"
-              type="number"
-              name="price"
-              value={menu.price}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="flex gap-4 mb-2">
+            >
+              <option value="" disabled>{`${
+                slug == "create" ? "is the product available?" : menu.status
+              }`}</option>
+              <div>
+                <option>ready</option>
+                <option>soldOut</option>
+              </div>
+            </select>
+          </div> */}
+          <Select
+            label="Status :"
+            id="status"
+            name="status"
+            value={formik.values.status}
+            options={["Ready", "SoldOut"].map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+            placeholder={"is the product available?"}
+            onChange={handleChange}
+            errorMessage={formik.errors.status}
+            isError={
+              formik.touched.status && formik.errors.status ? true : false
+            }
+          />
+          {/* <div className="flex gap-4 mb-2">
             <label htmlFor="best_seller" className="min-w-28 lg:w-52">
               best_seller:
             </label>
@@ -355,7 +417,26 @@ export default function AddMenu({ params }) {
               <option>true</option>
               <option>false</option>
             </select>
-          </div>
+          </div> */}
+          <Select
+            label="Best_seller :"
+            id="best_seller"
+            name="best_seller"
+            value={formik.values.best_seller}
+            options={["true", "false"].map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+            placeholder={"is the product available?"}
+            onChange={handleChange}
+            errorMessage={formik.errors.best_seller}
+            isError={
+              formik.touched.best_seller && formik.errors.best_seller
+                ? true
+                : false
+            }
+          />
           <div className="flex gap-4 mb-2">
             <label htmlFor="photo" className="min-w-28 lg:w-52">
               Photo:
@@ -368,37 +449,24 @@ export default function AddMenu({ params }) {
               onChange={handleFileChange}
             />
           </div>
-          {(selectedFile || menu.photo) && (
+          {formik.values.photo && (
             <div className="flex gap-4 mb-2">
               <label className="min-w-28 lg:w-52">Preview:</label>
               <img
                 src={
-                  slug === "create"
-                    ? URL.createObjectURL(selectedFile)
-                    : menu.photo !== selectedFile
-                    ? URL.createObjectURL(selectedFile)
-                    : `${process.env.NEXT_PUBLIC_BASE_API_URL}/${menu.photo}`
+                  typeof formik.values.photo === "object"
+                    ? URL.createObjectURL(formik.values.photo)
+                    : `${process.env.NEXT_PUBLIC_BASE_API_URL}/${formik.values.photo}`
                 }
                 alt="event Preview"
                 className="mx-auto w-40 h-40 object-cover"
               />
             </div>
           )}
-          <div className="flex gap-8 text-white justify-end">
-            <button
-              type={loadingButton ? "button" : "submit"}
-              className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-            >
-              {loadingButton ? "Loading..." : "Submit"}
-            </button>
-            <button
-              type="button"
-              className="bg-red-500 border-red-5bg-red-500 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-              onClick={handleCancel}
-            >
-              Cancel
-            </button>
-          </div>
+          <ButtonCreateUpdate
+            loadingButton={loadingButton}
+            handleCancel={handleCancel}
+          />
         </form>
       )}
     </div>

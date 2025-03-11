@@ -6,12 +6,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import Modal from "../../component/modal/modal";
-import AdminSkeleton from "../../component/skeleton/adminSkeleton";
 import { getNewAccessToken } from "../../component/refreshToken/refreshToken";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
+import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
+import { NotData } from "@/app/component/notData/notData";
 
-export default function Laoangan() {
+export default function Lapangan() {
   const [contact, setContact] = useState([]);
   const [role, setRole] = useState("");
   const [outletName, setOutletName] = useState("");
@@ -53,7 +54,7 @@ export default function Laoangan() {
             `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
           )
           .then((response) => {
-            const data = response.data;
+            const data = response.data.data;
             setOutletName(data.outlet_name);
             setRole(data.role);
           })
@@ -88,9 +89,9 @@ export default function Laoangan() {
           }
         );
 
-        const data = response.data.contact;
+        const data = response.data.data;
         setContact(data);
-        setRows(response.data.totalItems);
+        setRows(response.data.pagination.totalItems);
       } catch (error) {
         console.error("Error fetching transaction data:", error);
       }
@@ -99,6 +100,8 @@ export default function Laoangan() {
 
     fetchData();
   };
+
+  console.log(searchQuery);
 
   // function mengambil data lapangan by limit
   const fetchDataPaginated = async () => {
@@ -116,9 +119,9 @@ export default function Laoangan() {
         }
       );
 
-      const data = response.data.contact;
+      const data = response.data.data;
       setContact(data);
-      setRows(response.data.totalItems);
+      setRows(response.data.pagination.totalItems);
     } catch (error) {
       console.error("Error fetching transaction data:", error);
     }
@@ -171,7 +174,7 @@ export default function Laoangan() {
           ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/contact/showcafename/${outletName}`
         );
 
-        const data = response.data;
+        const data = response.data.data;
 
         setContact(data);
       } catch (error) {
@@ -232,142 +235,135 @@ export default function Laoangan() {
       ref={targetRef}
       className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
     >
-      {isLoading ? (
-        <AdminSkeleton />
-      ) : (
-        <>
-          <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
-            Contact Data Settings
-          </h1>
-          <div
-            className={`flex flex-wrap justify-between items-center lg:w-full gap-4 md:gap-6 w-full mb-6`}
+      <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
+        Contact Data Settings
+      </h1>
+      <div
+        className={`flex flex-wrap justify-between items-center lg:w-full gap-4 md:gap-6 w-full mb-6`}
+      >
+        <div
+          className={`${
+            role == "admin" ? "flex" : "hidden"
+          } flex gap-3 items-center`}
+        >
+          <input
+            type="text"
+            placeholder="Outlet Name. . ."
+            id="search"
+            className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[200px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <button
+            onClick={searchData}
+            className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
           >
-            <div
-              className={`${
-                role == "admin" ? "flex" : "hidden"
-              } flex gap-3 items-center`}
-            >
-              <input
-                type="text"
-                placeholder="Outlet Name. . ."
-                id="search"
-                className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[200px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <button
-                onClick={searchData}
-                className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
-              >
-                <IoSearch />
-              </button>
-            </div>
+            <IoSearch />
+          </button>
+        </div>
 
-            <a
-              className={` bg-yellow-700 text-white font-nunitoSans px-4 py-2 md:px-5 md:py-3 rounded-md shadow-md hover:bg-yellow-700 transition-all duration-300`}
-              href="/admin/contact/create"
-            >
-              <IoMedkit />
-            </a>
-          </div>
+        <a
+          className={` bg-yellow-700 text-white font-nunitoSans px-4 py-2 md:px-5 md:py-3 rounded-md shadow-md hover:bg-yellow-700 transition-all duration-300`}
+          href="/admin/contact/create"
+        >
+          <IoMedkit />
+        </a>
+      </div>
 
-          <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
-            <table className="min-w-full border-collapse border border-gray-200">
-              <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans">
-                <tr>
-                  <th className="px-4 py-3 ">No</th>
-                  <th className="px-4 py-3"> Outlet Name</th>
-                  <th className="px-4 py-3"> Contact Name</th>
-                  <th className="px-4 py-3">Value</th>
-                  <th className="px-4 py-3">Link</th>
-                  <th className="px-4 py-3">Logo</th>
-                  <th className="px-4 py-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="text-gray-700 font-nunitoSans">
-                {contact &&
-                  contact.map((item, index) => {
-                    const number = index + 1;
-                    const numberPaginate = indexOfFirstItem + index + 1;
-                    const imageUrl = `${process.env.NEXT_PUBLIC_BASE_API_URL}/${item.logo}`;
-                    return (
-                      <tr
-                        key={item.id}
-                        className="hover:bg-gray-100 transition-all duration-300 border-b-2"
-                      >
-                        <td className="px-4 py-3 text-center">
-                          {" "}
-                          {role !== "admin" ? number : numberPaginate}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {highlightText(item.outlet.outlet_name, query)}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {item.contact_name}
-                        </td>
-                        <td className="px-4 py-3 text-center">{item.value}</td>
-                        <td className="px-4 py-3 text-center">{item.link}</td>
+      <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
+        {isLoading ? (
+          <TableSkeleton />
+        ) : (
+          <table className="min-w-full border-collapse border border-gray-200">
+            <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans">
+              <tr>
+                <th className="px-4 py-3 ">No</th>
+                <th className="px-4 py-3"> Outlet Name</th>
+                <th className="px-4 py-3"> Contact Name</th>
+                <th className="px-4 py-3">Value</th>
+                <th className="px-4 py-3">Link</th>
+                <th className="px-4 py-3">Logo</th>
+                <th className="px-4 py-3 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="text-gray-700 font-nunitoSans">
+              {searchQuery &&
+                searchQuery.map((item, index) => {
+                  const number = index + 1;
+                  const numberPaginate = indexOfFirstItem + index + 1;
+                  const imageUrl = `${process.env.NEXT_PUBLIC_BASE_API_URL}/${item.logo}`;
+                  return (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-gray-100 transition-all duration-300 border-b-2"
+                    >
+                      <td className="px-4 py-3 text-center">
+                        {" "}
+                        {role !== "admin" ? number : numberPaginate}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {highlightText(item.Outlet.outlet_name, query)}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {item.contact_name}
+                      </td>
+                      <td className="px-4 py-3 text-center">{item.value}</td>
+                      <td className="px-4 py-3 text-center">{item.link}</td>
 
-                        <td className="px-4 py-3">
-                          <img
-                            src={item.logo ? imageUrl : "-"}
-                            alt="Bukti Pembayaran"
-                            className="w-12 h-12 rounded-md shadow-md cursor-pointer mx-auto"
-                            onClick={() => handleImageClick(imageUrl)}
-                          />
-                        </td>
-                        <td className="px-4 py-3 flex justify-center gap-2 ">
-                          <a
-                            href={`/admin/contact/edit?id=${item.id}`}
-                            onClick={() =>
-                              localStorage.setItem("id_contact", item.id)
-                            }
-                            className="text-sm text-white p-1 rounded-sm bg-blue-500"
-                          >
-                            <AiFillEdit />
-                          </a>
-                          <button
-                            className="text-sm text-white p-1 rounded-sm bg-red-500"
-                            onClick={() => handleRemove(item.id)}
-                          >
-                            <IoTrash />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-            {/* Modal */}
-            {isModalOpen && (
-              <Modal
-                currentImage={currentImage}
-                setIsModalOpen={setIsModalOpen}
-                setCurrentImage={setCurrentImage}
-              />
-            )}
-          </div>
+                      <td className="px-4 py-3">
+                        <img
+                          src={item.logo ? imageUrl : "-"}
+                          alt="Bukti Pembayaran"
+                          className="w-12 h-12 rounded-md shadow-md cursor-pointer mx-auto"
+                          onClick={() => handleImageClick(imageUrl)}
+                        />
+                      </td>
+                      <td className="px-4 py-3 flex justify-center gap-2 ">
+                        <a
+                          href={`/admin/contact/edit?id=${item.id}`}
+                          onClick={() =>
+                            localStorage.setItem("id_contact", item.id)
+                          }
+                          className="text-sm text-white p-1 rounded-sm bg-blue-500"
+                        >
+                          <AiFillEdit />
+                        </a>
+                        <button
+                          className="text-sm text-white p-1 rounded-sm bg-red-500"
+                          onClick={() => handleRemove(item.id)}
+                        >
+                          <IoTrash />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        )}
+        {/* Modal */}
+        {isModalOpen && (
+          <Modal
+            currentImage={currentImage}
+            setIsModalOpen={setIsModalOpen}
+            setCurrentImage={setCurrentImage}
+          />
+        )}
+      </div>
 
-          {/* Tampilkan navigasi pagination */}
-          {searchQuery && searchQuery.length > 0 && (
-            <Pagination
-              itemsPerPage={itemsPerPage}
-              rows={rows}
-              paginate={paginate}
-              currentPage={currentPage}
-            />
-          )}
-
-          {/* Tampilkan pesan data kosong jika tidak ada data */}
-          {contact.length === 0 && (
-            <div className="flex justify-center mt-6">
-              <p className="italic text-red-500 border-b border-red-500">
-                Data tidak ditemukan!
-              </p>
-            </div>
-          )}
-        </>
+      {/* Tampilkan navigasi pagination */}
+      {searchQuery && searchQuery.length > 0 && (
+        <Pagination
+          itemsPerPage={itemsPerPage}
+          rows={rows}
+          paginate={paginate}
+          currentPage={currentPage}
+          isLoading={isLoading}
+        />
       )}
+
+      {/* Tampilkan pesan data kosong jika tidak ada data */}
+      {isLoading === false && searchQuery.length === 0 && <NotData />}
     </div>
   );
 }

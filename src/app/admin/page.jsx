@@ -14,12 +14,9 @@ export default function AddProfile({ params }) {
     outlet_name: "",
     email: "",
     role: "",
-    profile: {
-      cafe_name: "",
-      address: "",
-      history: "",
-      logo: "",
-    },
+    address: "",
+    history: "",
+    logo: "",
   });
   const [verifikasiPassword, setVerifikasiPassword] = useState("");
   const [password, setPassword] = useState("");
@@ -27,6 +24,7 @@ export default function AddProfile({ params }) {
   const [outletId, setOutletId] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isOpenVerify, setIsOpenVerify] = useState(false);
+  const [updatePassword, setUpdatePassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingButton, setLoadingButton] = useState(false);
   const router = useRouter();
@@ -35,6 +33,9 @@ export default function AddProfile({ params }) {
   //function untuk password terlihat atau tidak
   const onClickPassword = () => {
     setIsOpen(!isOpen);
+  };
+  const onClickUpdatePassword = () => {
+    setUpdatePassword(!updatePassword);
   };
   const onClickVerifyPassword = () => {
     setIsOpenVerify(!isOpenVerify);
@@ -59,8 +60,8 @@ export default function AddProfile({ params }) {
             `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
           )
           .then((response) => {
-            const data = response.data;
-            setOutletId(data.id);
+            const data = response.data.data;
+            setOutlet(data);
             if (data.role === "admin") {
               router.push(`/admin/outlet`);
             }
@@ -73,38 +74,32 @@ export default function AddProfile({ params }) {
   }, [router]);
 
   //CARI DATA BERDASARKAN ID KETIKA EDIT
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (outletId) {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/showprofile/${outletId}`
-          );
+  // useEffect(() => {
+  //   console.log(outletId, "pppp");
 
-          const data = response.data;
-          setOutlet(data);
+  //   const fetchData = async () => {
+  //     try {
+  //       if (outletId) {
+  //         const response = await axios.get(
+  //           `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/showprofile/${outletId}`
+  //         );
 
-          setSelectedFile(data.profile.logo);
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
+  //         const data = response.data;
+  //         setOutlet(data);
 
-    fetchData();
-  }, [outletId]);
+  //         setSelectedFile(data.profile.logo);
+  //         setIsLoading(false);
+  //       }
+  //     } catch (error) {
+  //       console.error("Error fetching data:", error);
+  //     }
+  //   };
+
+  //   fetchData();
+  // }, [outletId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const formDataOutlet = {
-      outlet_name: outlet.outlet_name,
-      email: outlet.email,
-      role: outlet.role,
-      password: password,
-      verify_password: verifikasiPassword,
-    };
 
     const handleError = async (error) => {
       if (error.response?.status === 401) {
@@ -129,21 +124,22 @@ export default function AddProfile({ params }) {
 
       setLoadingButton(true);
       const formData = new FormData();
-      Object.keys(formDataOutlet).forEach((key) => {
-        formData.append(key, formDataOutlet[key]);
-      });
-      formData.append("cafe_name", outlet.profile.cafe_name);
-      formData.append("address", outlet.profile.address);
-      formData.append("history", outlet.profile.history);
+      formData.append("outlet_name", outlet.outlet_name);
+      formData.append("email", outlet.email);
+      formData.append("role", outlet.role);
+      formData.append("password", password);
+      formData.append("verify_password", verifikasiPassword);
+      formData.append("address", outlet.address);
+      formData.append("history", outlet.history);
 
       if (selectedFile) {
         formData.append("logo", selectedFile);
-      } else if (outlet.profile.logo) {
-        formData.append("logo", outlet.profile.logo);
+      } else if (outlet.logo) {
+        formData.append("logo", outlet.logo);
       }
 
       await axios.put(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/profile/updateprofileoutlet/${outlet.id}`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/update/${outlet.id}`,
         formData,
         {
           headers: {
@@ -199,14 +195,14 @@ export default function AddProfile({ params }) {
         <EditDataSkeleton />
       ) : (
         <form className="mt-4 border p-8 grid gap-4" onSubmit={handleSubmit}>
-          {(selectedFile || outlet.profile.logo) && (
+          {(selectedFile || outlet.logo) && (
             <div className="flex gap-4 mb-2">
               <img
                 src={
                   selectedFile instanceof File
                     ? URL.createObjectURL(selectedFile)
-                    : outlet.profile.logo
-                    ? `${process.env.NEXT_PUBLIC_BASE_API_URL}/${outlet.profile.logo}`
+                    : outlet.logo
+                    ? `${process.env.NEXT_PUBLIC_BASE_API_URL}/${outlet.logo}`
                     : null
                 }
                 alt="Event Preview"
@@ -216,7 +212,7 @@ export default function AddProfile({ params }) {
           )}
           <div className="flex gap-4 mb-2">
             <label htmlFor="logo" className="min-w-28 lg:w-52">
-              {outlet.profile.logo ? "Update" : "Create"} logo:
+              {outlet.logo ? "Update" : "Create"} logo:
             </label>
             <input
               className="border rounded-lg border-primary50 w-full h-8"
@@ -256,7 +252,42 @@ export default function AddProfile({ params }) {
               required
             />
           </div>
+
           <div className="flex gap-4 mb-2">
+            <label htmlFor="address" className="min-w-28 lg:w-52">
+              Address:
+            </label>
+            <input
+              className="border p-1 rounded-lg border-primary50 w-full h-8"
+              id="address"
+              placeholder="Address"
+              type="text"
+              name="address"
+              value={outlet.address ? outlet.address : ""}
+              onChange={handleChange}
+            />
+          </div>
+          <div className="flex gap-4 mb-2">
+            <label htmlFor="history" className="min-w-28 lg:w-52">
+              History:
+            </label>
+            <input
+              className="border p-1 rounded-lg border-primary50 w-full h-8"
+              id="history"
+              placeholder="history"
+              type="text"
+              name="history"
+              value={outlet.history ? outlet.history : ""}
+              onChange={handleChange}
+            />
+          </div>
+          <div
+            className="bg-yellow-700 p-2 cursor-pointer rounded-lg text-white mx-auto hover:bg-yellow-600"
+            onClick={onClickUpdatePassword}
+          >
+            Update password
+          </div>
+          <div className={`${updatePassword ? "flex" : "hidden"} gap-4 mb-2`}>
             <label htmlFor="password" className="min-w-28 lg:w-52">
               New Password:
             </label>
@@ -283,7 +314,8 @@ export default function AddProfile({ params }) {
               </div>
             </div>
           </div>
-          <div className="flex gap-4 mb-2">
+
+          <div className={`${updatePassword ? "flex" : "hidden"} gap-4 mb-2`}>
             <label htmlFor="verifikasiPassword" className="min-w-28 lg:w-52">
               Old Password:
             </label>
@@ -309,51 +341,6 @@ export default function AddProfile({ params }) {
                 <img src="/img/mata.png" alt="visibility" className="" />
               </div>
             </div>
-          </div>
-
-          <div className="border my-4  w-full"></div>
-
-          <div className="flex gap-4 mb-2">
-            <label htmlFor="cafe_name" className="min-w-28 lg:w-52">
-              Cafe Name:
-            </label>
-            <input
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="cafe_name"
-              placeholder="cafe name"
-              type="text"
-              name="profile.cafe_name"
-              value={outlet.profile.cafe_name ? outlet.profile.cafe_name : ""}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="flex gap-4 mb-2">
-            <label htmlFor="address" className="min-w-28 lg:w-52">
-              Address:
-            </label>
-            <input
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="address"
-              placeholder="Address"
-              type="text"
-              name="profile.address"
-              value={outlet.profile.address ? outlet.profile.address : ""}
-              onChange={handleChange}
-            />
-          </div>
-          <div className="flex gap-4 mb-2">
-            <label htmlFor="history" className="min-w-28 lg:w-52">
-              History:
-            </label>
-            <input
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="history"
-              placeholder="history"
-              type="text"
-              name="profile.history"
-              value={outlet.profile.history ? outlet.profile.history : ""}
-              onChange={handleChange}
-            />
           </div>
 
           <div className="flex gap-8 text-white justify-end">

@@ -153,7 +153,7 @@ export default function AddOrder({ params }) {
 
           const data = response.data;
 
-          setDataMenu(response.data[0].categories);
+          setDataMenu(response.data[0].Categories);
         } catch (error) {
           console.error("Error fetching transaction data:", error);
         }
@@ -323,12 +323,12 @@ export default function AddOrder({ params }) {
                     {item.type}
                   </h1>
 
-                  {item.subcategories.map((sub) => (
+                  {item.SubCategories.map((sub) => (
                     <div
                       key={sub.id}
                       className="mt-6 grid md:grid-cols-5 grid-cols-3  gap-2"
                     >
-                      {sub.menus.map((menu) => {
+                      {sub.Menus.map((menu) => {
                         const imageUrl = `${
                           process.env.NEXT_PUBLIC_BASE_API_URL
                         }/${encodeURIComponent(menu.photo)}`;

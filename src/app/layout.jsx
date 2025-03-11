@@ -1,5 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import NextTopLoader from "nextjs-toploader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,10 +23,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <div className=" min-w-[277px] min-h-screen">{children}</div>
+      <body className={`font-nunito ${geistMono.variable} antialiased`}>
+        <div className=" min-w-[277px] min-h-screen">
+          <NextTopLoader color="#a16207" showSpinner={false} height={3} />
+          {children}
+        </div>
       </body>
     </html>
   );

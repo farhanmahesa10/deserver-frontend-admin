@@ -1,8 +1,15 @@
 "use client";
 
 import React from "react";
-
-const Pagination = ({ itemsPerPage, paginate, rows, currentPage }) => {
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
+const Pagination = ({
+  itemsPerPage,
+  paginate,
+  rows,
+  currentPage,
+  isLoading,
+}) => {
   const totalPages = Math.ceil(rows / itemsPerPage);
 
   const handleKurang = () => {
@@ -51,47 +58,53 @@ const Pagination = ({ itemsPerPage, paginate, rows, currentPage }) => {
     return pageNumbers;
   };
 
+  console.log(totalPages);
+
   return (
     <nav className="mt-5">
-      <ul className="flex justify-center gap-2">
-        <li>
-          <button
-            onClick={handleKurang}
-            className={`${
-              currentPage === 1 ? "hidden" : ""
-            } p-1 w-8 h-8 border rounded bg-gray-200 hover:bg-gray-300`}
-          >
-            <img src="/img/arah.png" alt="person" className="w-full h-full" />
-          </button>
-        </li>
-        {renderPageNumbers().map((number, index) => (
-          <li
-            key={index}
-            onClick={() => {
-              if (number !== "...") {
-                paginate(number);
-              }
-            }}
-            className={`${
-              currentPage === number
-                ? "bg-yellow-700 text-white"
-                : "bg-gray-200"
-            } w-8 h-8 flex items-center justify-center rounded cursor-pointer`}
-          >
-            {number}
+      {isLoading ? (
+        <Skeleton className="w-10 h-5" />
+      ) : (
+        <ul className="flex justify-center gap-2">
+          <li>
+            <button
+              onClick={handleKurang}
+              className={`${
+                currentPage === 1 ? "hidden" : ""
+              } p-1 w-8 h-8 border rounded bg-gray-200 hover:bg-gray-300`}
+            >
+              <img src="/img/arah.png" alt="person" className="w-full h-full" />
+            </button>
           </li>
-        ))}
-        <li>
-          <button
-            onClick={handleTambah}
-            className={`${
-              currentPage === totalPages ? "hidden" : ""
-            } p-1 w-8 h-8 border rounded bg-gray-200 hover:bg-gray-300`}
-          >
-            <img src="/img/arah.png" alt="person" className="rotate-180" />
-          </button>
-        </li>
-      </ul>
+          {renderPageNumbers().map((number, index) => (
+            <li
+              key={index}
+              onClick={() => {
+                if (number !== "...") {
+                  paginate(number);
+                }
+              }}
+              className={`${
+                currentPage === number
+                  ? "bg-yellow-700 text-white"
+                  : "bg-gray-200"
+              } w-8 h-8 flex items-center justify-center rounded cursor-pointer`}
+            >
+              {number}
+            </li>
+          ))}
+          <li>
+            <button
+              onClick={handleTambah}
+              className={`${
+                currentPage === totalPages ? "hidden" : ""
+              } p-1 w-8 h-8 border rounded bg-gray-200 hover:bg-gray-300`}
+            >
+              <img src="/img/arah.png" alt="person" className="rotate-180" />
+            </button>
+          </li>
+        </ul>
+      )}
     </nav>
   );
 };

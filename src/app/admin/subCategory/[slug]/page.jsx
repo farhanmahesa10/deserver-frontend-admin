@@ -6,6 +6,11 @@ import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
 import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
+import ButtonCreateUpdate from "@/app/component/button/button";
+import { useFormik } from "formik";
+import * as yup from "yup";
+import Input from "@/app/component/form/input";
+import Select from "@/app/component/form/select";
 
 export default function AddsubCategory({ params }) {
   const [subCategory, setSubCategory] = useState({
@@ -21,131 +26,8 @@ export default function AddsubCategory({ params }) {
   const router = useRouter();
   const { slug } = React.use(params);
 
-  // cek token
-  useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
-    const outletName = localStorage.getItem("outlet_name");
-
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
-
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data;
-            if (data.role === "admin") {
-              if (slug == "edit") {
-                setoutletName(outletName);
-              }
-            } else {
-              setoutletName(data.outlet_name);
-            }
-            setRole(data.role);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
-      }
-    } else {
-      router.push(`/login`);
-    }
-  }, [router]);
-
-  //menampilkan semua DATA OUTLET
-  useEffect(() => {
-    setIsLoading(true);
-    const fetchData = async () => {
-      try {
-        // Mengambil data transaksi menggunakan axios dengan query params
-        const response = await axios.get(
-          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`
-        );
-
-        const data = response.data;
-
-        setOutlet(data);
-      } catch (error) {
-        console.error("Error fetching transaction data:", error);
-      }
-    };
-
-    setIsLoading(false);
-
-    fetchData();
-  }, []);
-
-  //menampilkan data category
-  useEffect(() => {
-    setIsLoading(true);
-    const fetchData = async () => {
-      if (outletName) {
-        try {
-          // Mengambil data transaksi menggunakan axios dengan query params
-          const response = await axios.get(
-            ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/showcafename/${outletName}`
-          );
-
-          const data = response.data;
-
-          setCategory(data);
-        } catch (error) {
-          console.error("Error fetching transaction data:", error);
-        }
-      }
-    };
-
-    setIsLoading(false);
-
-    fetchData();
-  }, [outletName]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (slug === "edit") {
-          const savedToken = localStorage.getItem("token");
-          const idsubCategory = localStorage.getItem("id_subCategory");
-
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showbyid/${idsubCategory}`
-          );
-
-          const data = response.data;
-          setSubCategory(data[0]);
-
-          setIsLoading(false);
-        } else {
-          setIsLoading(false);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-
-    fetchData();
-  }, []);
-
   //handle edit dan create
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!subCategory.title || !subCategory.id_category) {
-      alert("Harap isi semua field!");
-      return;
-    }
-
-    const formData = {
-      id_category: subCategory.id_category,
-      title: subCategory.title,
-    };
-
+  const onSubmit = async (e) => {
     const handleError = async (error) => {
       if (error.response?.status === 401) {
         try {
@@ -167,11 +49,11 @@ export default function AddsubCategory({ params }) {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
 
-      if (subCategory.id) {
+      if (formik.values.id) {
         setLoadingButton(true);
         await axios.put(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/update/${subCategory.id}`,
-          formData,
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/update/${formik.values.id}`,
+          formik.values,
           { headers }
         );
         localStorage.removeItem("id_subCategory");
@@ -181,7 +63,7 @@ export default function AddsubCategory({ params }) {
         setLoadingButton(true);
         await axios.post(
           `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/create`,
-          formData,
+          formik.values,
           { headers }
         );
         alert("Data berhasil ditambahkan!");
@@ -194,6 +76,129 @@ export default function AddsubCategory({ params }) {
     }
   };
 
+  const formik = useFormik({
+    initialValues: {
+      outlet_name: "",
+      id_category: "",
+      title: "",
+    },
+    onSubmit,
+    validationSchema: yup.object({
+      outlet_name: yup.string().required(),
+      id_category: yup.number().required(),
+      title: yup.string().required(),
+    }),
+  });
+
+  // cek token
+  useEffect(() => {
+    const savedToken = localStorage.getItem("refreshToken");
+    const outletName = localStorage.getItem("outlet_name");
+
+    if (savedToken) {
+      const decoded = jwtDecode(savedToken);
+      const outlet_id = decoded.id;
+      const expirationTime = new Date(decoded.exp * 1000);
+      const currentTime = new Date();
+
+      if (currentTime > expirationTime) {
+        localStorage.clear();
+        router.push(`/login`);
+      } else {
+        axios
+          .get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
+          )
+          .then((response) => {
+            const data = response.data.data;
+            if (data.role === "admin") {
+              if (slug == "edit") {
+                formik.setFieldValue("outlet_name", outletName);
+              }
+            } else {
+              formik.setFieldValue("outlet_name", data.outlet_name);
+            }
+            setRole(data.role);
+          })
+          .catch((error) => console.error("Error fetching data:", error));
+      }
+    } else {
+      router.push(`/login`);
+    }
+  }, [router]);
+
+  //menampilkan semua DATA OUTLET
+  useEffect(() => {
+    setIsLoading(true);
+    const fetchData = async () => {
+      try {
+        // Mengambil data transaksi menggunakan axios dengan query params
+        const response = await axios.get(
+          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`
+        );
+
+        const data = response.data.data;
+
+        setOutlet(data);
+      } catch (error) {
+        console.error("Error fetching transaction data:", error);
+      }
+    };
+
+    setIsLoading(false);
+
+    fetchData();
+  }, []);
+
+  //menampilkan data category
+  useEffect(() => {
+    const fetchData = async () => {
+      if (formik.values.outlet_name) {
+        try {
+          // Mengambil data transaksi menggunakan axios dengan query params
+          const response = await axios.get(
+            ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/showcafename/${formik.values.outlet_name}`
+          );
+
+          const data = response.data.data;
+
+          setCategory(data);
+        } catch (error) {
+          console.error("Error fetching transaction data:", error);
+        }
+      }
+    };
+
+    setIsLoading(false);
+
+    fetchData();
+  }, [formik.values.outlet_name]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        if (slug === "edit") {
+          const idsubCategory = localStorage.getItem("id_subCategory");
+
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showbyid/${idsubCategory}`
+          );
+
+          const data = response.data.data[0];
+          formik.setValues(data);
+
+          setIsLoading(false);
+        } else {
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchData();
+  }, [slug]);
+
   const handleCancel = () => {
     router.push("/admin/subCategory");
     localStorage.removeItem("id_subCategory");
@@ -202,11 +207,8 @@ export default function AddsubCategory({ params }) {
 
   // Handler untuk perubahan nilai input
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setSubCategory((subCategory) => ({
-      ...subCategory,
-      [name]: value,
-    }));
+    const { target } = e;
+    formik.setFieldValue(target.name, target.value);
   };
 
   return (
@@ -215,87 +217,67 @@ export default function AddsubCategory({ params }) {
       {isLoading ? (
         <EditDataSkeleton />
       ) : (
-        <form className="mt-4 border p-8 grid gap-4" onSubmit={handleSubmit}>
-          <div
-            className={`${role !== "admin" ? "hidden" : "flex"} ${
-              slug === "edit" ? "hidden" : "flex"
-            } gap-4 mb-2`}
-          >
-            <label
-              htmlFor="id_outlet"
-              className="body-text-sm-normal md:body-text-base-normal font-nunitoSans min-w-28 lg:w-52"
-            >
-              Outlate Name:
-            </label>
-            <select
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="id_outlet"
-              name="id_outlet"
-              value={outletName}
-              onChange={(e) => setoutletName(e.target.value)}
-            >
-              <option value="" className="bg-primary50 " disabled>{`${
-                slug == "create" ? "Select outlet name" : outletName
-              }`}</option>
-              {outlet.map((value) => (
+        <form
+          className="mt-4 border p-8 grid gap-4"
+          onSubmit={formik.handleSubmit}
+        >
+          <div className={`${role !== "admin" ? "hidden" : "flex"} gap-4 mb-2`}>
+            <Select
+              label="Outlate Name:"
+              id="outlet_name"
+              name="outlet_name"
+              value={formik.values.outlet_name}
+              options={outlet.map((value) => (
                 <option key={value.id} value={value.outlet_name}>
                   {value.outlet_name}
                 </option>
               ))}
-            </select>
-          </div>
-          <div className={` flex gap-4 mb-2`}>
-            <label htmlFor="id_category" className=" min-w-28 lg:w-52">
-              Category:
-            </label>
-            <select
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="id_category"
-              name="id_category"
-              value={subCategory.id_category}
+              placeholder={"Select Outlet Name"}
               onChange={handleChange}
-            >
-              <option value="" className="bg-primary50 " disabled>{`${
-                slug == "create" ? "Select category Name" : subCategory.type
-              }`}</option>
-              {category.map((value) => (
-                <option key={value.id} value={value.id}>
-                  {value.type}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex gap-4 mb-2">
-            <label htmlFor="title" className="min-w-28 lg:w-52">
-              Title:
-            </label>
-            <input
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="title"
-              placeholder="title"
-              type="text"
-              name="title"
-              value={subCategory.title}
-              onChange={handleChange}
-              required
+              errorMessage={formik.errors.outlet_name}
+              isError={
+                formik.touched.outlet_name && formik.errors.outlet_name
+                  ? true
+                  : false
+              }
             />
           </div>
 
-          <div className="flex gap-8 text-white justify-end">
-            <button
-              type={loadingButton ? "button" : "submit"}
-              className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-            >
-              {loadingButton ? "Loading..." : "Submit"}
-            </button>
-            <button
-              type="button"
-              className="bg-red-500 border-red-5bg-red-500 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-              onClick={handleCancel}
-            >
-              Cancel
-            </button>
-          </div>
+          <Select
+            label="Category :"
+            id="id_category"
+            name="id_category"
+            value={formik.values.id_category}
+            options={category.map((value) => (
+              <option key={value.id} value={value.id}>
+                {value.type}
+              </option>
+            ))}
+            placeholder={"Select category Name"}
+            onChange={handleChange}
+            errorMessage={formik.errors.id_category}
+            isError={
+              formik.touched.id_category && formik.errors.id_category
+                ? true
+                : false
+            }
+          />
+
+          <Input
+            label="Title :"
+            id="title"
+            placeholder="title"
+            name="title"
+            type="text"
+            value={formik.values.title}
+            onChange={handleChange}
+            errorMessage={formik.errors.title}
+            isError={formik.touched.title && formik.errors.title ? true : false}
+          />
+          <ButtonCreateUpdate
+            loadingButton={loadingButton}
+            handleCancel={handleCancel}
+          />
         </form>
       )}
     </div>

@@ -5,11 +5,17 @@ import Pagination from "../../component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import Modal from "../../component/modal/modal";
-import AdminSkeleton from "../../component/skeleton/adminSkeleton";
+import Skeleton from "react-loading-skeleton";
+import "react-loading-skeleton/dist/skeleton.css";
 import { getNewAccessToken } from "../../component/refreshToken/refreshToken";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
+import {
+  IconSkeleton,
+  SearchSkeleton,
+  TableSkeleton,
+} from "../../component/skeleton/adminSkeleton";
+import { NotData } from "@/app/component/notData/notData";
 
 export default function AdminOutlet() {
   const [outlet, setOutlet] = useState([]);
@@ -52,7 +58,7 @@ export default function AdminOutlet() {
             `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
           )
           .then((response) => {
-            const data = response.data;
+            const data = response.data.data;
             if (data.role !== "admin") {
               router.push("/admin");
             }
@@ -94,6 +100,7 @@ export default function AdminOutlet() {
 
   //handle pencarian
   const searchData = () => {
+    const token = localStorage.getItem("token");
     setIsLoading(true);
     setCurrentPage(1);
     const fetchData = async () => {
@@ -108,12 +115,15 @@ export default function AdminOutlet() {
           `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/showpaginated`,
           {
             params: params,
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           }
         );
 
-        const data = response.data.outlet;
+        const data = response.data.data;
         setOutlet(data);
-        setRows(response.data.totalItems);
+        setRows(response.data.pagination.totalItems);
       } catch (error) {
         console.error("Error fetching transaction data:", error);
       }
@@ -123,25 +133,30 @@ export default function AdminOutlet() {
     fetchData();
   };
 
+  console.log(outlet);
+
   // function mengambil data lapangan by limit
   const fetchData = async () => {
+    const token = localStorage.getItem("token");
     const params = {
       page: currentPage,
       limit: itemsPerPage,
       search: query,
     };
     try {
-      // Mengambil data transaksi menggunakan axios dengan query params
       const response = await axios.get(
         `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/showpaginated`,
         {
           params: params,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
-      const data = response.data.outlet;
+      const data = response.data.data;
       setOutlet(data);
-      setRows(response.data.totalItems);
+      setRows(response.data.pagination.totalItems);
     } catch (error) {
       console.error("Error fetching transaction data:", error);
     }
@@ -204,26 +219,24 @@ export default function AdminOutlet() {
     }
   };
 
-  console.log(outlet);
+  console.log(searchQuery);
 
   return (
     <div
       ref={targetRef}
       className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
     >
-      {isLoading ? (
-        <AdminSkeleton />
-      ) : (
-        <>
-          <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
-            Outlet Data Settings
-          </h1>
-          <div
-            className={`${
-              role == "admin" ? "flex" : "hidden"
-            } flex-wrap justify-between items-center lg:w-full gap-4 md:gap-6 w-full mb-6`}
-          >
-            <div className="flex gap-3 items-center ">
+      <>
+        <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
+          Outlet Data Settings
+        </h1>
+        <div
+          className={`flex flex-wrap justify-between items-center lg:w-full gap-4 md:gap-6 w-full mb-6 `}
+        >
+          <div className="flex gap-3 items-center ">
+            {isLoading ? (
+              <SearchSkeleton />
+            ) : (
               <input
                 type="text"
                 placeholder="Outlet Nama. . ."
@@ -232,29 +245,40 @@ export default function AdminOutlet() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
+            )}
+            {isLoading ? (
+              <IconSkeleton />
+            ) : (
               <button
                 onClick={searchData}
                 className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
               >
                 <IoSearch />
               </button>
-            </div>
+            )}
+          </div>
 
+          {isLoading ? (
+            <IconSkeleton />
+          ) : (
             <a
               className={` bg-yellow-700 body-text-sm-bold text-white font-nunitoSans px-4 py-2 md:px-5 md:py-3 rounded-md shadow-md hover:bg-yellow-700 transition-all duration-300`}
               href="/admin/outlet/create"
             >
               <IoMedkit />
             </a>
-          </div>
+          )}
+        </div>
 
-          <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
+        <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
+          {isLoading ? (
+            <TableSkeleton />
+          ) : (
             <table className="min-w-full border-collapse border border-gray-200">
               <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans">
                 <tr>
                   <th className="px-4 py-3">No</th>
                   <th className="px-4 py-3">Outlet Name</th>
-                  <th className="px-4 py-3">Cafe Name</th>
                   <th className="px-4 py-3">email</th>
                   <th className="px-4 py-3">role</th>
                   <th className="px-4 py-3">history</th>
@@ -267,7 +291,8 @@ export default function AdminOutlet() {
                 {searchQuery &&
                   searchQuery.map((item, index) => {
                     const number = indexOfFirstItem + index + 1;
-                    const imageUrl = `${process.env.NEXT_PUBLIC_BASE_API_URL}/${item.profile.logo}`;
+                    const imageUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/${item.logo}`;
+
                     return (
                       <tr
                         key={number}
@@ -277,14 +302,13 @@ export default function AdminOutlet() {
                         <td className="px-4 py-3">
                           {highlightText(item.outlet_name, query)}
                         </td>
-                        <td className="px-4 py-3">{item.profile.cafe_name}</td>
                         <td className="px-4 py-3 ">{item.email}</td>
                         <td className="px-4 py-3">{item.role}</td>
-                        <td className="px-4 py-3">{item.profile.history}</td>
-                        <td className="px-4 py-3">{item.profile.address}</td>
+                        <td className="px-4 py-3">{item.history}</td>
+                        <td className="px-4 py-3">{item.address}</td>
                         <td className="px-4 py-3 ">
                           <img
-                            src={item.profile ? imageUrl : "-"}
+                            src={item.logo ? imageUrl : "-"}
                             alt="Bukti Pembayaran"
                             className="w-12 h-12 rounded-md shadow-md cursor-pointer mx-auto"
                             onClick={() => handleImageClick(imageUrl)}
@@ -313,28 +337,23 @@ export default function AdminOutlet() {
                   })}
               </tbody>
             </table>
-          </div>
-
-          {/* Tampilkan navigasi pagination */}
-          {searchQuery.length > 0 && (
-            <Pagination
-              itemsPerPage={itemsPerPage}
-              rows={rows}
-              paginate={paginate}
-              currentPage={currentPage}
-            />
           )}
+        </div>
 
-          {/* Tampilkan pesan data kosong jika tidak ada data */}
-          {searchQuery.length === 0 && (
-            <div className="flex justify-center mt-6">
-              <p className="italic text-red-500 border-b border-red-500">
-                Data tidak ditemukan!
-              </p>
-            </div>
-          )}
-        </>
-      )}
+        {/* Tampilkan navigasi pagination */}
+        {searchQuery.length > 0 && (
+          <Pagination
+            itemsPerPage={itemsPerPage}
+            rows={rows}
+            paginate={paginate}
+            currentPage={currentPage}
+            isLoading={isLoading}
+          />
+        )}
+
+        {/* Tampilkan pesan data kosong jika tidak ada data */}
+        {isLoading === false && searchQuery.length === 0 && <NotData />}
+      </>
     </div>
   );
 }

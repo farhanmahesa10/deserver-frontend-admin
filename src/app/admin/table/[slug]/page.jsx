@@ -6,6 +6,7 @@ import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
 import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
+import ButtonCreateUpdate from "@/app/component/button/button";
 
 export default function AddTable({ params }) {
   const [table, setTable] = useState({
@@ -39,7 +40,7 @@ export default function AddTable({ params }) {
             `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
           )
           .then((response) => {
-            const data = response.data;
+            const data = response.data.data;
             setRole(data.role);
             if (data.role !== "admin") {
               setTable((table) => ({
@@ -65,7 +66,7 @@ export default function AddTable({ params }) {
           ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`
         );
 
-        const data = response.data;
+        const data = response.data.data;
 
         setOutlet(data);
       } catch (error) {
@@ -80,28 +81,26 @@ export default function AddTable({ params }) {
 
   //mengambildata table ketika edit
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        if (slug === "edit") {
+    if (slug === "edit") {
+      const fetchData = async () => {
+        try {
           const idTable = localStorage.getItem("id_table");
 
           const response = await axios.get(
             `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/show/${idTable}`
           );
 
-          const data = response.data;
+          const data = response.data.data;
           setTable(data);
 
           setIsLoading(false);
-        } else {
-          setIsLoading(false);
+        } catch (error) {
+          console.error("Error fetching data:", error);
         }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
+      };
 
-    fetchData();
+      fetchData();
+    }
   }, []);
 
   //handle edit dan create
@@ -213,13 +212,13 @@ export default function AddTable({ params }) {
           </div>
 
           <div className="flex gap-4 mb-2">
-            <label htmlFor="number_table" className="min-w-28 lg:w-52">
-              number_table:
+            <label htmlFor="number_room" className="min-w-28 lg:w-52">
+              Number Room:
             </label>
             <input
               className="border p-1 rounded-lg border-primary50 w-full h-8"
               id="number_table"
-              placeholder="number_table"
+              placeholder="number_room"
               type="text"
               name="number_table"
               value={table.number_table}
@@ -228,21 +227,10 @@ export default function AddTable({ params }) {
             />
           </div>
 
-          <div className="flex gap-8 text-white justify-end">
-            <button
-              type={loadingButton ? "button" : "submit"}
-              className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-            >
-              {loadingButton ? "Loading..." : "Submit"}
-            </button>
-            <button
-              type="button"
-              className="bg-red-500 border-red-5bg-red-500 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-              onClick={handleCancel}
-            >
-              Cancel
-            </button>
-          </div>
+          <ButtonCreateUpdate
+            loadingButton={loadingButton}
+            handleCancel={handleCancel}
+          />
         </form>
       )}
     </div>
