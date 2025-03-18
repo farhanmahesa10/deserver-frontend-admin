@@ -5,46 +5,25 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../../component/token/refreshToken";
 import ButtonCreateUpdate from "@/app/component/button/button";
 import { useFormik } from "formik";
 import * as yup from "yup";
 import Input from "@/app/component/form/input";
 import Select from "@/app/component/form/select";
+import { handleApiError } from "@/app/component/handleError/handleError";
 
 export default function AddsubCategory({ params }) {
-  const [subCategory, setSubCategory] = useState({
-    id_category: "",
-    title: "",
-  });
   const [category, setCategory] = useState([]);
   const [outlet, setOutlet] = useState([]);
   const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
-  const [outletName, setoutletName] = useState("");
   const router = useRouter();
   const { slug } = React.use(params);
 
   //handle edit dan create
   const onSubmit = async (e) => {
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleSubmit(e); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting contact:", error);
-      }
-    };
-
     try {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
@@ -58,7 +37,8 @@ export default function AddsubCategory({ params }) {
         );
         localStorage.removeItem("id_subCategory");
         localStorage.removeItem("outlet_name");
-        alert("Data berhasil diperbarui!");
+        localStorage.setItem("newData", "update successfully!");
+        router.push("/admin/subCategory");
       } else {
         setLoadingButton(true);
         await axios.post(
@@ -66,13 +46,11 @@ export default function AddsubCategory({ params }) {
           formik.values,
           { headers }
         );
-        alert("Data berhasil ditambahkan!");
+        localStorage.setItem("newData", "create successfully!");
+        router.push("/admin/subCategory");
       }
-
-      router.push("/admin/subCategory");
-      setLoadingButton(false);
     } catch (error) {
-      await handleError(error);
+      await handleApiError(error, onSubmit, router);
     }
   };
 
@@ -93,6 +71,7 @@ export default function AddsubCategory({ params }) {
   // cek token
   useEffect(() => {
     const savedToken = localStorage.getItem("refreshToken");
+    const token = localStorage.getItem("token");
     const outletName = localStorage.getItem("outlet_name");
 
     if (savedToken) {
@@ -107,7 +86,12 @@ export default function AddsubCategory({ params }) {
       } else {
         axios
           .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           )
           .then((response) => {
             const data = response.data.data;
@@ -129,12 +113,18 @@ export default function AddsubCategory({ params }) {
 
   //menampilkan semua DATA OUTLET
   useEffect(() => {
+    const token = localStorage.getItem("token");
     setIsLoading(true);
     const fetchData = async () => {
       try {
         // Mengambil data transaksi menggunakan axios dengan query params
         const response = await axios.get(
-          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`
+          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
         const data = response.data.data;
@@ -152,12 +142,18 @@ export default function AddsubCategory({ params }) {
 
   //menampilkan data category
   useEffect(() => {
+    const token = localStorage.getItem("token");
     const fetchData = async () => {
       if (formik.values.outlet_name) {
         try {
           // Mengambil data transaksi menggunakan axios dengan query params
           const response = await axios.get(
-            ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/showcafename/${formik.values.outlet_name}`
+            ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/showcafename/${formik.values.outlet_name}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           );
 
           const data = response.data.data;
@@ -175,16 +171,22 @@ export default function AddsubCategory({ params }) {
   }, [formik.values.outlet_name]);
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
     const fetchData = async () => {
       try {
         if (slug === "edit") {
           const idsubCategory = localStorage.getItem("id_subCategory");
 
           const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showbyid/${idsubCategory}`
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showbyid/${idsubCategory}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           );
 
-          const data = response.data.data[0];
+          const data = response.data.data;
           formik.setValues(data);
 
           setIsLoading(false);

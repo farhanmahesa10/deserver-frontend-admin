@@ -5,12 +5,13 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../../component/token/refreshToken";
 import ButtonCreateUpdate from "@/app/component/button/button";
 import { useFormik } from "formik";
 import * as yup from "yup";
 import Input from "@/app/component/form/input";
 import Select from "@/app/component/form/select";
+import { handleApiError } from "@/app/component/handleError/handleError";
 
 export default function AddEvent({ params }) {
   const [outlet, setOutlet] = useState([]);
@@ -28,23 +29,6 @@ export default function AddEvent({ params }) {
     formData.append("descriptions", formik.values.descriptions);
     formData.append("image", formik.values.image);
 
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleSubmit(e); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting event:", error);
-      }
-    };
-
     try {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
@@ -57,7 +41,8 @@ export default function AddEvent({ params }) {
           { headers }
         );
         localStorage.removeItem("id_event");
-        alert("Data berhasil diperbarui!");
+        localStorage.setItem("newData", "update successfully!");
+        router.push("/admin/event");
       } else {
         setLoadingButton(true);
         await axios.post(
@@ -65,13 +50,11 @@ export default function AddEvent({ params }) {
           formData,
           { headers }
         );
-        alert("Data berhasil ditambahkan!");
+        localStorage.setItem("newData", "create successfully!");
+        router.push("/admin/event");
       }
-
-      router.push("/admin/event");
-      setLoadingButton(false);
     } catch (error) {
-      await handleError(error);
+      await handleApiError(error, onSubmit, router);
     }
   };
 
@@ -87,63 +70,85 @@ export default function AddEvent({ params }) {
       id_outlet: yup.number().required(),
       title: yup.string().required(),
       descriptions: yup.string().required(),
-      image: yup
-        .mixed()
-        .required()
-        .test(
-          "fileType",
-          "Format gambar tidak valid (hanya jpg, jpeg, png)",
-          (value) =>
-            ["image/jpeg", "image/png", "image/jpg"].includes(value?.type)
-        )
-        .test(
-          "fileSize",
-          "Ukuran gambar maksimal 2MB",
-          (value) => value && value.size <= 2 * 1024 * 1024
-        ),
+      image: yup.mixed().when("id", {
+        is: (id) => !id,
+        then: (schema) =>
+          schema
+            .required()
+            .test(
+              "fileType",
+              "Invalid image format (jpg, jpeg, png only)",
+              (value) =>
+                ["image/jpeg", "image/png", "image/jpg"].includes(value?.type)
+            )
+            .test(
+              "fileSize",
+              "Maximum image size 2MB",
+              (value) => value && value.size <= 2 * 1024 * 1024
+            ),
+        otherwise: (schema) => schema.notRequired(),
+      }),
     }),
   });
 
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
+    const loadData = async () => {
+      setIsLoading(true);
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
 
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
 
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data.data;
-            setRole(data.role);
-            if (data.role !== "admin") {
-              formik.setFieldValue("id_outlet", data.id);
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
             }
-          })
-          .catch((error) => console.error("Error fetching data:", error));
+          );
+          const data = response.data.data;
+
+          setRole(data.role);
+          if (data.role !== "admin") {
+            formik.setFieldValue("id_outlet", data.id);
+          }
+          setIsLoading(false);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
+      } else {
+        router.push(`/login`);
       }
-    } else {
-      router.push(`/login`);
-    }
-  }, [router]);
+    };
+
+    loadData();
+  }, []);
 
   //menampilkan semua DATA OUTLET
   useEffect(() => {
     setIsLoading(true);
+    const token = localStorage.getItem("token");
     const fetchData = async () => {
       try {
         // Mengambil data transaksi menggunakan axios dengan query params
         const response = await axios.get(
-          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`
+          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
         const data = response.data.data;
@@ -161,16 +166,22 @@ export default function AddEvent({ params }) {
 
   //mengambildata event ketika edit
   useEffect(() => {
+    const token = localStorage.getItem("token");
     const fetchData = async () => {
       try {
         if (slug === "edit") {
           const idEvent = localStorage.getItem("id_event");
 
           const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/event/show/${idEvent}`
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/event/show/${idEvent}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           );
 
-          const data = response.data;
+          const data = response.data.data;
           formik.setValues(data);
 
           setIsLoading(false);
@@ -270,12 +281,18 @@ export default function AddEvent({ params }) {
             <label htmlFor="image" className="min-w-28 lg:w-52">
               image:
             </label>
-            <input
-              className="border rounded-lg border-primary50 w-full h-8"
+            <Input
+              label="Image :"
               id="image"
-              type="file"
+              placeholder="image"
               name="image"
+              type="file"
+              inputBorder="w-52"
               onChange={handleFileChange}
+              errorMessage={formik.errors.image}
+              isError={
+                formik.touched.image && formik.errors.image ? true : false
+              }
             />
           </div>
           {formik.values.image && (
@@ -285,7 +302,7 @@ export default function AddEvent({ params }) {
                 src={
                   typeof formik.values.image === "object"
                     ? URL.createObjectURL(formik.values.image)
-                    : `${process.env.NEXT_PUBLIC_BASE_API_URL}/${formik.values.image}`
+                    : `${process.env.NEXT_PUBLIC_IMAGE_URL}/${formik.values.image}`
                 }
                 alt="event Preview"
                 className="mx-auto w-40 h-40 object-cover"

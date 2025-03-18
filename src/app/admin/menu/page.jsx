@@ -6,15 +6,16 @@ import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import Modal from "../../component/modal/modal";
-import { getNewAccessToken } from "../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../component/token/refreshToken";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
 import { NotData } from "@/app/component/notData/notData";
+import { handleApiError } from "@/app/component/handleError/handleError";
+import { Toaster, toast } from "react-hot-toast";
 
 export default function Menu() {
   const [menu, setMenu] = useState([]);
-  const [outletName, setOutletName] = useState("");
   const [role, setRole] = useState("");
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -36,135 +37,111 @@ export default function Menu() {
   //set untuk page yg di tampilkan
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
+  //toast data baru
+  useEffect(() => {
+    const newData = localStorage.getItem("newData");
+    if (newData) {
+      toast.success(newData);
+      localStorage.removeItem("newData");
+    }
+  }, []);
+
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
+    const loadData = async () => {
+      setIsLoading(true);
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
 
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
 
-      if (currentTime > expirationTime) {
-        localStorage.removeItem("token");
-        router.push(`/login`);
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          const data = response.data.data;
+
+          setRole(data.role);
+          setIsLoading(false);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
       } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data.data;
-            setOutletName(data.outlet_name);
-            setRole(data.role);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
+        router.push(`/login`);
       }
-    } else {
-      router.push(`/login`);
-    }
-  }, [router]);
+    };
+
+    loadData();
+  }, []);
 
   //setiap kali ada perubahan di current page maka scroll ke atas
   useEffect(() => {
     targetRef.current.scrollIntoView({ behavior: "smooth" });
   }, [currentPage]);
 
-  //stabilo pencarian
-  const highlightText = (text, query) => {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi"); // Cari query (case-insensitive)
-    const parts = text.split(regex); // Pisah teks berdasarkan query
-
-    return parts.map((part, index) =>
-      part.toLowerCase() === query.toLowerCase() ? (
-        <span key={index} className="bg-green-500">
-          {part}
-        </span>
-      ) : (
-        part
-      )
-    );
-  };
-
   // useEffect untuk search
   useEffect(() => {
     setSearchQuery(menu);
   }, [menu]);
 
-  //handle pencarian
-  const searchData = () => {
+  const fetchDataPaginated = async (isSearchMode = false) => {
     setIsLoading(true);
-    setCurrentPage(1);
-    const fetchData = async () => {
-      if (outletName) {
-        const params = {
-          page: currentPage,
-          limit: itemsPerPage,
-          search: role === "admin" ? query : outletName,
-          search_title: queryMenu,
-        };
-        try {
-          // Mengambil data transaksi menggunakan axios dengan query params
-          const response = await axios.get(
-            `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/showpaginated`,
-            {
-              params: params,
-            }
-          );
-
-          const data = response.data.data;
-          setMenu(data);
-          setRows(response.data.pagination.totalItems);
-        } catch (error) {
-          console.error("Error fetching transaction data:", error);
-        }
-      }
-    };
-    setIsLoading(false);
-
-    fetchData();
-  };
-
-  // function mengambil data lapangan by limit
-  const fetchData = async () => {
+    if (isSearchMode) {
+      setCurrentPage(1); // Reset ke page 1 jika pencarian
+    }
     const token = localStorage.getItem("token");
 
-    if (role) {
-      const params = {
-        page: currentPage,
-        limit: itemsPerPage,
-        search: role === "admin" ? "" : outletName,
-        search_title: queryMenu,
-      };
-      try {
-        // Mengambil data transaksi menggunakan axios dengan query params
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/showpaginated`,
-          {
-            params: params,
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+    const params = {
+      page: isSearchMode ? 1 : currentPage,
+      limit: itemsPerPage,
+      search: query,
+      search_title: queryMenu,
+    };
+    try {
+      // Mengambil data transaksi menggunakan axios dengan query params
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/showpaginated`,
+        {
+          params: params,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-        const data = response.data.data;
-        setMenu(data);
-        setRows(response.data.pagination.totalItems);
-      } catch (error) {
-        console.error("Error fetching transaction data:", error);
-      }
+      const data = response.data.data;
+      setMenu(data);
+      setRows(response.data.pagination.totalItems);
+      setIsLoading(false);
+    } catch (error) {
+      await handleApiError(
+        error,
+        () => fetchDataPaginated(isSearchMode),
+        router
+      );
     }
   };
+
   // useEffect mengambil data lapangan by limit
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true); // Tampilkan loading
       try {
         if (role) {
-          await fetchData();
+          await fetchDataPaginated();
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -176,7 +153,7 @@ export default function Menu() {
     if (role) {
       loadData();
     }
-  }, [itemsPerPage, currentPage, role, outletName]);
+  }, [itemsPerPage, currentPage, role]);
 
   //handle untuk menghapus data
   const handleRemove = async (dataRemove) => {
@@ -304,11 +281,29 @@ export default function Menu() {
     setIsModalOpen(true); // Membuka modal
   };
 
+  //stabilo pencarian
+  const highlightText = (text, query) => {
+    if (!query) return text;
+    const regex = new RegExp(`(${query})`, "gi"); // Cari query (case-insensitive)
+    const parts = text.split(regex); // Pisah teks berdasarkan query
+
+    return parts.map((part, index) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <span key={index} className="bg-green-500">
+          {part}
+        </span>
+      ) : (
+        part
+      )
+    );
+  };
+
   return (
     <div
       ref={targetRef}
       className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
     >
+      <Toaster position="top-center" reverseOrder={false} />
       <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
         Menu Data Settings
       </h1>
@@ -336,7 +331,7 @@ export default function Menu() {
             onChange={(e) => setQueryMenu(e.target.value)}
           />
           <button
-            onClick={searchData}
+            onClick={() => fetchDataPaginated(true)}
             className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px]  text-xl text-white body-text-sm-bold font-nunitoSans rounded-md shadow-md bg-yellow-700 hover:bg-yellow-600 transition-all duration-300"
           >
             <IoSearch />
@@ -374,7 +369,7 @@ export default function Menu() {
               {searchQuery &&
                 searchQuery.map((item, index) => {
                   const number = indexOfFirstItem + index + 1;
-                  const imageUrl = `${process.env.NEXT_PUBLIC_BASE_API_URL}/${item.photo}`;
+                  const imageUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/${item.photo}`;
                   return (
                     <tr
                       key={number}

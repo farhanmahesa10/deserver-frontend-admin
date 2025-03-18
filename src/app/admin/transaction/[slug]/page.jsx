@@ -5,7 +5,7 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../../component/token/refreshToken";
 import { Toaster, toast } from "react-hot-toast";
 export default function AddOrder({ params }) {
   const [transaction, setTransaction] = useState({

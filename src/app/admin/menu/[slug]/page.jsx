@@ -5,27 +5,18 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../../component/token/refreshToken";
 import ButtonCreateUpdate from "@/app/component/button/button";
 import { useFormik } from "formik";
 import * as yup from "yup";
 import Input from "@/app/component/form/input";
 import Select from "@/app/component/form/select";
+import { handleApiError } from "@/app/component/handleError/handleError";
 
 export default function AddMenu({ params }) {
-  const [menu, setMenu] = useState({
-    id_subcategory: "",
-    title: "",
-    price: "",
-    details: "",
-    status: "",
-    best_seller: "",
-  });
-  const [outletName, setoutletName] = useState("");
   const [role, setRole] = useState("");
   const [outlet, setOutlet] = useState([]);
   const [subCategory, setSubCategory] = useState([]);
-  const [selectedFile, setSelectedFile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
 
@@ -34,40 +25,51 @@ export default function AddMenu({ params }) {
 
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
-    const outletName = localStorage.getItem("outlet_name");
+    const loadData = async () => {
+      setIsLoading(true);
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
 
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
 
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data.data;
-            if (data.role === "admin") {
-              if (slug == "edit") {
-                formik.setFieldValue(outletName);
-              }
-            } else {
-              formik.setFieldValue("outlet_name", data.outlet_name);
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
             }
-            setRole(data.role);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
+          );
+          const data = response.data.data;
+          if (data.role === "admin") {
+            if (slug == "edit") {
+              formik.setFieldValue(outletName);
+            }
+          } else {
+            formik.setFieldValue("outlet_name", data.outlet_name);
+          }
+          setRole(data.role);
+
+          setIsLoading(false);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
+      } else {
+        router.push(`/login`);
       }
-    } else {
-      router.push(`/login`);
-    }
-  }, [router]);
+    };
+
+    loadData();
+  }, []);
 
   const onSubmit = async (e) => {
     const formData = new FormData();
@@ -78,23 +80,6 @@ export default function AddMenu({ params }) {
     formData.append("status", formik.values.status);
     formData.append("best_seller", formik.values.best_seller);
     formData.append("photo", formik.values.photo);
-
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleSubmit(e); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting contact:", error);
-      }
-    };
 
     try {
       const token = localStorage.getItem("token");
@@ -109,7 +94,8 @@ export default function AddMenu({ params }) {
         );
         localStorage.removeItem("id_menu");
         localStorage.removeItem("outlet_name");
-        alert("Data berhasil diperbarui!");
+        localStorage.setItem("newData", "update successfully!");
+        router.push("/admin/menu");
       } else {
         setLoadingButton(true);
         await axios.post(
@@ -117,13 +103,11 @@ export default function AddMenu({ params }) {
           formData,
           { headers }
         );
-        alert("Data berhasil ditambahkan!");
+        localStorage.setItem("newData", "create successfully!");
+        router.push("/admin/menu");
       }
-
-      router.push("/admin/menu");
-      setLoadingButton(false);
     } catch (error) {
-      await handleError(error);
+      await handleApiError(error, onSubmit, router);
     }
   };
 
@@ -147,31 +131,41 @@ export default function AddMenu({ params }) {
       details: yup.string().required(),
       status: yup.string().required(),
       best_seller: yup.string().required(),
-      photo: yup
-        .mixed()
-        .required()
-        .test(
-          "fileType",
-          "Format gambar tidak valid (hanya jpg, jpeg, png)",
-          (value) =>
-            ["image/jpeg", "image/png", "image/jpg"].includes(value?.type)
-        )
-        .test(
-          "fileSize",
-          "Ukuran gambar maksimal 2MB",
-          (value) => value && value.size <= 2 * 1024 * 1024
-        ),
+      photo: yup.mixed().when("id", {
+        is: (id) => !id,
+        then: (schema) =>
+          schema
+            .required()
+            .test(
+              "fileType",
+              "Invalid image format (jpg, jpeg, png only)",
+              (value) =>
+                ["image/jpeg", "image/png", "image/jpg"].includes(value?.type)
+            )
+            .test(
+              "fileSize",
+              "Maximum image size 2MB",
+              (value) => value && value.size <= 2 * 1024 * 1024
+            ),
+        otherwise: (schema) => schema.notRequired(),
+      }),
     }),
   });
 
   //menampilkan semua DATA OUTLET
   useEffect(() => {
+    const token = localStorage.getItem("token");
     setIsLoading(true);
     const fetchData = async () => {
       try {
         // Mengambil data transaksi menggunakan axios dengan query params
         const response = await axios.get(
-          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`
+          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
         const data = response.data.data;
@@ -189,13 +183,19 @@ export default function AddMenu({ params }) {
 
   //menampilkan semua sub category
   useEffect(() => {
+    const token = localStorage.getItem("token");
     setIsLoading(true);
     const fetchData = async () => {
       if (formik.values.outlet_name) {
         try {
           // Mengambil data transaksi menggunakan axios dengan query params
           const response = await axios.get(
-            ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showcafename/${formik.values.outlet_name}`
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showcafename/${formik.values.outlet_name}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           );
 
           const data = response.data.data;
@@ -212,8 +212,11 @@ export default function AddMenu({ params }) {
     fetchData();
   }, [formik.values.outlet_name]);
 
+  console.log(subCategory);
+
   //MENAMPILKAN DATA MENU KETIKA EDIT
   useEffect(() => {
+    const token = localStorage.getItem("token");
     const fetchData = async () => {
       try {
         if (slug === "edit") {
@@ -221,7 +224,12 @@ export default function AddMenu({ params }) {
           const idMenu = localStorage.getItem("id_menu");
 
           const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/showbyid/${idMenu}`
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/showbyid/${idMenu}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           );
 
           const data = response.data.data;
@@ -438,15 +446,18 @@ export default function AddMenu({ params }) {
             }
           />
           <div className="flex gap-4 mb-2">
-            <label htmlFor="photo" className="min-w-28 lg:w-52">
-              Photo:
-            </label>
-            <input
-              className="border rounded-lg border-primary50 w-full h-8"
+            <Input
+              label="Photo :"
               id="photo"
-              type="file"
+              placeholder="photo"
               name="photo"
+              type="file"
+              inputBorder="w-52"
               onChange={handleFileChange}
+              errorMessage={formik.errors.photo}
+              isError={
+                formik.touched.photo && formik.errors.photo ? true : false
+              }
             />
           </div>
           {formik.values.photo && (
@@ -456,7 +467,7 @@ export default function AddMenu({ params }) {
                 src={
                   typeof formik.values.photo === "object"
                     ? URL.createObjectURL(formik.values.photo)
-                    : `${process.env.NEXT_PUBLIC_BASE_API_URL}/${formik.values.photo}`
+                    : `${process.env.NEXT_PUBLIC_IMAGE_URL}/${formik.values.photo}`
                 }
                 alt="event Preview"
                 className="mx-auto w-40 h-40 object-cover"

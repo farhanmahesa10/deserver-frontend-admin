@@ -5,7 +5,7 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../../component/token/refreshToken";
 import ButtonCreateUpdate from "@/app/component/button/button";
 
 export default function AddProfile({ params }) {
@@ -38,6 +38,7 @@ export default function AddProfile({ params }) {
   // cek token
   useEffect(() => {
     const savedToken = localStorage.getItem("refreshToken");
+    const token = localStorage.getItem("token");
 
     if (savedToken) {
       const decoded = jwtDecode(savedToken);
@@ -51,7 +52,12 @@ export default function AddProfile({ params }) {
       } else {
         axios
           .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           )
           .then((response) => {
             const data = response.data;

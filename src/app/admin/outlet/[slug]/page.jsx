@@ -6,18 +6,20 @@ import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../../component/token/refreshToken";
 import ButtonCreateUpdate from "@/app/component/button/button";
-import { Formik, useFormik } from "formik";
+import { useFormik } from "formik";
 import * as yup from "yup";
 import Input from "@/app/component/form/input";
 import Select from "@/app/component/form/select";
+import { handleApiError } from "@/app/component/handleError/handleError";
+import { CekToken } from "@/app/component/token/getToken";
 
 export default function AddProfile({ params }) {
   const [role, setRole] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isOpenVerify, setIsOpenVerify] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
   const router = useRouter();
   const { slug } = React.use(params);
@@ -41,24 +43,6 @@ export default function AddProfile({ params }) {
     formData.append("history", formik.values.history);
     formData.append("logo", formik.values.logo);
 
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleSubmit(e); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        alert(error.response.data.message);
-        setLoadingButton(false);
-      }
-    };
-
     try {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
@@ -78,7 +62,7 @@ export default function AddProfile({ params }) {
         );
 
         localStorage.removeItem("id_outlet");
-        alert("Data berhasil diperbarui!");
+        localStorage.setItem("newData", "updated successfully!");
         router.push(`/admin/outlet`);
       } else {
         setLoadingButton(true);
@@ -87,45 +71,57 @@ export default function AddProfile({ params }) {
           formData,
           { headers }
         );
-        alert("Data berhasil diperbarui!");
+        localStorage.setItem("newData", "created successfully!");
         router.push(`/admin/outlet`);
       }
     } catch (error) {
-      await handleError(error);
+      await handleApiError(error, onSubmit, router);
     }
   };
 
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
+    const loadData = async () => {
+      setIsLoading(true);
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
 
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
 
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data.data;
-            setRole(data.role);
-            if (data.role !== "admin") {
-              router.push(`/admin`);
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
             }
-          })
-          .catch((error) => console.error("Error fetching data:", error));
+          );
+          const data = response.data.data;
+
+          if (data.role !== "admin") {
+            router.push("/admin");
+          }
+          setRole(data.role);
+          setIsLoading(false);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
+      } else {
+        router.push(`/login`);
       }
-    } else {
-      router.push(`/login`);
-    }
-  }, [router]);
+    };
+
+    loadData();
+  }, []);
 
   const formik = useFormik({
     initialValues: {
@@ -133,6 +129,7 @@ export default function AddProfile({ params }) {
       outlet_name: "",
       email: "",
       password: "",
+      confirmationPassword: "",
       varifyPassword: "",
       role: "",
       address: "",
@@ -140,12 +137,31 @@ export default function AddProfile({ params }) {
       logo: "",
     },
     onSubmit,
-    validationSchema: yup.object({
+    validationSchema: yup.object().shape({
       id: yup.string().notRequired(),
       outlet_name: yup.string().required(),
       email: yup.string().required(),
-      password: yup.string().notRequired(), // Tidak wajib saat edit
-      varifyPassword: yup.string().notRequired(),
+      password: yup.string().when("id", {
+        is: (id) => !id,
+        then: (schema) => schema.required(),
+        otherwise: (schema) => schema.notRequired(),
+      }),
+      confirmationPassword: yup.string().when(["id", "password"], {
+        is: (id, password) => !id || password,
+        then: (schema) =>
+          schema
+            .required()
+            .oneOf(
+              [yup.ref("password")],
+              "Password confirmation must be the same"
+            ),
+        otherwise: (schema) => schema.notRequired(),
+      }),
+      varifyPassword: yup.string().when(["id", "password"], {
+        is: (id, password) => id && password,
+        then: (schema) => schema.required(),
+        otherwise: (schema) => schema.notRequired(),
+      }),
       role: yup.string().required(),
       address: yup.string().required(),
       history: yup.string().required(),
@@ -153,16 +169,16 @@ export default function AddProfile({ params }) {
         is: (id) => !id,
         then: (schema) =>
           schema
-            .required("Logo harus diunggah")
+            .required()
             .test(
               "fileType",
-              "Format gambar tidak valid (hanya jpg, jpeg, png)",
+              "Invalid image format (jpg, jpeg, png only)",
               (value) =>
                 ["image/jpeg", "image/png", "image/jpg"].includes(value?.type)
             )
             .test(
               "fileSize",
-              "Ukuran gambar maksimal 2MB",
+              "Maximum image size 2MB",
               (value) => value && value.size <= 2 * 1024 * 1024
             ),
         otherwise: (schema) => schema.notRequired(),
@@ -173,13 +189,19 @@ export default function AddProfile({ params }) {
   //CARI DATA BERDASARKAN ID KETIKA EDIT
   useEffect(() => {
     if (slug === "edit") {
+      const token = localStorage.getItem("token");
       setIsLoading(true);
       const fetchData = async () => {
         try {
           const idOutlet = localStorage.getItem("id_outlet");
 
           const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/showprofile/${idOutlet}`
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${idOutlet}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           );
 
           const data = response.data.data;
@@ -192,59 +214,17 @@ export default function AddProfile({ params }) {
             history: data.history,
             logo: data.logo,
             password: "",
+            confirmationPassword: "",
             varifyPassword: "",
           });
           setIsLoading(false);
         } catch (error) {
-          console.error("Error fetching data:", error);
+          await handleApiError(error, fetchData, router);
         }
       };
       fetchData();
     }
   }, []);
-
-  // const createProfile = async (e, idOutlet) => {
-  //   e.preventDefault();
-  //   const formDataProfile = {
-  //     id_outlet: idOutlet,
-  //   };
-
-  //   const handleError = async (error) => {
-  //     if (error.response?.status === 401) {
-  //       try {
-  //         const newToken = await getNewAccessToken();
-  //         localStorage.setItem("token", newToken); // Simpan token baru
-  //         await createProfile(e); // Ulangi proses dengan token baru
-  //       } catch (err) {
-  //         console.error("Failed to refresh token:", err);
-  //         alert("Session Anda telah berakhir. Silakan login ulang.");
-  //         localStorage.clear();
-  //         router.push("/login");
-  //       }
-  //     } else {
-  //       console.error("Error deleting contact:", error);
-  //     }
-  //   };
-
-  //   try {
-  //     const token = localStorage.getItem("token");
-  //     const headers = { Authorization: `Bearer ${token}` };
-
-  //     setLoadingButton(true);
-
-  //     // Mengirim formData ke API pemesanan
-  //     const response = await axios.post(
-  //       `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/profile/create`,
-  //       formDataProfile,
-  //       { headers }
-  //     );
-  //     alert("Data berhasil ditambahkan!");
-  //     router.push(`/admin/outlet`);
-  //     setLoadingButton(false);
-  //   } catch (error) {
-  //     await handleError(error);
-  //   }
-  // };
 
   const handleCancel = () => {
     router.push("/admin/outlet");
@@ -266,6 +246,7 @@ export default function AddProfile({ params }) {
   return (
     <div className="p-8 pt-20 w-full">
       <h2 className="text-xl font-nunito">Manage Outlet</h2>
+
       {isLoading ? (
         <EditDataSkeleton />
       ) : (
@@ -273,22 +254,6 @@ export default function AddProfile({ params }) {
           className="mt-4 border p-8 grid gap-4"
           onSubmit={formik.handleSubmit}
         >
-          {/* <div className="flex gap-4 mb-2">
-            <label htmlFor="outlet_name" className="min-w-28 lg:w-52">
-              Outlet Name:
-            </label>
-            <input
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="outlet_name"
-              placeholder="outlet name"
-              type="text"
-              name="outlet_name"
-              value={outlet.outlet_name}
-              onChange={handleChange}
-              required
-            />
-          </div> */}
-
           <Input
             label="Outlet Name :"
             id="outlet_name"
@@ -305,22 +270,6 @@ export default function AddProfile({ params }) {
             }
           />
 
-          {/* <div className="flex gap-4 mb-2">
-            <label htmlFor="email" className="min-w-28 lg:w-52">
-              Email:
-            </label>
-            <input
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="email"
-              placeholder="email"
-              type="text"
-              name="email"
-              value={outlet.email}
-              onChange={handleChange}
-              required
-            />
-          </div> */}
-
           <Input
             label="Email :"
             id="email"
@@ -332,22 +281,6 @@ export default function AddProfile({ params }) {
             errorMessage={formik.errors.email}
             isError={formik.touched.email && formik.errors.email ? true : false}
           />
-
-          {/* <div className="flex gap-4 mb-2">
-            <label htmlFor="role" className="min-w-28 lg:w-52">
-              Role:
-            </label>
-            <input
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="role"
-              placeholder="role"
-              type="text"
-              name="role"
-              value={outlet.role}
-              onChange={handleChange}
-              required
-            />
-          </div> */}
 
           <Select
             label="Role :"
@@ -366,9 +299,13 @@ export default function AddProfile({ params }) {
           />
 
           <Input
-            label="New Password"
+            label={`${slug == "create" ? "Password" : "New Password"}`}
             type={`${!isOpen ? "password" : "text"}`}
-            placeholder="*********"
+            placeholder={`${
+              slug == "create"
+                ? "*********"
+                : "leave blank if you don't want to change the password"
+            }`}
             id="password"
             name="password"
             value={formik.values.password}
@@ -382,17 +319,22 @@ export default function AddProfile({ params }) {
             rightIconClassName={"cursor-pointer"}
           />
           <Input
-            label="Old Password"
+            label={`${
+              slug == "create"
+                ? "confirmation Password"
+                : "confirmation New Password"
+            }`}
             type={`${!isOpen ? "password" : "text"}`}
             placeholder="*********"
-            id="varifyPassword"
-            name="varifyPassword"
-            value={formik.values.varifyPassword || ""}
+            id="confirmationPassword"
+            name="confirmationPassword"
+            value={formik.values.confirmationPassword}
             onChange={handleChange}
             rightIcon={isOpen ? <IoEyeOutline /> : <IoEyeOffOutline />}
-            errorMessage={formik.errors.varifyPassword}
+            errorMessage={formik.errors.confirmationPassword}
             isError={
-              formik.touched.varifyPassword && formik.errors.varifyPassword
+              formik.touched.confirmationPassword &&
+              formik.errors.confirmationPassword
                 ? true
                 : false
             }
@@ -400,20 +342,26 @@ export default function AddProfile({ params }) {
             rightIconClassName={"cursor-pointer"}
           />
 
-          {/* <div className="flex gap-4 mb-2">
-            <label htmlFor="address" className={` min-w-28 lg:w-52`}>
-              Address:
-            </label>
-            <input
-              className={` border p-1 rounded-lg border-primary50 w-full h-8`}
-              id="address"
-              placeholder="Address"
-              type="text"
-              name="address"
-              value={outlet.address}
+          <div className={`${slug === "create" ? "hidden" : " "}`}>
+            <Input
+              label="Verify Old Password"
+              type={`${!isOpenVerify ? "password" : "text"}`}
+              placeholder="*********"
+              id="varifyPassword"
+              name="varifyPassword"
+              value={formik.values.varifyPassword || ""}
               onChange={handleChange}
+              rightIcon={isOpenVerify ? <IoEyeOutline /> : <IoEyeOffOutline />}
+              errorMessage={formik.errors.varifyPassword}
+              isError={
+                formik.touched.varifyPassword && formik.errors.varifyPassword
+                  ? true
+                  : false
+              }
+              onRightIconCLick={onClickVerifyPassword}
+              rightIconClassName={"cursor-pointer"}
             />
-          </div> */}
+          </div>
 
           <Input
             label="Address :"
@@ -428,21 +376,6 @@ export default function AddProfile({ params }) {
               formik.touched.address && formik.errors.address ? true : false
             }
           />
-
-          {/* <div className="flex gap-4 mb-2">
-            <label htmlFor="history" className={` min-w-28 lg:w-52`}>
-              History:
-            </label>
-            <input
-              className={` border p-1 rounded-lg border-primary50 w-full h-8`}
-              id="history"
-              placeholder="history"
-              type="text"
-              name="history"
-              value={outlet.history}
-              onChange={handleChange}
-            />
-          </div> */}
 
           <Input
             label="History :"
@@ -459,15 +392,17 @@ export default function AddProfile({ params }) {
           />
 
           <div className="flex gap-4 mb-2">
-            <label htmlFor="logo" className={` min-w-28 lg:w-52`}>
-              logo:
-            </label>
-            <input
-              className={`border rounded-lg border-primary50 w-full h-8`}
+            <Input
+              label="Logo :"
               id="logo"
-              type="file"
+              placeholder="logo"
               name="logo"
+              type="file"
+              inputBorder="w-52"
+              value={formik.values.logo}
               onChange={handleFileChange}
+              errorMessage={formik.errors.logo}
+              isError={formik.touched.logo && formik.errors.logo ? true : false}
             />
           </div>
           {formik.values.logo && (

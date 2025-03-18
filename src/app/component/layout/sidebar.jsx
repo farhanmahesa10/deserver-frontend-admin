@@ -35,6 +35,7 @@ function Sidebar({ isOpen, setIsOpen }) {
 
   useEffect(() => {
     const savedToken = localStorage.getItem("refreshToken");
+    const token = localStorage.getItem("token");
 
     if (savedToken) {
       const decoded = jwtDecode(savedToken);
@@ -47,13 +48,18 @@ function Sidebar({ isOpen, setIsOpen }) {
       } else {
         axios
           .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           )
           .then((response) => {
             const data = response.data.data;
             setRole(data.role);
           })
-          .catch((error) => console.error("Error fetching data:", error));
+          .catch((error) => console.log("Error fetching data:", error));
       }
     }
   }, [role]);

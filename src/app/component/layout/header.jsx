@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { IoExit } from "react-icons/io5";
+import { IoExit, IoPersonCircle } from "react-icons/io5";
 
 export default function Header({ isOpen, onClickHeader }) {
   const router = useRouter();
@@ -10,6 +10,9 @@ export default function Header({ isOpen, onClickHeader }) {
   const handleLogout = () => {
     localStorage.clear();
     router.push("/login");
+  };
+  const handleProfile = () => {
+    router.push("/admin");
   };
   return (
     <header className="fixed top-0 left-0 w-full h-20 flex items-center z-10 shadow-md bg-white">
@@ -22,6 +25,12 @@ export default function Header({ isOpen, onClickHeader }) {
           />
         </div>
         <div className="flex gap-5  mr-16 lg:mr-0">
+          <button
+            onClick={handleProfile}
+            className="flex gap-2 items-center cursor-pointer rounded-xl h-8  hover:bg-primary-600"
+          >
+            <IoPersonCircle className="w-8 h-8" />
+          </button>
           <button
             onClick={handleLogout}
             className="flex gap-2 items-center cursor-pointer rounded-md h-8 p-4 shadow-inner border-[1px] border-lightgray hover:bg-red-600"

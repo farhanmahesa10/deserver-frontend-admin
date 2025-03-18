@@ -5,7 +5,7 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../../component/token/refreshToken";
 import ButtonCreateUpdate from "@/app/component/button/button";
 
 export default function AddTable({ params }) {
@@ -117,23 +117,6 @@ export default function AddTable({ params }) {
       number_table: table.number_table,
     };
 
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleSubmit(e); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting table:", error);
-      }
-    };
-
     try {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
@@ -146,7 +129,8 @@ export default function AddTable({ params }) {
           { headers }
         );
         localStorage.removeItem("id_table");
-        alert("Data berhasil diperbarui!");
+        localStorage.setItem("newData", "update successfully!");
+        router.push("/admin/table");
       } else {
         setLoadingButton(true);
         await axios.post(
@@ -154,13 +138,11 @@ export default function AddTable({ params }) {
           formData,
           { headers }
         );
-        alert("Data berhasil ditambahkan!");
+        localStorage.setItem("newData", "create successfully!");
+        router.push("/admin/table");
       }
-
-      router.push("/admin/table");
-      setLoadingButton(false);
     } catch (error) {
-      await handleError(error);
+      await handleApiError(error, onSubmit, router);
     }
   };
 

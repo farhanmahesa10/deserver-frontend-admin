@@ -5,13 +5,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 
-import { getNewAccessToken } from "../../component/refreshToken/refreshToken";
 import Pagination from "../../component/paginate/paginate";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
 import { NotData } from "@/app/component/notData/notData";
 import { handleApiError } from "@/app/component/handleError/handleError";
+import { Toaster, toast } from "react-hot-toast";
 
 export default function Category() {
   const [category, setCategory] = useState([]);
@@ -34,96 +34,71 @@ export default function Category() {
   //set untuk page yg di tampilkan
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
+  //toast data baru
+  useEffect(() => {
+    const newData = localStorage.getItem("newData");
+    if (newData) {
+      toast.success(newData);
+      localStorage.removeItem("newData");
+    }
+  }, []);
+
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
+    const loadData = async () => {
+      setIsLoading(true);
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
 
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
 
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          const data = response.data.data;
+
+          setRole(data.role);
+          setIsLoading(false);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
       } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data.data;
-            setOutletName(data.outlet_name);
-            setRole(data.role);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
+        router.push(`/login`);
       }
-    } else {
-      router.push(`/login`);
-    }
-  }, [router]);
+    };
+
+    loadData();
+  }, []);
 
   // useEffect untuk search
   useEffect(() => {
     setSearchQuery(category);
   }, [category]);
 
-  //handle pencarian
-  // const searchData = () => {
-  //   setIsLoading(true);
-  //   setCurrentPage(1);
-  //   const fetchData = async () => {
-  //     const params = {
-  //       page: currentPage,
-  //       limit: itemsPerPage,
-  //       search: query,
-  //     };
-  //     try {
-  //       // Mengambil data transaksi menggunakan axios dengan query params
-  //       const response = await axios.get(
-  //         `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/showpaginated`,
-  //         {
-  //           params: params,
-  //         }
-  //       );
-
-  //       const data = response.data.data;
-  //       setCategory(data);
-  //       setRows(response.data.pagination.totalItems);
-  //     } catch (error) {
-  //       console.error("Error fetching transaction data:", error);
-  //     }
-  //   };
-  //   setIsLoading(false);
-
-  //   fetchData();
-  // };
-
   // function mengambil data lapangan by limit
-  const fetchDataPaginated = async () => {
+  const fetchDataPaginated = async (isSearchMode = false) => {
     setIsLoading(true);
+    if (isSearchMode) {
+      setCurrentPage(1); // Reset ke page 1 jika pencarian
+    }
     const token = localStorage.getItem("token");
 
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken);
-          await fetchDataPaginated();
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting contact:", error);
-      }
-    };
-
     const params = {
-      page: currentPage,
+      page: isSearchMode ? 1 : currentPage,
       limit: itemsPerPage,
       search: query,
     };
@@ -144,9 +119,11 @@ export default function Category() {
       setRows(response.data.pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
-      console.log("ppp");
-
-      await handleError(error);
+      await handleApiError(
+        error,
+        () => fetchDataPaginated(isSearchMode),
+        router
+      );
     }
   };
 
@@ -158,51 +135,16 @@ export default function Category() {
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
-        setIsLoading(false); // Pastikan loading dihentikan
+        setIsLoading(false);
       }
     };
 
-    if (role) {
-      loadData();
-    }
-  }, [itemsPerPage, currentPage, role]);
-
-  //function mengambil data category
-  // const fetchData = async () => {
-  //   try {
-  //     // Mengambil data transaksi menggunakan axios dengan query params
-  //     const response = await axios.get(
-  //       ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/showcafename/${outletName}`
-  //     );
-
-  //     const data = response.data.data;
-
-  //     setCategory(data);
-  //   } catch (error) {
-  //     console.error("Error fetching transaction data:", error);
-  //   }
-  // };
+    loadData();
+  }, [itemsPerPage, currentPage]);
 
   //handle untuk menghapus data
   const handleRemove = async (dataRemove) => {
     const savedToken = localStorage.getItem("token");
-
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken);
-          await handleRemove(dataRemove);
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting contact:", error);
-      }
-    };
 
     try {
       setIsLoading(true);
@@ -217,7 +159,7 @@ export default function Category() {
         setIsLoading(false);
       }
     } catch (error) {
-      await handleError(error);
+      await handleApiError(error, handleRemove, router);
     }
   };
 
@@ -243,8 +185,9 @@ export default function Category() {
       ref={targetRef}
       className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
     >
+      <Toaster position="top-center" reverseOrder={false} />
       <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
-        Outlet Data Settings
+        Category Data Settings
       </h1>
       <div
         className={`flex flex-wrap justify-between items-center lg:w-full gap-4 md:gap-6 w-full mb-6`}
@@ -263,7 +206,7 @@ export default function Category() {
             onChange={(e) => setQuery(e.target.value)}
           />
           <button
-            onClick={fetchDataPaginated}
+            onClick={() => fetchDataPaginated(true)}
             className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] text-white bg-yellow-700 text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
           >
             <IoSearch />

@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import LayoutSkeleton from "./component/skeleton/layoutSkeleton";
-import { getNewAccessToken } from "./component/refreshToken/refreshToken";
+import { getNewAccessToken } from "./component/token/refreshToken";
 import { Toaster, toast } from "react-hot-toast";
 import { io } from "socket.io-client";
 import { IoSearch, IoMedkit, IoTrash, IoPrint } from "react-icons/io5";

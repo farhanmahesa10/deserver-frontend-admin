@@ -5,12 +5,13 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../../component/token/refreshToken";
 import Input from "@/app/component/form/input";
 import { useFormik } from "formik";
 import * as yup from "yup";
 import Select from "@/app/component/form/select";
 import ButtonCreateUpdate from "@/app/component/button/button";
+import { handleApiError } from "@/app/component/handleError/handleError";
 
 export default function AddCategory({ params }) {
   const [outlet, setOutlet] = useState([]);
@@ -21,28 +22,11 @@ export default function AddCategory({ params }) {
   const { slug } = React.use(params);
 
   //handle edit dan create
-  const onSubmit = async (e) => {
+  const onSubmit = async () => {
     const formData = {
       id_outlet: formik.values.id_outlet,
       type: formik.values.type,
       descriptions: formik.values.descriptions,
-    };
-
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleSubmit(e); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting contact:", error);
-      }
     };
 
     try {
@@ -57,7 +41,8 @@ export default function AddCategory({ params }) {
           { headers }
         );
         localStorage.removeItem("id_category");
-        alert("Data berhasil diperbarui!");
+        localStorage.setItem("newData", "updated successfully!");
+        router.push("/admin/category");
       } else {
         setLoadingButton(true);
 
@@ -66,13 +51,11 @@ export default function AddCategory({ params }) {
           formData,
           { headers }
         );
-        alert("Data berhasil ditambahkan!");
+        localStorage.setItem("newData", "create successfully!");
+        router.push("/admin/category");
       }
-
-      router.push("/admin/category");
-      setLoadingButton(false);
     } catch (error) {
-      await handleError(error);
+      await handleApiError(error, onSubmit, router);
     }
   };
 
@@ -99,6 +82,7 @@ export default function AddCategory({ params }) {
   // cek token
   useEffect(() => {
     const savedToken = localStorage.getItem("refreshToken");
+    const token = localStorage.getItem("token");
 
     if (savedToken) {
       const decoded = jwtDecode(savedToken);
@@ -112,7 +96,12 @@ export default function AddCategory({ params }) {
       } else {
         axios
           .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           )
           .then((response) => {
             const data = response.data.data;

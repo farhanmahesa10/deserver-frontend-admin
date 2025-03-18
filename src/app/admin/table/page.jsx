@@ -5,11 +5,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 
-import { getNewAccessToken } from "../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../component/token/refreshToken";
 import Pagination from "../../component/paginate/paginate";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
-
+import { Toaster, toast } from "react-hot-toast";
 import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
 import { NotData } from "@/app/component/notData/notData";
 
@@ -42,37 +42,55 @@ export default function Table() {
   //set untuk page yg di tampilkan
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
+  //toast data baru
+  useEffect(() => {
+    const newData = localStorage.getItem("newData");
+    if (newData) {
+      toast.success(newData);
+      localStorage.removeItem("newData");
+    }
+  }, []);
+
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
+    const loadData = async () => {
+      setIsLoading(true);
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
 
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
 
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          const data = response.data.data;
+
+          setRole(data.role);
+          setIsLoading(false);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
       } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data.data;
-            setOutletName(data.outlet_name);
-            setRole(data.role);
-            setIdOutlet(data.id);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
+        router.push(`/login`);
       }
-    } else {
-      router.push(`/login`);
-    }
-  }, [router]);
+    };
 
+    loadData();
+  }, []);
   // useEffect untuk search
   useEffect(() => {
     setSearchQuery(table);
@@ -308,6 +326,7 @@ export default function Table() {
       ref={targetRef}
       className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
     >
+      <Toaster position="top-center" reverseOrder={false} />
       <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
         table Data Settings
       </h1>

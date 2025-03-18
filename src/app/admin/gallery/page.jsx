@@ -5,17 +5,18 @@ import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 
-import { getNewAccessToken } from "../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../component/token/refreshToken";
 import Pagination from "../../component/paginate/paginate";
 import Modal from "../../component/modal/modal";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
 import { NotData } from "@/app/component/notData/notData";
+import { handleApiError } from "@/app/component/handleError/handleError";
+import { Toaster, toast } from "react-hot-toast";
 
 export default function Gallery() {
   const [gallery, setGallery] = useState([]);
-  const [outletName, setOutletName] = useState("");
   const [role, setRole] = useState("");
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -36,76 +37,70 @@ export default function Gallery() {
   //set untuk page yg di tampilkan
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
+  //toast data baru
+  useEffect(() => {
+    const newData = localStorage.getItem("newData");
+    if (newData) {
+      toast.success(newData);
+      localStorage.removeItem("newData");
+    }
+  }, []);
+
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
+    const loadData = async () => {
+      setIsLoading(true);
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
 
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
 
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          const data = response.data.data;
+
+          setRole(data.role);
+          setIsLoading(false);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
       } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data.data;
-            setOutletName(data.outlet_name);
-            setRole(data.role);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
+        router.push(`/login`);
       }
-    } else {
-      router.push(`/login`);
-    }
-  }, [router]);
+    };
+
+    loadData();
+  }, []);
 
   // useEffect untuk search
   useEffect(() => {
     setSearchQuery(gallery);
   }, [gallery]);
 
-  //handle pencarian
-  const searchData = () => {
+  const fetchDataPaginated = async (isSearchMode = false) => {
     setIsLoading(true);
-    setCurrentPage(1);
-    const fetchData = async () => {
-      const params = {
-        page: currentPage,
-        limit: itemsPerPage,
-        search: query,
-      };
-      try {
-        // Mengambil data transaksi menggunakan axios dengan query params
-        const response = await axios.get(
-          `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/gallery/showpaginated`,
-          {
-            params: params,
-          }
-        );
+    if (isSearchMode) {
+      setCurrentPage(1); // Reset ke page 1 jika pencarian
+    }
+    const token = localStorage.getItem("token");
 
-        const data = response.data.data;
-        setGallery(data);
-        setRows(response.data.pagination.totalItems);
-      } catch (error) {
-        console.error("Error fetching transaction data:", error);
-      }
-    };
-    setIsLoading(false);
-
-    fetchData();
-  };
-
-  // function mengambil data lapangan by limit
-  const fetchDataPaginated = async () => {
     const params = {
-      page: currentPage,
+      page: isSearchMode ? 1 : currentPage,
       limit: itemsPerPage,
       search: query,
     };
@@ -115,14 +110,22 @@ export default function Gallery() {
         `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/gallery/showpaginated`,
         {
           params: params,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
       const data = response.data.data;
       setGallery(data);
       setRows(response.data.pagination.totalItems);
+      setIsLoading(false);
     } catch (error) {
-      console.error("Error fetching transaction data:", error);
+      await handleApiError(
+        error,
+        () => fetchDataPaginated(isSearchMode),
+        router
+      );
     }
   };
 
@@ -131,11 +134,7 @@ export default function Gallery() {
     const loadData = async () => {
       setIsLoading(true); // Tampilkan loading
       try {
-        if (role === "admin") {
-          await fetchDataPaginated();
-        } else {
-          await fetchData();
-        }
+        await fetchDataPaginated();
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -147,22 +146,6 @@ export default function Gallery() {
       loadData();
     }
   }, [itemsPerPage, currentPage, role]);
-
-  //function mengambil data gallery
-  const fetchData = async () => {
-    try {
-      // Mengambil data transaksi menggunakan axios dengan query params
-      const response = await axios.get(
-        ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/gallery/showcafename/${outletName}`
-      );
-
-      const data = response.data.data;
-
-      setGallery(data);
-    } catch (error) {
-      console.error("Error fetching transaction data:", error);
-    }
-  };
 
   //handle untuk menghapus data
   const handleRemove = async (dataRemove) => {
@@ -233,6 +216,7 @@ export default function Gallery() {
       ref={targetRef}
       className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
     >
+      <Toaster position="top-center" reverseOrder={false} />
       <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
         Gallery Data Settings
       </h1>
@@ -253,7 +237,7 @@ export default function Gallery() {
             onChange={(e) => setQuery(e.target.value)}
           />
           <button
-            onClick={searchData}
+            onClick={() => fetchDataPaginated(true)}
             className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
           >
             <IoSearch />
@@ -287,7 +271,7 @@ export default function Gallery() {
                 searchQuery.map((item, index) => {
                   const number = index + 1;
                   const numberPaginate = indexOfFirstItem + index + 1;
-                  const imageUrl = `${process.env.NEXT_PUBLIC_BASE_API_URL}/${item.image}`;
+                  const imageUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/${item.image}`;
 
                   return (
                     <tr

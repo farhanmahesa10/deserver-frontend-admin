@@ -6,11 +6,12 @@ import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import Modal from "../../component/modal/modal";
-import { getNewAccessToken } from "../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../component/token/refreshToken";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
 import { NotData } from "@/app/component/notData/notData";
+import { Toaster, toast } from "react-hot-toast";
 
 export default function Lapangan() {
   const [contact, setContact] = useState([]);
@@ -35,95 +36,96 @@ export default function Lapangan() {
   //set untuk page yg di tampilkan
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
+  //toast data baru
+  useEffect(() => {
+    const newData = localStorage.getItem("newData");
+    if (newData) {
+      toast.success(newData);
+      localStorage.removeItem("newData");
+    }
+  }, []);
+
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
+    const loadData = async () => {
+      setIsLoading(true);
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
 
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
 
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          const data = response.data.data;
+
+          setRole(data.role);
+          setIsLoading(false);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
       } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data.data;
-            setOutletName(data.outlet_name);
-            setRole(data.role);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
+        router.push(`/login`);
       }
-    } else {
-      router.push(`/login`);
-    }
-  }, [router]);
+    };
+
+    loadData();
+  }, []);
 
   // useEffect untuk search
   useEffect(() => {
     setSearchQuery(contact);
   }, [contact]);
 
-  //handle pencarian
-  const searchData = () => {
-    setIsLoading(true);
-    setCurrentPage(1);
-    const fetchData = async () => {
-      const params = {
-        page: currentPage,
-        limit: itemsPerPage,
-        search: query,
-      };
-      try {
-        // Mengambil data transaksi menggunakan axios dengan query params
-        const response = await axios.get(
-          `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/contact/showpaginated`,
-          {
-            params: params,
-          }
-        );
-
-        const data = response.data.data;
-        setContact(data);
-        setRows(response.data.pagination.totalItems);
-      } catch (error) {
-        console.error("Error fetching transaction data:", error);
-      }
-    };
-    setIsLoading(false);
-
-    fetchData();
-  };
-
-  console.log(searchQuery);
-
   // function mengambil data lapangan by limit
-  const fetchDataPaginated = async () => {
+  const fetchDataPaginated = async (isSearchMode = false) => {
+    setIsLoading(true);
+    if (isSearchMode) {
+      setCurrentPage(1); // Reset ke page 1 jika pencarian
+    }
+    const token = localStorage.getItem("token");
+
     const params = {
-      page: currentPage,
+      page: isSearchMode ? 1 : currentPage,
       limit: itemsPerPage,
       search: query,
     };
     try {
       // Mengambil data transaksi menggunakan axios dengan query params
       const response = await axios.get(
-        `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/contact/showpaginated`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/contact/showpaginated`,
         {
           params: params,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
       const data = response.data.data;
       setContact(data);
       setRows(response.data.pagination.totalItems);
+      setIsLoading(false);
     } catch (error) {
-      console.error("Error fetching transaction data:", error);
+      await handleApiError(
+        error,
+        () => fetchDataPaginated(isSearchMode),
+        router
+      );
     }
   };
 
@@ -132,11 +134,7 @@ export default function Lapangan() {
     const loadData = async () => {
       setIsLoading(true); // Tampilkan loading
       try {
-        if (role === "admin") {
-          await fetchDataPaginated();
-        } else {
-          await fetchData();
-        }
+        await fetchDataPaginated();
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -164,23 +162,6 @@ export default function Lapangan() {
         part
       )
     );
-  };
-
-  const fetchData = async () => {
-    if (outletName) {
-      try {
-        // Mengambil data transaksi menggunakan axios dengan query params
-        const response = await axios.get(
-          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/contact/showcafename/${outletName}`
-        );
-
-        const data = response.data.data;
-
-        setContact(data);
-      } catch (error) {
-        console.error("Error fetching transaction data:", error);
-      }
-    }
   };
 
   // haldle untuk memperbesar gambar
@@ -235,6 +216,7 @@ export default function Lapangan() {
       ref={targetRef}
       className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
     >
+      <Toaster position="top-center" reverseOrder={false} />
       <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
         Contact Data Settings
       </h1>
@@ -255,7 +237,7 @@ export default function Lapangan() {
             onChange={(e) => setQuery(e.target.value)}
           />
           <button
-            onClick={searchData}
+            onClick={() => fetchDataPaginated(isSearchMode)}
             className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
           >
             <IoSearch />
@@ -291,7 +273,7 @@ export default function Lapangan() {
                 searchQuery.map((item, index) => {
                   const number = index + 1;
                   const numberPaginate = indexOfFirstItem + index + 1;
-                  const imageUrl = `${process.env.NEXT_PUBLIC_BASE_API_URL}/${item.logo}`;
+                  const imageUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/${item.logo}`;
                   return (
                     <tr
                       key={item.id}

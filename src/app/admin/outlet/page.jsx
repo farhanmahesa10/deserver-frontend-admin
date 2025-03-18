@@ -5,9 +5,9 @@ import Pagination from "../../component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import Skeleton from "react-loading-skeleton";
+import { Toaster, toast } from "react-hot-toast";
 import "react-loading-skeleton/dist/skeleton.css";
-import { getNewAccessToken } from "../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../component/token/refreshToken";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 import {
@@ -16,11 +16,11 @@ import {
   TableSkeleton,
 } from "../../component/skeleton/adminSkeleton";
 import { NotData } from "@/app/component/notData/notData";
+import { handleApiError } from "@/app/component/handleError/handleError";
 
 export default function AdminOutlet() {
   const [outlet, setOutlet] = useState([]);
   const [role, setRole] = useState("");
-  const [outletId, setOutletId] = useState("");
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState([]);
@@ -40,36 +40,56 @@ export default function AdminOutlet() {
 
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
+    const loadData = async () => {
+      setIsLoading(true);
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
 
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      setOutletId(outlet_id);
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
 
-      if (currentTime > expirationTime) {
-        localStorage.removeItem("refreshToken");
-        router.push(`/login`);
-      } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data.data;
-            if (data.role !== "admin") {
-              router.push("/admin");
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
             }
-            setRole(data.role);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
+          );
+          const data = response.data.data;
+
+          if (data.role !== "admin") {
+            router.push("/admin");
+          }
+          setRole(data.role);
+          setIsLoading(false);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
+      } else {
+        router.push(`/login`);
       }
-    } else {
-      router.push(`/login`);
+    };
+
+    loadData();
+  }, []);
+
+  //toast data baru
+  useEffect(() => {
+    const newData = localStorage.getItem("newData");
+    if (newData) {
+      toast.success(newData);
+      localStorage.removeItem("newData");
     }
-  }, [router]);
+  }, []);
 
   //setiap kali ada perubahan di current page maka scroll ke atas
   useEffect(() => {
@@ -98,52 +118,21 @@ export default function AdminOutlet() {
     setSearchQuery(outlet);
   }, [outlet]);
 
-  //handle pencarian
-  const searchData = () => {
-    const token = localStorage.getItem("token");
+  // function mengambil data outlet by limit
+  const fetchData = async (isSearchMode = false) => {
     setIsLoading(true);
-    setCurrentPage(1);
-    const fetchData = async () => {
-      const params = {
-        page: currentPage,
-        limit: itemsPerPage,
-        search: query,
-      };
-      try {
-        // Mengambil data transaksi menggunakan axios dengan query params
-        const response = await axios.get(
-          `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/showpaginated`,
-          {
-            params: params,
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        const data = response.data.data;
-        setOutlet(data);
-        setRows(response.data.pagination.totalItems);
-      } catch (error) {
-        console.error("Error fetching transaction data:", error);
-      }
-    };
-    setIsLoading(false);
-
-    fetchData();
-  };
-
-  console.log(outlet);
-
-  // function mengambil data lapangan by limit
-  const fetchData = async () => {
+    if (isSearchMode) {
+      setCurrentPage(1); // Reset ke page 1 jika pencarian
+    }
     const token = localStorage.getItem("token");
+
     const params = {
-      page: currentPage,
+      page: isSearchMode ? 1 : currentPage,
       limit: itemsPerPage,
       search: query,
     };
     try {
+      // Mengambil data transaksi menggunakan axios dengan query params
       const response = await axios.get(
         `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/showpaginated`,
         {
@@ -157,15 +146,15 @@ export default function AdminOutlet() {
       const data = response.data.data;
       setOutlet(data);
       setRows(response.data.pagination.totalItems);
+      setIsLoading(false);
     } catch (error) {
-      console.error("Error fetching transaction data:", error);
+      await handleApiError(error, () => fetchData(isSearchMode), router);
     }
   };
 
-  // useEffect mengambil data lapangan by limit
   useEffect(() => {
     const loadData = async () => {
-      setIsLoading(true); // Tampilkan loading
+      setIsLoading(true);
       try {
         if (role === "admin") {
           await fetchData();
@@ -173,7 +162,7 @@ export default function AdminOutlet() {
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
-        setIsLoading(false); // Matikan loading setelah operasi selesai (berhasil/gagal)
+        setIsLoading(false);
       }
     };
 
@@ -219,13 +208,12 @@ export default function AdminOutlet() {
     }
   };
 
-  console.log(searchQuery);
-
   return (
     <div
       ref={targetRef}
       className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
     >
+      <Toaster position="top-center" reverseOrder={false} />
       <>
         <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
           Outlet Data Settings
@@ -250,7 +238,7 @@ export default function AdminOutlet() {
               <IconSkeleton />
             ) : (
               <button
-                onClick={searchData}
+                onClick={() => fetchData(true)}
                 className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
               >
                 <IoSearch />

@@ -5,12 +5,14 @@ import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import Modal from "../../component/modal/modal";
-import { getNewAccessToken } from "../../component/refreshToken/refreshToken";
+import { getNewAccessToken } from "../../component/token/refreshToken";
 import Pagination from "../../component/paginate/paginate";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
 import { NotData } from "@/app/component/notData/notData";
+import { handleApiError } from "@/app/component/handleError/handleError";
+import { Toaster, toast } from "react-hot-toast";
 
 export default function subCategory() {
   const [subCategory, setSubCategory] = useState([]);
@@ -35,35 +37,55 @@ export default function subCategory() {
   //set untuk page yg di tampilkan
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
-  // cek token
+  //toast data baru
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
-
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
-
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data.data;
-            setOutletName(data.outlet_name);
-            setRole(data.role);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
-      }
-    } else {
-      router.push(`/login`);
+    const newData = localStorage.getItem("newData");
+    if (newData) {
+      toast.success(newData);
+      localStorage.removeItem("newData");
     }
-  }, [router]);
+  }, []);
+
+  //cek token
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
+
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
+
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          const data = response.data.data;
+
+          setRole(data.role);
+          setIsLoading(false);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
+      } else {
+        router.push(`/login`);
+      }
+    };
+
+    loadData();
+  }, []);
 
   // useEffect untuk search
   useEffect(() => {
@@ -72,6 +94,7 @@ export default function subCategory() {
 
   //handle pencarian
   const searchData = () => {
+    const token = localStorage.getItem("token");
     setIsLoading(true);
     setCurrentPage(1);
     const fetchData = async () => {
@@ -86,6 +109,9 @@ export default function subCategory() {
           `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showpaginated`,
           {
             params: params,
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           }
         );
 
@@ -102,10 +128,15 @@ export default function subCategory() {
   };
 
   // function mengambil data lapangan by limit
-  const fetchDataPaginated = async () => {
+  const fetchDataPaginated = async (isSearchMode = false) => {
+    setIsLoading(true);
+    if (isSearchMode) {
+      setCurrentPage(1); // Reset ke page 1 jika pencarian
+    }
     const token = localStorage.getItem("token");
+
     const params = {
-      page: currentPage,
+      page: isSearchMode ? 1 : currentPage,
       limit: itemsPerPage,
       search: query,
     };
@@ -124,8 +155,13 @@ export default function subCategory() {
       const data = response.data.data;
       setSubCategory(data);
       setRows(response.data.pagination.totalItems);
+      setIsLoading(false);
     } catch (error) {
-      console.error("Error fetching transaction data:", error);
+      await handleApiError(
+        error,
+        () => fetchDataPaginated(isSearchMode),
+        router
+      );
     }
   };
 
@@ -223,6 +259,7 @@ export default function subCategory() {
       ref={targetRef}
       className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
     >
+      <Toaster position="top-center" reverseOrder={false} />
       <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
         Sub Category Data Setting
       </h1>
@@ -243,7 +280,7 @@ export default function subCategory() {
             onChange={(e) => setQuery(e.target.value)}
           />
           <button
-            onClick={searchData}
+            onClick={() => fetchDataPaginated(true)}
             className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
           >
             <IoSearch />

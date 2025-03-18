@@ -1,15 +1,11 @@
-import { useRouter } from "next/router";
-import { getNewAccessToken } from "../refreshToken/refreshToken";
+import { getNewAccessToken } from "../token/refreshToken";
 
-export const handleApiError = async (error, retryFunction) => {
-  const router = useRouter();
-  console.log(error, "pppppooo");
-
+export const handleApiError = async (error, retryFunction, router) => {
   if (error.response?.status === 401) {
     try {
       const newToken = await getNewAccessToken();
       localStorage.setItem("token", newToken);
-      await retryFunction(); // Panggil kembali fungsi yang gagal
+      await retryFunction();
     } catch (err) {
       console.error("Failed to refresh token:", err);
       alert("Session Anda telah berakhir. Silakan login ulang.");
