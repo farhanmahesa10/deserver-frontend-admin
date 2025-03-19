@@ -6,14 +6,17 @@ import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../component/skeleton/editDataSkeleton";
 import { getNewAccessToken } from "../component/token/refreshToken";
-import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
+import { IoEyeOutline, IoEyeOffOutline, IoCaretForward } from "react-icons/io5";
 import { HiMiniPencilSquare } from "react-icons/hi2";
 import { useFormik } from "formik";
 import * as yup from "yup";
 import Input from "../component/form/input";
+import { Collapse } from "react-collapse";
 
 export default function AddProfile({ params }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [collapseProfile, setCollapseProfile] = useState(false);
+  const [collapsePassword, setCollapsePassword] = useState(false);
   const [isEdit, setIsEdit] = useState(true);
   const [isOpenVerify, setIsOpenVerify] = useState(false);
   const [updatePassword, setUpdatePassword] = useState(false);
@@ -70,9 +73,6 @@ export default function AddProfile({ params }) {
               confirmationPassword: "",
               varifyPassword: "",
             });
-            if (data.role === "admin") {
-              router.push(`/admin/outlet`);
-            }
             setIsLoading(false);
           })
           .catch((error) => {
@@ -213,118 +213,159 @@ export default function AddProfile({ params }) {
   };
 
   return (
-    <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage profile</h2>
-      {isLoading ? (
-        <EditDataSkeleton />
-      ) : (
-        <form
-          className="mt-4 border p-8 grid gap-4 relative"
-          onSubmit={formik.handleSubmit}
-        >
-          <button
-            type="button"
-            className="absolute right-3 top-2"
-            onClick={iconEdit}
+    <div className="p-8 pt-24 w-full">
+      <h2 className="text-xl font-nunito text-center">Manage profile</h2>
+      <div
+        onClick={() => setCollapseProfile(!collapseProfile)}
+        className="flex w-ful border-2 justify-center items-center relative cursor-pointer"
+      >
+        <h1>Profile</h1>
+        <IoCaretForward
+          className={`${collapseProfile ? "rotate-90" : ""} absolute right-1`}
+        />
+      </div>
+      <Collapse isOpened={collapseProfile}>
+        {isLoading ? (
+          <EditDataSkeleton />
+        ) : (
+          <form
+            className="mb-4 border p-8 grid gap-4 relative"
+            onSubmit={formik.handleSubmit}
           >
-            <HiMiniPencilSquare />
-          </button>
-          {formik.values.logo && (
-            <div className="flex gap-4 mb-2">
-              <label className={`${isEdit ? "hidden" : ""} min-w-28 lg:w-52`}>
-                Preview:
+            <button
+              type="button"
+              className="absolute right-3 top-2"
+              onClick={iconEdit}
+            >
+              <HiMiniPencilSquare />
+            </button>
+            {formik.values.logo && (
+              <div className="flex gap-4 mb-2">
+                <label className={`${isEdit ? "hidden" : ""} min-w-28 lg:w-52`}>
+                  Preview:
+                </label>
+                <img
+                  src={
+                    typeof formik.values.logo === "object"
+                      ? URL.createObjectURL(formik.values.logo)
+                      : `${process.env.NEXT_PUBLIC_IMAGE_URL}/${formik.values.logo}`
+                  }
+                  alt="event Preview"
+                  className="mx-auto w-40 h-40 object-cover"
+                />
+              </div>
+            )}
+            <div className={`${isEdit ? "hidden" : "flex"} gap-4 mb-2`}>
+              <label htmlFor="logo" className="min-w-28 lg:w-52">
+                {formik.values.logo ? "Update" : "Create"} logo:
               </label>
-              <img
-                src={
-                  typeof formik.values.logo === "object"
-                    ? URL.createObjectURL(formik.values.logo)
-                    : `${process.env.NEXT_PUBLIC_IMAGE_URL}/${formik.values.logo}`
+              <Input
+                label={`${formik.values.logo ? "Update" : "Create"} logo:`}
+                id="logo"
+                placeholder="logo"
+                name="logo"
+                type="file"
+                inputBorder="w-52"
+                onChange={handleFileChange}
+                errorMessage={formik.errors.logo}
+                isError={
+                  formik.touched.logo && formik.errors.logo ? true : false
                 }
-                alt="event Preview"
-                className="mx-auto w-40 h-40 object-cover"
               />
             </div>
-          )}
-          <div className={`${isEdit ? "hidden" : "flex"} gap-4 mb-2`}>
-            <label htmlFor="logo" className="min-w-28 lg:w-52">
-              {formik.values.logo ? "Update" : "Create"} logo:
-            </label>
             <Input
-              label={`${formik.values.logo ? "Update" : "Create"} logo:`}
-              id="logo"
-              placeholder="logo"
-              name="logo"
-              type="file"
-              inputBorder="w-52"
-              onChange={handleFileChange}
-              errorMessage={formik.errors.logo}
-              isError={formik.touched.logo && formik.errors.logo ? true : false}
+              label="Outlet Name :"
+              id="outlet_name"
+              disabled={isEdit}
+              placeholder="outlet_name"
+              name="outlet_name"
+              type="text"
+              value={formik.values.outlet_name}
+              onChange={handleChange}
+              errorMessage={formik.errors.outlet_name}
+              isError={
+                formik.touched.outlet_name && formik.errors.outlet_name
+                  ? true
+                  : false
+              }
             />
-          </div>
-          <Input
-            label="Outlet Name :"
-            id="outlet_name"
-            disabled={isEdit}
-            placeholder="outlet_name"
-            name="outlet_name"
-            type="text"
-            value={formik.values.outlet_name}
-            onChange={handleChange}
-            errorMessage={formik.errors.outlet_name}
-            isError={
-              formik.touched.outlet_name && formik.errors.outlet_name
-                ? true
-                : false
-            }
-          />
-          <Input
-            label="Email :"
-            id="email"
-            placeholder="email"
-            name="email"
-            type="text"
-            disabled={isEdit}
-            value={formik.values.email}
-            onChange={handleChange}
-            errorMessage={formik.errors.email}
-            isError={formik.touched.email && formik.errors.email ? true : false}
-          />
+            <Input
+              label="Email :"
+              id="email"
+              placeholder="email"
+              name="email"
+              type="text"
+              disabled={isEdit}
+              value={formik.values.email}
+              onChange={handleChange}
+              errorMessage={formik.errors.email}
+              isError={
+                formik.touched.email && formik.errors.email ? true : false
+              }
+            />
 
-          <Input
-            label="Address :"
-            id="address"
-            placeholder="address"
-            name="address"
-            type="text"
-            disabled={isEdit}
-            value={formik.values.address}
-            onChange={handleChange}
-            errorMessage={formik.errors.address}
-            isError={
-              formik.touched.address && formik.errors.address ? true : false
-            }
-          />
-          <Input
-            label="History :"
-            id="history"
-            placeholder="history"
-            name="history"
-            type="text"
-            disabled={isEdit}
-            value={formik.values.history}
-            onChange={handleChange}
-            errorMessage={formik.errors.history}
-            isError={
-              formik.touched.history && formik.errors.history ? true : false
-            }
-          />
-          <div
-            className="bg-yellow-700 p-2 cursor-pointer rounded-lg text-white mx-auto hover:bg-yellow-600"
-            onClick={onClickUpdatePassword}
+            <Input
+              label="Address :"
+              id="address"
+              placeholder="address"
+              name="address"
+              type="text"
+              disabled={isEdit}
+              value={formik.values.address}
+              onChange={handleChange}
+              errorMessage={formik.errors.address}
+              isError={
+                formik.touched.address && formik.errors.address ? true : false
+              }
+            />
+            <Input
+              label="History :"
+              id="history"
+              placeholder="history"
+              name="history"
+              type="text"
+              disabled={isEdit}
+              value={formik.values.history}
+              onChange={handleChange}
+              errorMessage={formik.errors.history}
+              isError={
+                formik.touched.history && formik.errors.history ? true : false
+              }
+            />
+
+            <div
+              className={`${
+                isEdit ? "hidden" : "flex"
+              } gap-8 text-white justify-end`}
+            >
+              <button
+                type={loadingButton ? "button" : "submit"}
+                className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
+              >
+                {loadingButton ? "Loading..." : "Submit"}
+              </button>
+            </div>
+          </form>
+        )}
+      </Collapse>
+
+      <div
+        onClick={() => setCollapsePassword(!collapsePassword)}
+        className="flex w-ful border-2 justify-center items-center relative cursor-pointer mt-5"
+      >
+        <h1>Password</h1>
+        <IoCaretForward
+          className={`${collapsePassword ? "rotate-90" : ""} absolute right-1`}
+        />
+      </div>
+      <Collapse isOpened={collapsePassword}>
+        {isLoading ? (
+          <EditDataSkeleton />
+        ) : (
+          <form
+            className="mb-4 border p-8 grid gap-4 relative"
+            onSubmit={formik.handleSubmit}
           >
-            Update password
-          </div>
-          <div className={`${updatePassword ? "flex" : "hidden"} `}>
             <Input
               label="New Password"
               type={`${!isOpen ? "password" : "text"}`}
@@ -341,8 +382,7 @@ export default function AddProfile({ params }) {
               onRightIconCLick={onClickPassword}
               rightIconClassName={"cursor-pointer"}
             />
-          </div>
-          <div className={`${updatePassword ? "flex" : "hidden"} `}>
+
             <Input
               label="Confirmation Password"
               type={`${!isOpen ? "password" : "text"}`}
@@ -362,9 +402,7 @@ export default function AddProfile({ params }) {
               onRightIconCLick={onClickPassword}
               rightIconClassName={"cursor-pointer"}
             />
-          </div>
 
-          <div className={`${updatePassword ? "flex" : "hidden"} gap-4 mb-2`}>
             <Input
               label="Old Password"
               type={`${!isOpen ? "password" : "text"}`}
@@ -383,22 +421,18 @@ export default function AddProfile({ params }) {
               onRightIconCLick={onClickVerifyPassword}
               rightIconClassName={"cursor-pointer"}
             />
-          </div>
 
-          <div
-            className={`${
-              isEdit ? "hidden" : "flex"
-            } gap-8 text-white justify-end`}
-          >
-            <button
-              type={loadingButton ? "button" : "submit"}
-              className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-            >
-              {loadingButton ? "Loading..." : "Submit"}
-            </button>
-          </div>
-        </form>
-      )}
+            <div className={`flex gap-8 text-white justify-end`}>
+              <button
+                type={loadingButton ? "button" : "submit"}
+                className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
+              >
+                {loadingButton ? "Loading..." : "Submit"}
+              </button>
+            </div>
+          </form>
+        )}
+      </Collapse>
     </div>
   );
 }

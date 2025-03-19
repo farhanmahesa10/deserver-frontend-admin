@@ -7,28 +7,26 @@ import { useRouter } from "next/navigation";
 
 import { getNewAccessToken } from "../../component/token/refreshToken";
 import Pagination from "../../component/paginate/paginate";
-import { AiFillEdit } from "react-icons/ai";
-import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
+import { IoSaveOutline } from "react-icons/io5";
+import { HiMiniPencilSquare } from "react-icons/hi2";
 import { Toaster, toast } from "react-hot-toast";
 import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
 import { NotData } from "@/app/component/notData/notData";
+import { handleApiError } from "@/app/component/handleError/handleError";
+import * as yup from "yup";
+import { FormikProvider, useFormik, FieldArray } from "formik";
+import ButtonCreateUpdate from "@/app/component/button/button";
 
 export default function Table() {
   const [table, setTable] = useState([]);
-  const [outletName, setOutletName] = useState("");
   const [role, setRole] = useState("");
   const [idOutlet, setIdOutlet] = useState("");
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [loadingButton, setLoadingButton] = useState(false);
+  const [edit, setEdit] = useState(true);
   const [searchQuery, setSearchQuery] = useState([]);
   const [query, setQuery] = useState("");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editRowId, setEditRowId] = useState(null);
-  const [formData, setFormData] = useState({
-    id: "",
-    id_outlet: "",
-    number_table: "",
-  });
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
@@ -80,6 +78,7 @@ export default function Table() {
           const data = response.data.data;
 
           setRole(data.role);
+          setIdOutlet(data.id);
           setIsLoading(false);
         } catch (error) {
           await handleApiError(error, loadData, router);
@@ -96,41 +95,16 @@ export default function Table() {
     setSearchQuery(table);
   }, [table]);
 
-  //handle pencarian
-  const searchData = () => {
-    setIsLoading(true);
-    setCurrentPage(1);
-    const fetchData = async () => {
-      const params = {
-        page: currentPage,
-        limit: itemsPerPage,
-        search: query,
-      };
-      try {
-        // Mengambil data transaksi menggunakan axios dengan query params
-        const response = await axios.get(
-          `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/showpaginated`,
-          {
-            params: params,
-          }
-        );
-
-        const data = response.data.data;
-        setTable(data);
-        setRows(response.data.pagination.totalItems);
-      } catch (error) {
-        console.error("Error fetching transaction data:", error);
-      }
-    };
-    setIsLoading(false);
-
-    fetchData();
-  };
-
   // function mengambil data lapangan by limit
-  const fetchDataPaginated = async () => {
+  const fetchDataPaginated = async (isSearchMode = false) => {
+    setIsLoading(true);
+    if (isSearchMode) {
+      setCurrentPage(1); // Reset ke page 1 jika pencarian
+    }
+    const token = localStorage.getItem("token");
+
     const params = {
-      page: currentPage,
+      page: isSearchMode ? 1 : currentPage,
       limit: itemsPerPage,
       search: query,
     };
@@ -140,27 +114,76 @@ export default function Table() {
         `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/showpaginated`,
         {
           params: params,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
       const data = response.data.data;
       setTable(data);
       setRows(response.data.pagination.totalItems);
+      setIsLoading(false);
     } catch (error) {
-      console.error("Error fetching transaction data:", error);
+      await handleApiError(
+        error,
+        () => fetchDataPaginated(isSearchMode),
+        router
+      );
     }
   };
+
+  //handle edit dan create
+  const onSubmit = async () => {
+    const formData = formik.values.table.map((d) => ({
+      id_outlet: idOutlet,
+      number_table: d.number_table,
+    }));
+
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/create`,
+        formData,
+        { headers }
+      );
+
+      formik.resetForm();
+      await fetchDataPaginated();
+      toast.success("create successfully!");
+    } catch (error) {
+      await handleApiError(error, onSubmit, router);
+    }
+  };
+
+  const formik = useFormik({
+    initialValues: {
+      table: [],
+    },
+    onSubmit,
+    validationSchema: yup.object({
+      table: yup
+        .array()
+        .of(
+          yup.object().shape({
+            number_table: yup
+              .number()
+              .typeError("Harus berupa angka")
+              .required("Nomor meja wajib diisi"),
+          })
+        )
+        .min(1, "Minimal 1 meja harus ditambahkan"),
+    }),
+  });
 
   //useEffect mengambil data table
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true); // Tampilkan loading
       try {
-        if (role === "admin") {
-          await fetchDataPaginated();
-        } else {
-          await fetchData();
-        }
+        await fetchDataPaginated();
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -172,22 +195,6 @@ export default function Table() {
       loadData();
     }
   }, [itemsPerPage, currentPage, role]);
-
-  //function mengambil data table
-  const fetchData = async () => {
-    try {
-      // Mengambil data transaksi menggunakan axios dengan query params
-      const response = await axios.get(
-        ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/showcafename/${outletName}`
-      );
-
-      const data = response.data.data;
-
-      setTable(data);
-    } catch (error) {
-      console.error("Error fetching transaction data:", error);
-    }
-  };
 
   //handle untuk menghapus data
   const handleRemove = async (dataRemove) => {
@@ -218,11 +225,8 @@ export default function Table() {
       );
 
       if (response.status === 200) {
-        if (role === "admin") {
-          await fetchDataPaginated();
-        } else {
-          await fetchData();
-        }
+        await fetchDataPaginated();
+
         setIsLoading(false);
       }
     } catch (error) {
@@ -230,95 +234,8 @@ export default function Table() {
     }
   };
 
-  //stabilo pencarian
-  const highlightText = (text, query) => {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi"); // Cari query (case-insensitive)
-    const parts = text.split(regex); // Pisah teks berdasarkan query
-
-    return parts.map((part, index) =>
-      part.toLowerCase() === query.toLowerCase() ? (
-        <span key={index} className="bg-green-500">
-          {part}
-        </span>
-      ) : (
-        part
-      )
-    );
-  };
-
-  const handleOpenModal = (
-    data = { id: "", id_outlet: idOutlet, number_table: "" }
-  ) => {
-    setFormData(data);
-    setModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setFormData({ id: "", id_outlet: "", number_table: "" });
-  };
-  console.log(formData);
-
-  //handle edit dan create
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    // if (!table.number_table) {
-    //   alert("Harap isi semua field!");
-    //   return;
-    // }
-
-    // const formData = {
-    //   id_outlet: table.id_outlet,
-    //   number_table: table.number_table,
-    // };
-
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleSubmit(e); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting table:", error);
-      }
-    };
-
-    try {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
-
-      if (formData.id) {
-        // setLoadingButton(true);
-        await axios.put(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/update/${formData.id}`,
-          formData,
-          { headers }
-        );
-        localStorage.removeItem("id_table");
-        alert("Data berhasil diperbarui!");
-      } else {
-        // setLoadingButton(true);
-        await axios.post(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/create`,
-          formData,
-          { headers }
-        );
-        alert("Data berhasil ditambahkan!");
-      }
-
-      router.push("/admin/table");
-      // setLoadingButton(false);
-    } catch (error) {
-      await handleError(error);
-    }
+  const iconEdit = () => {
+    setEdit(!edit);
   };
 
   return (
@@ -330,173 +247,91 @@ export default function Table() {
       <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
         table Data Settings
       </h1>
-      <div
-        className={`flex flex-wrap justify-between items-center lg:w-full gap-4 md:gap-6 w-full mb-6`}
-      >
-        <div
-          className={`${
-            role == "admin" ? "flex" : "hidden"
-          }  gap-3 items-center`}
-        >
-          <input
-            type="text"
-            placeholder="outlet Name. . ."
-            id="search"
-            className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[200px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <button
-            onClick={searchData}
-            className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
-          >
-            <IoSearch />
-          </button>
-        </div>
 
+      <form className="flex gap-2 mb-4">
         <button
+          onClick={iconEdit}
+          type="button"
           className={` bg-yellow-700 text-white body-text-sm-bold font-nunitoSans px-4 py-2 md:px-5 md:py-3 rounded-md shadow-md hover:bg-yellow-700 transition-all duration-300`}
-          onClick={() => handleOpenModal()}
         >
-          <IoMedkit />
+          <HiMiniPencilSquare />
         </button>
-      </div>
-
-      <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
-        {isLoading ? (
-          <TableSkeleton />
-        ) : (
-          <table className="min-w-full border-collapse border border-gray-200">
-            <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans">
-              <tr>
-                <th className="px-4 py-3 ">No</th>
-                <th className="px-4 py-3">outlet Name</th>
-                <th className="px-4 py-3">Number Room</th>
-                <th className="px-4 py-3 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="text-gray-700 font-nunitoSans">
-              {searchQuery &&
-                searchQuery.map((item, index) => {
-                  const number = index + 1;
-                  const numberPaginate = indexOfFirstItem + index + 1;
-
-                  return (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-gray-100 transition-all duration-300 border-b-2"
-                    >
-                      <td className="px-4 py-3 text-center">
-                        {role !== "admin" ? number : numberPaginate}
-                      </td>
-
-                      <td className="px-4 py-3 text-center">
-                        {editRowId === item.id ? (
-                          <input
-                            type="text"
-                            value={formData.outlet_name}
-                            className="border p-2 w-full"
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                outlet_name: e.target.value,
-                              })
-                            }
-                          />
-                        ) : (
-                          item.Outlet.outlet_name
-                        )}
-                      </td>
-
-                      <td className="px-4 py-3 text-center">
-                        {editRowId === item.id ? (
-                          <input
-                            type="text"
-                            value={formData.number_table}
-                            className="border p-2 w-full"
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                number_table: e.target.value,
-                              })
-                            }
-                          />
-                        ) : (
-                          item.number_table
-                        )}
-                      </td>
-
-                      <td className="px-4 py-3 flex justify-center gap-2 text-center">
-                        {editRowId === item.id ? (
-                          <>
-                            <button
-                              onClick={handleSubmit}
-                              className="bg-green-500 text-white p-1 rounded-sm"
-                            >
-                              Save
-                            </button>
-                            <button
-                              onClick={() => setEditRowId(null)}
-                              className="bg-gray-500 text-white p-1 rounded-sm"
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              onClick={() => {
-                                setEditRowId(item.id);
-                                setFormData({
-                                  id: item.id,
-                                  id_outlet: item.id_outlet,
-                                  outlet_name: item.Outlet.outlet_name,
-                                  number_table: item.number_table,
-                                });
-                              }}
-                              className="text-sm text-white p-1 rounded-sm bg-blue-500"
-                            >
-                              <AiFillEdit />
-                            </button>
-                            <button
-                              className="text-sm text-white p-1 rounded-sm bg-red-500"
-                              onClick={() => handleRemove(item.id)}
-                            >
-                              <IoTrash />
-                            </button>
-                          </>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-            </tbody>
-          </table>
-        )}
-        {modalOpen && (
-          <div className="modal">
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <input
-                type="text"
-                value={formData.number_table}
-                onChange={(e) =>
-                  setFormData({ ...formData, number_table: e.target.value })
-                }
-                placeholder="Enter Table Number"
-              />
-              <div className="flex gap-4">
-                <button type="submit">Save</button>
-                <button type="button" onClick={handleCloseModal}>
-                  Cancel
+      </form>
+      {isLoading ? (
+        <TableSkeleton />
+      ) : (
+        <div className="flex flex-wrap gap-4">
+          {searchQuery &&
+            searchQuery.map((item) => (
+              <div
+                key={item.id}
+                className="w-20 h-20 border-2 rounded-lg flex flex-col justify-center items-center relative bg-white shadow-sm"
+              >
+                <h1 className="text-4xl font-semibold">{item.number_table}</h1>
+                <button
+                  onClick={() => handleRemove(item.id)}
+                  className={`${
+                    edit ? "hidden" : "absolute"
+                  } -top-1 right-1 text-lg text-red-500 font-bold hover:text-red-700`}
+                >
+                  &times;
                 </button>
               </div>
-            </form>
-          </div>
-        )}
-      </div>
+            ))}
+
+          <FormikProvider value={formik}>
+            <FieldArray
+              name="table"
+              render={(arrayHelpers) => (
+                <div className="flex gap-4 flex-wrap">
+                  {formik.values.table.map((friend, index) => (
+                    <div
+                      key={index}
+                      className="w-20 h-20 border-2 rounded-lg flex flex-col justify-center items-center relative bg-white shadow-sm"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => arrayHelpers.remove(index)}
+                        className={`${
+                          edit ? "hidden" : "absolute"
+                        } -top-1 right-1 text-lg text-red-500 font-bold hover:text-red-700`}
+                      >
+                        &times;
+                      </button>
+                      <input
+                        name={`table[${index}].number_table`}
+                        value={formik.values.table[index].number_table}
+                        onChange={formik.handleChange}
+                        className={`w-full text-4xl text-center rounded-[8px] p-2 focus:outline-none`}
+                      />
+                      {formik.touched.table?.[index]?.number_table &&
+                        formik.errors.table?.[index]?.number_table && (
+                          <div className="h-6">
+                            <span className="text-sm text-red-400">
+                              {formik.errors.table[index].number_table}
+                            </span>
+                          </div>
+                        )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className={`${
+                      edit ? "hidden" : "flex"
+                    } w-20 h-20 border-2 rounded-lg  flex-col justify-center items-center relative bg-white shadow-sm`}
+                    onClick={() => arrayHelpers.push({ number_table: "" })}
+                  >
+                    +
+                  </button>
+                </div>
+              )}
+            />
+          </FormikProvider>
+        </div>
+      )}
 
       {/* Tampilkan navigasi pagination */}
-      {searchQuery && searchQuery.length > 0 && (
+      {/* {searchQuery && searchQuery.length > 0 && (
         <Pagination
           itemsPerPage={itemsPerPage}
           rows={rows}
@@ -504,7 +339,30 @@ export default function Table() {
           currentPage={currentPage}
           isLoading={isLoading}
         />
-      )}
+      )} */}
+
+      <div
+        className={`${
+          edit ? "hidden" : "flex"
+        } flex mt-5 gap-8 text-white justify-end`}
+      >
+        <button
+          type={loadingButton ? "button" : "submit"}
+          onClick={formik.handleSubmit}
+          className={`${
+            loadingButton ? "bg-gray-400" : "bg-primary50 border-primary50"
+          }  body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md`}
+        >
+          {loadingButton ? "Loading..." : "Submit"}
+        </button>
+        <button
+          type="button"
+          className="bg-red-500 border-red-5bg-red-500 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
+          onClick={iconEdit}
+        >
+          Cancel
+        </button>
+      </div>
 
       {/* Tampilkan pesan data kosong jika tidak ada data */}
       {isLoading === false && searchQuery.length === 0 && <NotData />}

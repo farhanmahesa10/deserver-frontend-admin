@@ -62,7 +62,7 @@ function Sidebar({ isOpen, setIsOpen }) {
           .catch((error) => console.log("Error fetching data:", error));
       }
     }
-  }, [role]);
+  }, []);
 
   return (
     <div
@@ -95,18 +95,6 @@ function Sidebar({ isOpen, setIsOpen }) {
             <IoStorefront />
           </div>
           Outlet
-        </Link>
-        <Link
-          onClick={() => handleSetIsOpen()}
-          href="/admin"
-          className={`${role === "admin" ? "hidden" : ""} ${
-            url == "/admin" ? "bg-yellow-700 text-white" : "bg-gray-100"
-          } flex items-center gap-2 body-text-sm-normal lg:body-text-lg-normal font-poppins lg:w-[195px] w-[150px] h-[44px] lg:h-[56px] rounded-lg px-4 py-3 cursor-pointer  hover:bg-yellow-700 hover:text-white hover:shadow-md transition duration-300`}
-        >
-          <div className="mb-1">
-            <IoPersonSharp />
-          </div>
-          Profile
         </Link>
 
         <Link

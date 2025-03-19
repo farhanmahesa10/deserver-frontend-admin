@@ -92,41 +92,6 @@ export default function subCategory() {
     setSearchQuery(subCategory);
   }, [subCategory]);
 
-  //handle pencarian
-  const searchData = () => {
-    const token = localStorage.getItem("token");
-    setIsLoading(true);
-    setCurrentPage(1);
-    const fetchData = async () => {
-      const params = {
-        page: currentPage,
-        limit: itemsPerPage,
-        search: query,
-      };
-      try {
-        // Mengambil data transaksi menggunakan axios dengan query params
-        const response = await axios.get(
-          `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showpaginated`,
-          {
-            params: params,
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        const data = response.data.data;
-        setSubCategory(data);
-        setRows(response.data.pagination.totalItems);
-      } catch (error) {
-        console.error("Error fetching transaction data:", error);
-      }
-    };
-    setIsLoading(false);
-
-    fetchData();
-  };
-
   // function mengambil data lapangan by limit
   const fetchDataPaginated = async (isSearchMode = false) => {
     setIsLoading(true);
@@ -199,22 +164,6 @@ export default function subCategory() {
       )
     );
   };
-
-  //function mengambil data subCategory
-  // const fetchData = async () => {
-  //   try {
-  //     // Mengambil data transaksi menggunakan axios dengan query params
-  //     const response = await axios.get(
-  //       ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showcafename/${outletName}`
-  //     );
-
-  //     const data = response.data.data;
-
-  //     setSubCategory(data);
-  //   } catch (error) {
-  //     console.error("Error fetching transaction data:", error);
-  //   }
-  // };
 
   //handle untuk menghapus data
   const handleRemove = async (dataRemove) => {
