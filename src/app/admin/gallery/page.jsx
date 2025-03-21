@@ -14,6 +14,8 @@ import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
 import { NotData } from "@/app/component/notData/notData";
 import { handleApiError } from "@/app/component/handleError/handleError";
 import { Toaster, toast } from "react-hot-toast";
+import HanldeRemove from "@/app/component/handleRemove/handleRemove";
+import InputSearch from "@/app/component/form/inputSearch";
 
 export default function Gallery() {
   const [gallery, setGallery] = useState([]);
@@ -24,6 +26,8 @@ export default function Gallery() {
   const [query, setQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentImage, setCurrentImage] = useState("");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [dataToRemove, setDataToRemove] = useState(null);
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
@@ -148,44 +152,29 @@ export default function Gallery() {
   }, [itemsPerPage, currentPage, role]);
 
   //handle untuk menghapus data
-  const handleRemove = async (dataRemove) => {
+  const handleRemove = async () => {
     const savedToken = localStorage.getItem("token");
-
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleRemove(dataRemove); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting contact:", error);
-      }
-    };
 
     try {
       setIsLoading(true);
       const response = await axios.delete(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/gallery/delete/${dataRemove}`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/gallery/delete/${dataToRemove}`,
         { headers: { Authorization: `Bearer ${savedToken}` } }
       );
 
       if (response.status === 200) {
-        if (role === "admin") {
-          await fetchDataPaginated();
-        } else {
-          await fetchData();
-        }
+        await fetchDataPaginated();
+        setShowConfirmModal(false);
         setIsLoading(false);
       }
     } catch (error) {
-      await handleError(error);
+      await handleApiError(error, handleRemove, router);
     }
+  };
+
+  const confirmRemove = (dataRemove) => {
+    setDataToRemove(dataRemove);
+    setShowConfirmModal(true);
   };
 
   //stabilo pencarian
@@ -220,36 +209,21 @@ export default function Gallery() {
       <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
         Gallery Data Settings
       </h1>
-      <div
-        className={`flex flex-wrap justify-between items-center lg:w-full gap-4 md:gap-6 w-full mb-6`}
-      >
-        <div
-          className={`${
-            role == "admin" ? "flex" : "hidden"
-          }  gap-3 items-center`}
-        >
-          <input
-            type="text"
-            placeholder="outlet Name. . ."
-            id="search"
-            className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[200px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <button
-            onClick={() => fetchDataPaginated(true)}
-            className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
-          >
-            <IoSearch />
-          </button>
-        </div>
 
-        <a
-          className={` bg-yellow-700 text-white body-text-sm-bold font-nunitoSans px-4 py-2 md:px-5 md:py-3 rounded-md shadow-md hover:bg-yellow-700 transition-all duration-300`}
-          href="/admin/gallery/create"
-        >
-          <IoMedkit />
-        </a>
+      <div>
+        <InputSearch
+          role={role}
+          type="text"
+          placeholder="Outlet Name. . ."
+          id="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onRightButtonCLick={() => fetchDataPaginated(true)}
+          rightButton={<IoSearch />}
+          createData={<IoMedkit />}
+          linkCreate={"/admin/gallery/create"}
+          isLoading={isLoading}
+        />
       </div>
 
       <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
@@ -257,17 +231,23 @@ export default function Gallery() {
           <TableSkeleton />
         ) : (
           <table className="min-w-full border-collapse border border-gray-200">
-            <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans">
+            <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans text-white">
               <tr>
                 <th className="px-4 py-3 ">No</th>
-                <th className="px-4 py-3">outlet Name</th>
+                <th className="px-4 py-3">Outlet Name</th>
                 <th className="px-4 py-3">Title</th>
                 <th className="px-4 py-3">Photo</th>
                 <th className="px-4 py-3 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="text-gray-700 font-nunitoSans">
-              {searchQuery &&
+              {isLoading ? null : searchQuery.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center">
+                    <NotData />
+                  </td>
+                </tr>
+              ) : (
                 searchQuery.map((item, index) => {
                   const number = index + 1;
                   const numberPaginate = indexOfFirstItem + index + 1;
@@ -306,14 +286,15 @@ export default function Gallery() {
                         </a>
                         <button
                           className="text-sm text-white p-1 rounded-sm bg-red-500"
-                          onClick={() => handleRemove(item.id)}
+                          onClick={() => confirmRemove(item.id)}
                         >
                           <IoTrash />
                         </button>
                       </td>
                     </tr>
                   );
-                })}
+                })
+              )}
             </tbody>
           </table>
         )}
@@ -338,8 +319,13 @@ export default function Gallery() {
         />
       )}
 
-      {/* Tampilkan pesan data kosong jika tidak ada data */}
-      {isLoading === false && searchQuery.length === 0 && <NotData />}
+      {/* modal konfirmasi delete */}
+      {showConfirmModal && (
+        <HanldeRemove
+          handleRemove={handleRemove}
+          setShowConfirmModal={() => setShowConfirmModal(false)}
+        />
+      )}
     </div>
   );
 }

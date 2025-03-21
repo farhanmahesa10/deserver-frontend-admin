@@ -4,10 +4,6 @@ import axios from "axios";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-
-import { getNewAccessToken } from "../../component/token/refreshToken";
-import Pagination from "../../component/paginate/paginate";
-import { IoSaveOutline } from "react-icons/io5";
 import { HiMiniPencilSquare } from "react-icons/hi2";
 import { Toaster, toast } from "react-hot-toast";
 import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
@@ -15,7 +11,7 @@ import { NotData } from "@/app/component/notData/notData";
 import { handleApiError } from "@/app/component/handleError/handleError";
 import * as yup from "yup";
 import { FormikProvider, useFormik, FieldArray } from "formik";
-import ButtonCreateUpdate from "@/app/component/button/button";
+import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 
 export default function Table() {
   const [table, setTable] = useState([]);
@@ -27,6 +23,8 @@ export default function Table() {
   const [edit, setEdit] = useState(true);
   const [searchQuery, setSearchQuery] = useState([]);
   const [query, setQuery] = useState("");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [dataToRemove, setDataToRemove] = useState(null);
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
@@ -197,41 +195,29 @@ export default function Table() {
   }, [itemsPerPage, currentPage, role]);
 
   //handle untuk menghapus data
-  const handleRemove = async (dataRemove) => {
+  const handleRemove = async () => {
     const savedToken = localStorage.getItem("token");
-
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleRemove(dataRemove); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting contact:", error);
-      }
-    };
 
     try {
       setIsLoading(true);
       const response = await axios.delete(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/delete/${dataRemove}`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/delete/${dataToRemove}`,
         { headers: { Authorization: `Bearer ${savedToken}` } }
       );
 
       if (response.status === 200) {
         await fetchDataPaginated();
-
+        setShowConfirmModal(false);
         setIsLoading(false);
       }
     } catch (error) {
-      await handleError(error);
+      await handleApiError(error, handleRemove, router);
     }
+  };
+
+  const confirmRemove = (dataRemove) => {
+    setDataToRemove(dataRemove);
+    setShowConfirmModal(true);
   };
 
   const iconEdit = () => {
@@ -269,7 +255,7 @@ export default function Table() {
               >
                 <h1 className="text-4xl font-semibold">{item.number_table}</h1>
                 <button
-                  onClick={() => handleRemove(item.id)}
+                  onClick={() => confirmRemove(item.id)}
                   className={`${
                     edit ? "hidden" : "absolute"
                   } -top-1 right-1 text-lg text-red-500 font-bold hover:text-red-700`}
@@ -330,17 +316,6 @@ export default function Table() {
         </div>
       )}
 
-      {/* Tampilkan navigasi pagination */}
-      {/* {searchQuery && searchQuery.length > 0 && (
-        <Pagination
-          itemsPerPage={itemsPerPage}
-          rows={rows}
-          paginate={paginate}
-          currentPage={currentPage}
-          isLoading={isLoading}
-        />
-      )} */}
-
       <div
         className={`${
           edit ? "hidden" : "flex"
@@ -366,6 +341,14 @@ export default function Table() {
 
       {/* Tampilkan pesan data kosong jika tidak ada data */}
       {isLoading === false && searchQuery.length === 0 && <NotData />}
+
+      {/* modal konfirmasi delete */}
+      {showConfirmModal && (
+        <HanldeRemove
+          handleRemove={handleRemove}
+          setShowConfirmModal={() => setShowConfirmModal(false)}
+        />
+      )}
     </div>
   );
 }

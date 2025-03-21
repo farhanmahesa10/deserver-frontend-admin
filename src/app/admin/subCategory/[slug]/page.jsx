@@ -215,7 +215,7 @@ export default function AddsubCategory({ params }) {
 
   return (
     <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage subCategory</h2>
+      <h2 className="text-xl font-nunito">Manage Subcategory</h2>
       {isLoading ? (
         <EditDataSkeleton />
       ) : (
@@ -225,7 +225,7 @@ export default function AddsubCategory({ params }) {
         >
           <div className={`${role !== "admin" ? "hidden" : "flex"} gap-4 mb-2`}>
             <Select
-              label="Outlate Name:"
+              label="Outlet Name:"
               id="outlet_name"
               name="outlet_name"
               value={formik.values.outlet_name}
@@ -234,7 +234,7 @@ export default function AddsubCategory({ params }) {
                   {value.outlet_name}
                 </option>
               ))}
-              placeholder={"Select Outlet Name"}
+              placeholder={"Select outlet name"}
               onChange={handleChange}
               errorMessage={formik.errors.outlet_name}
               isError={
@@ -255,7 +255,7 @@ export default function AddsubCategory({ params }) {
                 {value.type}
               </option>
             ))}
-            placeholder={"Select category Name"}
+            placeholder={"Select category name"}
             onChange={handleChange}
             errorMessage={formik.errors.id_category}
             isError={
@@ -268,7 +268,7 @@ export default function AddsubCategory({ params }) {
           <Input
             label="Title :"
             id="title"
-            placeholder="title"
+            placeholder="Title"
             name="title"
             type="text"
             value={formik.values.title}

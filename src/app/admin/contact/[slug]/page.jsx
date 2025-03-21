@@ -262,7 +262,7 @@ export default function AddContact({ params }) {
                   {value.outlet_name}
                 </option>
               ))}
-              placeholder={"Select Outlet Name"}
+              placeholder={"Select outlet name"}
               onChange={handleChange}
               errorMessage={formik.errors.id_outlet}
               isError={
@@ -285,7 +285,7 @@ export default function AddContact({ params }) {
             ))}
             placeholder={`${
               slug == "create"
-                ? "Select Contact Name"
+                ? "Select contact name"
                 : formik.values.contact_name
             }`}
             onChange={handleChange}
@@ -300,7 +300,7 @@ export default function AddContact({ params }) {
           <Input
             label="Value :"
             id="value"
-            placeholder="value"
+            placeholder="Value"
             name="value"
             type="text"
             value={formik.values.value}
@@ -311,7 +311,7 @@ export default function AddContact({ params }) {
           <Input
             label="Link :"
             id="link"
-            placeholder="link"
+            placeholder="Link"
             name="link"
             type="text"
             value={formik.values.link}

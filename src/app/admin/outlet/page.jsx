@@ -7,16 +7,13 @@ import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from "react-hot-toast";
 import "react-loading-skeleton/dist/skeleton.css";
-import { getNewAccessToken } from "../../component/token/refreshToken";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
-import {
-  IconSkeleton,
-  SearchSkeleton,
-  TableSkeleton,
-} from "../../component/skeleton/adminSkeleton";
+import { TableSkeleton } from "../../component/skeleton/adminSkeleton";
 import { NotData } from "@/app/component/notData/notData";
 import { handleApiError } from "@/app/component/handleError/handleError";
+import HanldeRemove from "@/app/component/handleRemove/handleRemove";
+import InputSearch from "@/app/component/form/inputSearch";
 
 export default function AdminOutlet() {
   const [outlet, setOutlet] = useState([]);
@@ -25,6 +22,8 @@ export default function AdminOutlet() {
   const [query, setQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [dataToRemove, setDataToRemove] = useState(null);
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
@@ -119,10 +118,10 @@ export default function AdminOutlet() {
   }, [outlet]);
 
   // function mengambil data outlet by limit
-  const fetchData = async (isSearchMode = false) => {
+  const fetchDataPaginated = async (isSearchMode = false) => {
     setIsLoading(true);
     if (isSearchMode) {
-      setCurrentPage(1); // Reset ke page 1 jika pencarian
+      setCurrentPage(1);
     }
     const token = localStorage.getItem("token");
 
@@ -148,7 +147,11 @@ export default function AdminOutlet() {
       setRows(response.data.pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
-      await handleApiError(error, () => fetchData(isSearchMode), router);
+      await handleApiError(
+        error,
+        () => fetchDataPaginated(isSearchMode),
+        router
+      );
     }
   };
 
@@ -157,7 +160,7 @@ export default function AdminOutlet() {
       setIsLoading(true);
       try {
         if (role === "admin") {
-          await fetchData();
+          await fetchDataPaginated();
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -172,40 +175,31 @@ export default function AdminOutlet() {
   }, [itemsPerPage, currentPage, role]);
 
   //handle untuk menghapus data
-  const handleRemove = async (dataRemove) => {
+  const handleRemove = async () => {
     const savedToken = localStorage.getItem("token");
-
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleRemove(dataRemove); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting contact:", error);
-      }
-    };
 
     try {
       setIsLoading(true);
       const response = await axios.delete(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/delete/${dataRemove}`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/delete/${dataToRemove}`,
         { headers: { Authorization: `Bearer ${savedToken}` } }
       );
 
       if (response.status === 200) {
-        await fetchData();
+        console.log("pppppp");
+
+        await fetchDataPaginated();
+        setShowConfirmModal(false);
         setIsLoading(false);
       }
     } catch (error) {
-      await handleError(error);
+      await handleApiError(error, handleRemove, router);
     }
+  };
+
+  const confirmRemove = (dataRemove) => {
+    setDataToRemove(dataRemove);
+    setShowConfirmModal(true);
   };
 
   return (
@@ -218,44 +212,20 @@ export default function AdminOutlet() {
         <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
           Outlet Data Settings
         </h1>
-        <div
-          className={`flex flex-wrap justify-between items-center lg:w-full gap-4 md:gap-6 w-full mb-6 `}
-        >
-          <div className="flex gap-3 items-center ">
-            {isLoading ? (
-              <SearchSkeleton />
-            ) : (
-              <input
-                type="text"
-                placeholder="Outlet Nama. . ."
-                id="search"
-                className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[200px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            )}
-            {isLoading ? (
-              <IconSkeleton />
-            ) : (
-              <button
-                onClick={() => fetchData(true)}
-                className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
-              >
-                <IoSearch />
-              </button>
-            )}
-          </div>
-
-          {isLoading ? (
-            <IconSkeleton />
-          ) : (
-            <a
-              className={` bg-yellow-700 body-text-sm-bold text-white font-nunitoSans px-4 py-2 md:px-5 md:py-3 rounded-md shadow-md hover:bg-yellow-700 transition-all duration-300`}
-              href="/admin/outlet/create"
-            >
-              <IoMedkit />
-            </a>
-          )}
+        <div>
+          <InputSearch
+            role={role}
+            type="text"
+            placeholder="Outlet Name. . ."
+            id="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onRightButtonCLick={() => fetchDataPaginated(true)}
+            rightButton={<IoSearch />}
+            createData={<IoMedkit />}
+            linkCreate={"/admin/outlet/create"}
+            isLoading={isLoading}
+          />
         </div>
 
         <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
@@ -263,20 +233,26 @@ export default function AdminOutlet() {
             <TableSkeleton />
           ) : (
             <table className="min-w-full border-collapse border border-gray-200">
-              <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans">
+              <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans text-white">
                 <tr>
                   <th className="px-4 py-3">No</th>
                   <th className="px-4 py-3">Outlet Name</th>
-                  <th className="px-4 py-3">email</th>
-                  <th className="px-4 py-3">role</th>
-                  <th className="px-4 py-3">history</th>
-                  <th className="px-4 py-3">address</th>
-                  <th className="px-4 py-3">logo</th>
-                  <th className="px-4 py-3">action</th>
+                  <th className="px-4 py-3">Email</th>
+                  <th className="px-4 py-3">Role</th>
+                  <th className="px-4 py-3">History</th>
+                  <th className="px-4 py-3">Address</th>
+                  <th className="px-4 py-3">Logo</th>
+                  <th className="px-4 py-3">Action</th>
                 </tr>
               </thead>
               <tbody className="text-gray-700 font-nunitoSans">
-                {searchQuery &&
+                {isLoading ? null : searchQuery.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="px-4 py-6 text-center">
+                      <NotData />
+                    </td>
+                  </tr>
+                ) : (
                   searchQuery.map((item, index) => {
                     const number = indexOfFirstItem + index + 1;
                     const imageUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/${item.logo}`;
@@ -315,14 +291,15 @@ export default function AdminOutlet() {
                           </a>
                           <button
                             className="text-sm text-white p-1 rounded-sm bg-red-500"
-                            onClick={() => handleRemove(item.id)}
+                            onClick={() => confirmRemove(item.id)}
                           >
                             <IoTrash />
                           </button>
                         </td>
                       </tr>
                     );
-                  })}
+                  })
+                )}
               </tbody>
             </table>
           )}
@@ -339,8 +316,13 @@ export default function AdminOutlet() {
           />
         )}
 
-        {/* Tampilkan pesan data kosong jika tidak ada data */}
-        {isLoading === false && searchQuery.length === 0 && <NotData />}
+        {/* modal konfirmasi delete */}
+        {showConfirmModal && (
+          <HanldeRemove
+            handleRemove={handleRemove}
+            setShowConfirmModal={() => setShowConfirmModal(false)}
+          />
+        )}
       </>
     </div>
   );

@@ -19,11 +19,14 @@ import {
   MdTableRestaurant,
 } from "react-icons/md";
 import { TfiGallery } from "react-icons/tfi";
+import { handleApiError } from "../handleError/handleError";
+import { useRouter } from "next/navigation";
 
 function Sidebar({ isOpen, setIsOpen }) {
   const pathname = usePathname();
   const [url, setUrl] = useState("");
   const [role, setRole] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
     setUrl(pathname);
@@ -33,35 +36,43 @@ function Sidebar({ isOpen, setIsOpen }) {
     setIsOpen(false);
   };
 
+  // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
-    const token = localStorage.getItem("token");
+    const loadData = async () => {
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
 
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
 
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-      } else {
-        axios
-          .get(
+        try {
+          const response = await axios.get(
             `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
               },
             }
-          )
-          .then((response) => {
-            const data = response.data.data;
-            setRole(data.role);
-          })
-          .catch((error) => console.log("Error fetching data:", error));
+          );
+          const data = response.data.data;
+
+          setRole(data.role);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
+      } else {
+        router.push(`/login`);
       }
-    }
+    };
+
+    loadData();
   }, []);
 
   return (

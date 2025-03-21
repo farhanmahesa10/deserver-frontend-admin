@@ -6,14 +6,12 @@ import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../../component/token/refreshToken";
 import ButtonCreateUpdate from "@/app/component/button/button";
 import { useFormik } from "formik";
 import * as yup from "yup";
 import Input from "@/app/component/form/input";
 import Select from "@/app/component/form/select";
 import { handleApiError } from "@/app/component/handleError/handleError";
-import { CekToken } from "@/app/component/token/getToken";
 
 export default function AddProfile({ params }) {
   const [role, setRole] = useState("");
@@ -79,50 +77,6 @@ export default function AddProfile({ params }) {
     }
   };
 
-  // cek token
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      const refreshToken = localStorage.getItem("refreshToken");
-      const token = localStorage.getItem("token");
-      if (refreshToken) {
-        const decoded = jwtDecode(refreshToken);
-        const outlet_id = decoded.id;
-        const expirationTime = new Date(decoded.exp * 1000);
-        const currentTime = new Date();
-
-        if (currentTime > expirationTime) {
-          localStorage.clear();
-          router.push(`/login`);
-        }
-
-        try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-          const data = response.data.data;
-
-          if (data.role !== "admin") {
-            router.push("/admin");
-          }
-          setRole(data.role);
-          setIsLoading(false);
-        } catch (error) {
-          await handleApiError(error, loadData, router);
-        }
-      } else {
-        router.push(`/login`);
-      }
-    };
-
-    loadData();
-  }, []);
-
   const formik = useFormik({
     initialValues: {
       id: "",
@@ -186,6 +140,49 @@ export default function AddProfile({ params }) {
     }),
   });
 
+  // cek token
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
+
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
+
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          const data = response.data.data;
+
+          if (data.role !== "admin") {
+            router.push("/admin");
+          }
+          setRole(data.role);
+          setIsLoading(false);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
+      } else {
+        router.push(`/login`);
+      }
+    };
+
+    loadData();
+  }, []);
   //CARI DATA BERDASARKAN ID KETIKA EDIT
   useEffect(() => {
     if (slug === "edit") {
@@ -257,7 +254,7 @@ export default function AddProfile({ params }) {
           <Input
             label="Outlet Name :"
             id="outlet_name"
-            placeholder="outlet_name"
+            placeholder="outlet name"
             name="outlet_name"
             type="text"
             value={formik.values.outlet_name}
@@ -321,8 +318,8 @@ export default function AddProfile({ params }) {
           <Input
             label={`${
               slug == "create"
-                ? "confirmation Password"
-                : "confirmation New Password"
+                ? "Confirmation Password"
+                : "Confirmation New Password"
             }`}
             type={`${!isOpen ? "password" : "text"}`}
             placeholder="*********"
@@ -399,7 +396,6 @@ export default function AddProfile({ params }) {
               name="logo"
               type="file"
               inputBorder="w-52"
-              value={formik.values.logo}
               onChange={handleFileChange}
               errorMessage={formik.errors.logo}
               isError={formik.touched.logo && formik.errors.logo ? true : false}

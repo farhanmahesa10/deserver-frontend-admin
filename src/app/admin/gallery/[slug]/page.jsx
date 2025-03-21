@@ -214,7 +214,7 @@ export default function AddGallery({ params }) {
 
   return (
     <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage gallery</h2>
+      <h2 className="text-xl font-nunito">Manage Gallery</h2>
       {isLoading ? (
         <EditDataSkeleton />
       ) : (
@@ -233,7 +233,7 @@ export default function AddGallery({ params }) {
                   {value.outlet_name}
                 </option>
               ))}
-              placeholder={"Select Outlet Name"}
+              placeholder={"Select outlet name"}
               onChange={handleChange}
               errorMessage={formik.errors.id_outlet}
               isError={
@@ -247,7 +247,7 @@ export default function AddGallery({ params }) {
           <Input
             label="Title :"
             id="title"
-            placeholder="title"
+            placeholder="Title"
             name="title"
             type="text"
             value={formik.values.title}

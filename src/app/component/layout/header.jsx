@@ -27,16 +27,17 @@ export default function Header({ isOpen, onClickHeader }) {
         <div className="flex gap-5  mr-16 lg:mr-0">
           <button
             onClick={handleProfile}
-            className="flex gap-2 items-center cursor-pointer rounded-xl h-8  hover:bg-primary-600"
+            className="flex gap-2 items-center cursor-pointer rounded-xl h-8  "
           >
-            <IoPersonCircle className="w-8 h-8" />
+            <IoPersonCircle className="w-8 h-8 transition-all duration-300 hover:scale-110 hover:text-yellow-700" />
           </button>
           <button
             onClick={handleLogout}
-            className="flex gap-2 items-center cursor-pointer rounded-md h-8 p-4 shadow-inner border-[1px] border-lightgray hover:bg-red-600"
+            className="flex gap-2 items-center cursor-pointer rounded-md h-8 px-4 shadow-inner border border-lightgray bg-white 
+             hover:bg-yellow-700 hover:text-white hover:shadow-md transition-all duration-300 hover:scale-105"
           >
-            <IoExit />
-            <h1 className="body-text-sm-normal font-nunitoSans ">Logout</h1>
+            <IoExit className="text-inherit" />
+            <h1 className="body-text-sm-normal font-nunitoSans">Logout</h1>
           </button>
         </div>
         <button

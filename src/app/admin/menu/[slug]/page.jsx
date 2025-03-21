@@ -5,7 +5,6 @@ import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../../component/token/refreshToken";
 import ButtonCreateUpdate from "@/app/component/button/button";
 import { useFormik } from "formik";
 import * as yup from "yup";
@@ -22,54 +21,6 @@ export default function AddMenu({ params }) {
 
   const router = useRouter();
   const { slug } = React.use(params);
-
-  // cek token
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      const refreshToken = localStorage.getItem("refreshToken");
-      const token = localStorage.getItem("token");
-      if (refreshToken) {
-        const decoded = jwtDecode(refreshToken);
-        const outlet_id = decoded.id;
-        const expirationTime = new Date(decoded.exp * 1000);
-        const currentTime = new Date();
-
-        if (currentTime > expirationTime) {
-          localStorage.clear();
-          router.push(`/login`);
-        }
-
-        try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-          const data = response.data.data;
-          if (data.role === "admin") {
-            if (slug == "edit") {
-              formik.setFieldValue(outletName);
-            }
-          } else {
-            formik.setFieldValue("outlet_name", data.outlet_name);
-          }
-          setRole(data.role);
-
-          setIsLoading(false);
-        } catch (error) {
-          await handleApiError(error, loadData, router);
-        }
-      } else {
-        router.push(`/login`);
-      }
-    };
-
-    loadData();
-  }, []);
 
   const onSubmit = async (e) => {
     const formData = new FormData();
@@ -152,6 +103,54 @@ export default function AddMenu({ params }) {
     }),
   });
 
+  // cek token
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
+
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
+
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          const data = response.data.data;
+          if (data.role === "admin") {
+            if (slug == "edit") {
+              formik.setFieldValue("outlet_name", data.outlet_name);
+            }
+          } else {
+            formik.setFieldValue("outlet_name", data.outlet_name);
+          }
+          setRole(data.role);
+
+          setIsLoading(false);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
+      } else {
+        router.push(`/login`);
+      }
+    };
+
+    loadData();
+  }, []);
+
   //menampilkan semua DATA OUTLET
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -212,15 +211,12 @@ export default function AddMenu({ params }) {
     fetchData();
   }, [formik.values.outlet_name]);
 
-  console.log(subCategory);
-
   //MENAMPILKAN DATA MENU KETIKA EDIT
   useEffect(() => {
     const token = localStorage.getItem("token");
     const fetchData = async () => {
       try {
         if (slug === "edit") {
-          const savedToken = localStorage.getItem("token");
           const idMenu = localStorage.getItem("id_menu");
 
           const response = await axios.get(
@@ -232,7 +228,9 @@ export default function AddMenu({ params }) {
             }
           );
 
-          const data = response.data.data;
+          const data = response.data.data[0];
+          console.log(data, "rrrr");
+
           formik.setValues(data);
           setIsLoading(false);
         } else {
@@ -265,7 +263,7 @@ export default function AddMenu({ params }) {
   };
   return (
     <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage menu</h2>
+      <h2 className="text-xl font-nunito">Manage Menu</h2>
       {isLoading ? (
         <EditDataSkeleton />
       ) : (
@@ -284,7 +282,7 @@ export default function AddMenu({ params }) {
                   {value.outlet_name}
                 </option>
               ))}
-              placeholder={"Select Outlet Name"}
+              placeholder={"Select outlet name"}
               onChange={handleChange}
               errorMessage={formik.errors.outlet_name}
               isError={
@@ -294,27 +292,6 @@ export default function AddMenu({ params }) {
               }
             />
           </div>
-          {/* <div className={` flex gap-4 mb-2`}>
-            <label htmlFor="id_subcategory" className="min-w-28 lg:w-52">
-              Subcategory:
-            </label>
-            <select
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="id_subcategory"
-              name="id_subcategory"
-              value={menu.id_subcategory}
-              onChange={handleChange}
-            >
-              <option value="" className="bg-primary50 " disabled>{`${
-                slug == "create" ? "Select Subcategory Name" : menu.title
-              }`}</option>
-              {subCategory.map((value) => (
-                <option key={value.id} value={value.id}>
-                  {value.title}
-                </option>
-              ))}
-            </select>
-          </div> */}
 
           <Select
             label="Subcategory:"
@@ -326,7 +303,7 @@ export default function AddMenu({ params }) {
                 {value.title}
               </option>
             ))}
-            placeholder={"Select Subcategory Name"}
+            placeholder={"Select subcategory name"}
             onChange={handleChange}
             errorMessage={formik.errors.id_subcategory}
             isError={
@@ -338,7 +315,7 @@ export default function AddMenu({ params }) {
           <Input
             label="Title :"
             id="title"
-            placeholder="title"
+            placeholder="Title"
             name="title"
             type="text"
             value={formik.values.title}
@@ -349,7 +326,7 @@ export default function AddMenu({ params }) {
           <Input
             label="Details :"
             id="details"
-            placeholder="details"
+            placeholder="Details"
             name="details"
             type="text"
             value={formik.values.details}
@@ -363,7 +340,7 @@ export default function AddMenu({ params }) {
           <Input
             label="Price :"
             id="price"
-            placeholder="price"
+            placeholder="Price"
             name="price"
             type="number"
             value={formik.values.price}
@@ -371,26 +348,7 @@ export default function AddMenu({ params }) {
             errorMessage={formik.errors.price}
             isError={formik.touched.price && formik.errors.price ? true : false}
           />
-          {/* <div className="flex gap-4 mb-2">
-            <label htmlFor="status" className="min-w-28 lg:w-52">
-              status:
-            </label>
-            <select
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="status"
-              name="status"
-              value={menu.status}
-              onChange={handleChange}
-            >
-              <option value="" disabled>{`${
-                slug == "create" ? "is the product available?" : menu.status
-              }`}</option>
-              <div>
-                <option>ready</option>
-                <option>soldOut</option>
-              </div>
-            </select>
-          </div> */}
+
           <Select
             label="Status :"
             id="status"
@@ -401,33 +359,16 @@ export default function AddMenu({ params }) {
                 {value}
               </option>
             ))}
-            placeholder={"is the product available?"}
+            placeholder={"Is the product available?"}
             onChange={handleChange}
             errorMessage={formik.errors.status}
             isError={
               formik.touched.status && formik.errors.status ? true : false
             }
           />
-          {/* <div className="flex gap-4 mb-2">
-            <label htmlFor="best_seller" className="min-w-28 lg:w-52">
-              best_seller:
-            </label>
-            <select
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="best_seller"
-              name="best_seller"
-              value={menu.best_seller}
-              onChange={handleChange}
-            >
-              <option value="" disabled>{`${
-                slug == "create" ? "Is this a best seller?" : menu.best_seller
-              }`}</option>
-              <option>true</option>
-              <option>false</option>
-            </select>
-          </div> */}
+
           <Select
-            label="Best_seller :"
+            label="Best seller :"
             id="best_seller"
             name="best_seller"
             value={formik.values.best_seller}
@@ -436,7 +377,7 @@ export default function AddMenu({ params }) {
                 {value}
               </option>
             ))}
-            placeholder={"is the product available?"}
+            placeholder={"Is the product available?"}
             onChange={handleChange}
             errorMessage={formik.errors.best_seller}
             isError={
@@ -449,7 +390,7 @@ export default function AddMenu({ params }) {
             <Input
               label="Photo :"
               id="photo"
-              placeholder="photo"
+              placeholder="Photo"
               name="photo"
               type="file"
               inputBorder="w-52"

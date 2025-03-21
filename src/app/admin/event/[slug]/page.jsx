@@ -219,7 +219,7 @@ export default function AddEvent({ params }) {
 
   return (
     <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage event</h2>
+      <h2 className="text-xl font-nunito">Manage Event</h2>
       {isLoading ? (
         <EditDataSkeleton />
       ) : (
@@ -238,7 +238,7 @@ export default function AddEvent({ params }) {
                   {value.outlet_name}
                 </option>
               ))}
-              placeholder={"Select Outlet Name"}
+              placeholder={"Select outlet name"}
               onChange={handleChange}
               errorMessage={formik.errors.id_outlet}
               isError={
@@ -252,7 +252,7 @@ export default function AddEvent({ params }) {
           <Input
             label="Title :"
             id="title"
-            placeholder="title"
+            placeholder="Title"
             name="title"
             type="text"
             value={formik.values.title}
@@ -264,7 +264,7 @@ export default function AddEvent({ params }) {
           <Input
             label="Descriptions :"
             id="descriptions"
-            placeholder="descriptions"
+            placeholder="Descriptions"
             name="descriptions"
             type="text"
             value={formik.values.descriptions}
@@ -278,9 +278,6 @@ export default function AddEvent({ params }) {
           />
 
           <div className="flex gap-4 mb-2">
-            <label htmlFor="image" className="min-w-28 lg:w-52">
-              image:
-            </label>
             <Input
               label="Image :"
               id="image"

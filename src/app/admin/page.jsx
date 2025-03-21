@@ -9,6 +9,7 @@ import { getNewAccessToken } from "../component/token/refreshToken";
 import { IoEyeOutline, IoEyeOffOutline, IoCaretForward } from "react-icons/io5";
 import { HiMiniPencilSquare } from "react-icons/hi2";
 import { useFormik } from "formik";
+import { Toaster, toast } from "react-hot-toast";
 import * as yup from "yup";
 import Input from "../component/form/input";
 import { Collapse } from "react-collapse";
@@ -129,7 +130,7 @@ export default function AddProfile({ params }) {
         }
       );
 
-      alert("Data berhasil diperbarui!");
+      toast.success("update successfully!");
       setLoadingButton(false);
       router.push(`/admin`);
     } catch (error) {
@@ -214,14 +215,17 @@ export default function AddProfile({ params }) {
 
   return (
     <div className="p-8 pt-24 w-full">
+      <Toaster position="top-center" reverseOrder={false} />
       <h2 className="text-xl font-nunito text-center">Manage profile</h2>
       <div
         onClick={() => setCollapseProfile(!collapseProfile)}
-        className="flex w-ful border-2 justify-center items-center relative cursor-pointer"
+        className="flex relative w-full justify-center bg-yellow-700   items-center px-4 py-2 border border-gray-300 rounded-t-md shadow-sm cursor-pointer  hover:bg-yellow-800 transition-all duration-300"
       >
-        <h1>Profile</h1>
+        <h1 className="font-nunitoSans text-base text-white  ">Profile</h1>
         <IoCaretForward
-          className={`${collapseProfile ? "rotate-90" : ""} absolute right-1`}
+          className={`text-white transition-transform duration-300 absolute right-1 ${
+            collapseProfile ? "rotate-90" : ""
+          }`}
         />
       </div>
       <Collapse isOpened={collapseProfile}>
@@ -351,13 +355,16 @@ export default function AddProfile({ params }) {
 
       <div
         onClick={() => setCollapsePassword(!collapsePassword)}
-        className="flex w-ful border-2 justify-center items-center relative cursor-pointer mt-5"
+        className="flex relative w-full justify-center bg-yellow-700  mt-5 items-center px-4 py-2 border border-gray-300 rounded-t-md shadow-sm cursor-pointer  hover:bg-yellow-800 transition-all duration-300"
       >
-        <h1>Password</h1>
+        <h1 className="font-nunitoSans text-base text-white">Password</h1>
         <IoCaretForward
-          className={`${collapsePassword ? "rotate-90" : ""} absolute right-1`}
+          className={`text-white transition-transform duration-300 absolute right-1 ${
+            collapsePassword ? "rotate-90" : ""
+          }`}
         />
       </div>
+
       <Collapse isOpened={collapsePassword}>
         {isLoading ? (
           <EditDataSkeleton />

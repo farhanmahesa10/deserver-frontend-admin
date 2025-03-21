@@ -58,8 +58,6 @@ const Pagination = ({
     return pageNumbers;
   };
 
-  console.log(totalPages);
-
   return (
     <nav className="mt-5">
       {isLoading ? (

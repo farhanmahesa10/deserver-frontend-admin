@@ -185,7 +185,7 @@ export default function AddCategory({ params }) {
 
   return (
     <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage category</h2>
+      <h2 className="text-xl font-nunito">Manage Category</h2>
       {isLoading ? (
         <EditDataSkeleton />
       ) : (
@@ -218,7 +218,7 @@ export default function AddCategory({ params }) {
           <Input
             label="Type :"
             id="type"
-            placeholder="type"
+            placeholder="Type"
             name="type"
             type="text"
             value={formik.values.type}
@@ -229,7 +229,7 @@ export default function AddCategory({ params }) {
           <Input
             label="Descriptions :"
             id="descriptions"
-            placeholder="descriptions"
+            placeholder="Descriptions"
             name="descriptions"
             type="text"
             value={formik.values.descriptions}
