@@ -13,6 +13,7 @@ import { handleApiError } from "@/app/component/handleError/handleError";
 import { Toaster, toast } from "react-hot-toast";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
+import Table from "@/app/component/table/table";
 
 export default function Category() {
   const [category, setCategory] = useState([]);
@@ -27,7 +28,7 @@ export default function Category() {
   //use state untuk pagination
   const [rows, setRows] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5); // 5 item per halaman
+  const [itemsPerPage] = useState(10); // 5 item per halaman
   const targetRef = useRef(null);
 
   // Menghitung indeks awal dan akhir untuk menampilkan nomber
@@ -187,6 +188,48 @@ export default function Category() {
     );
   };
 
+  const columns = [
+    {
+      id: "No",
+      header: "No",
+      cell: ({ row }) => indexOfFirstItem + row.index + 1,
+    },
+    {
+      header: "Outlet Name",
+      accessorKey: "Outlet.outlet_name",
+      cell: ({ row, getValue }) => highlightText(getValue(), query),
+    },
+    {
+      header: "Type",
+      accessorKey: "type",
+    },
+    {
+      header: "Descriptions",
+      accessorKey: "descriptions",
+    },
+    {
+      header: "Action",
+      id: "Action",
+      cell: ({ row }) => (
+        <div className="flex justify-center gap-2">
+          <a
+            href={`/admin/category/edit?id=${row.original.id}`}
+            onClick={() => localStorage.setItem("id_category", row.original.id)}
+            className="text-sm text-white p-1 rounded-sm bg-blue-500"
+          >
+            <AiFillEdit />
+          </a>
+          <button
+            className="text-sm text-white p-1 rounded-sm bg-red-500"
+            onClick={() => confirmRemove(row.original.id)}
+          >
+            <IoTrash />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div
       ref={targetRef}
@@ -216,67 +259,7 @@ export default function Category() {
         {isLoading ? (
           <TableSkeleton />
         ) : (
-          <table className="min-w-full border-collapse border border-gray-200">
-            <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans text-white">
-              <tr>
-                <th className="px-4 py-3 ">No</th>
-                <th className="px-4 py-3">Outlet Name</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">Descriptions</th>
-                <th className="px-4 py-3 text-center">Action</th>
-              </tr>
-            </thead>
-
-            <tbody className="text-gray-700 font-nunitoSans">
-              {isLoading ? null : searchQuery.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center">
-                    <NotData />
-                  </td>
-                </tr>
-              ) : (
-                searchQuery.map((item, index) => {
-                  const number = index + 1;
-                  const numberPaginate = indexOfFirstItem + index + 1;
-
-                  return (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-gray-100 transition-all duration-300 border-b-2"
-                    >
-                      <td className="px-4 py-3 text-center">
-                        {role !== "admin" ? number : numberPaginate}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {highlightText(item.Outlet.outlet_name, query)}
-                      </td>
-                      <td className="px-4 py-3 text-center">{item.type}</td>
-                      <td className="px-4 py-3 text-center">
-                        {item.descriptions}
-                      </td>
-                      <td className="px-4 py-3 flex justify-center gap-2 text-center">
-                        <a
-                          href={`/admin/category/edit?id=${item.id}`}
-                          onClick={() =>
-                            localStorage.setItem("id_category", item.id)
-                          }
-                          className="text-sm text-white p-1 rounded-sm bg-blue-500"
-                        >
-                          <AiFillEdit />
-                        </a>
-                        <button
-                          className="text-sm text-white p-1 rounded-sm bg-red-500"
-                          onClick={() => confirmRemove(item.id)}
-                        >
-                          <IoTrash />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+          <Table data={searchQuery} columns={columns} />
         )}
       </div>
 

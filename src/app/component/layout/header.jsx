@@ -3,17 +3,24 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { IoExit, IoPersonCircle } from "react-icons/io5";
+import Link from "next/link";
+import HanldeRemove from "../handleRemove/handleRemove";
 
 export default function Header({ isOpen, onClickHeader }) {
   const router = useRouter();
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [dataToRemove, setDataToRemove] = useState(null);
+
+  const confirmRemove = () => {
+    setDataToRemove();
+    setShowConfirmModal(true);
+  };
 
   const handleLogout = () => {
     localStorage.clear();
     router.push("/login");
   };
-  const handleProfile = () => {
-    router.push("/admin");
-  };
+
   return (
     <header className="fixed top-0 left-0 w-full h-20 flex items-center z-10 shadow-md bg-white">
       <div className="container flex justify-between items-center">
@@ -25,14 +32,14 @@ export default function Header({ isOpen, onClickHeader }) {
           />
         </div>
         <div className="flex gap-5  mr-16 lg:mr-0">
-          <button
-            onClick={handleProfile}
+          <Link
+            href={"/admin"}
             className="flex gap-2 items-center cursor-pointer rounded-xl h-8  "
           >
             <IoPersonCircle className="w-8 h-8 transition-all duration-300 hover:scale-110 hover:text-yellow-700" />
-          </button>
+          </Link>
           <button
-            onClick={handleLogout}
+            onClick={() => confirmRemove()}
             className="flex gap-2 items-center cursor-pointer rounded-md h-8 px-4 shadow-inner border border-lightgray bg-white 
              hover:bg-yellow-700 hover:text-white hover:shadow-md transition-all duration-300 hover:scale-105"
           >
@@ -54,6 +61,16 @@ export default function Header({ isOpen, onClickHeader }) {
           <span className="hamburger-line transition duration-300 ease-in-out bg-black origin-bottom-left"></span>
         </button>
       </div>
+
+      {/* modal konfirmasi delete */}
+      {showConfirmModal && (
+        <HanldeRemove
+          handleRemove={handleLogout}
+          setShowConfirmModal={() => setShowConfirmModal(false)}
+          text={"keluar"}
+          konfirmasi={"Apakah kamu yakin ingin keluar?"}
+        />
+      )}
     </header>
   );
 }

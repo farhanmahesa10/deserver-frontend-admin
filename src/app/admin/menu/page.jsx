@@ -15,6 +15,7 @@ import { handleApiError } from "@/app/component/handleError/handleError";
 import { Toaster, toast } from "react-hot-toast";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
+import Table from "@/app/component/table/table";
 
 export default function Menu() {
   const [menu, setMenu] = useState([]);
@@ -218,7 +219,7 @@ export default function Menu() {
 
       if (response.status === 200) {
         if (role) {
-          await fetchData();
+          await fetchDataPaginated();
         }
         setIsLoading(false);
       }
@@ -259,7 +260,7 @@ export default function Menu() {
 
       if (response.status === 200) {
         if (role) {
-          await fetchData();
+          await fetchDataPaginated();
         }
         setIsLoading(false);
       }
@@ -290,6 +291,113 @@ export default function Menu() {
       )
     );
   };
+
+  const columns = [
+    {
+      id: "No",
+      header: "No",
+      cell: ({ row }) => indexOfFirstItem + row.index + 1,
+    },
+    {
+      header: "Outlet Name",
+      accessorFn: (row) => row.SubCategory.Category.Outlet.outlet_name,
+      cell: ({ getValue }) => highlightText(getValue(), query),
+    },
+    {
+      header: "Sub Category Name",
+      accessorFn: (row) => row.SubCategory.title,
+    },
+    {
+      header: "Title",
+      accessorKey: "title",
+      cell: ({ getValue }) => highlightText(getValue(), queryMenu),
+    },
+    {
+      header: "Price",
+      accessorKey: "price",
+    },
+    {
+      header: "Detail",
+      accessorKey: "details",
+    },
+    {
+      header: "Photo",
+      id: "photo",
+      cell: ({ row }) => {
+        const imageUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/${row.original.photo}`;
+        return (
+          <img
+            src={row.original.photo ? imageUrl : "-"}
+            alt="Menu Photo"
+            className="w-12 h-12 rounded-md shadow-md cursor-pointer mx-auto"
+            onClick={() => handleImageClick(imageUrl)}
+          />
+        );
+      },
+    },
+    {
+      header: "Stok",
+      id: "stok",
+      cell: ({ row }) => {
+        const { id, status } = row.original;
+        return (
+          <button
+            className="bg-yellow-700 text-white rounded-lg p-2"
+            onClick={() =>
+              handleUpdateStok(id, status === "ready" ? "soldOut" : "Ready")
+            }
+          >
+            {status}
+          </button>
+        );
+      },
+    },
+    {
+      header: "Best Seller",
+      id: "bestSeller",
+      cell: ({ row }) => {
+        const { id, best_seller } = row.original;
+        return (
+          <button
+            className="bg-yellow-700 text-white rounded-lg p-2"
+            onClick={() => handleUpdate(id, !best_seller)}
+          >
+            {best_seller ? "true" : "false"}
+          </button>
+        );
+      },
+    },
+    {
+      header: "Action",
+      id: "action",
+      cell: ({ row }) => {
+        const { id, SubCategory } = row.original;
+        return (
+          <div className="flex justify-center gap-2">
+            <a
+              href={`/admin/menu/edit?id=${id}`}
+              onClick={() => {
+                localStorage.setItem("id_menu", id);
+                localStorage.setItem(
+                  "outlet_name",
+                  SubCategory.Category.Outlet.outlet_name
+                );
+              }}
+              className="text-sm text-white p-1 rounded-sm bg-blue-500"
+            >
+              <AiFillEdit />
+            </a>
+            <button
+              className="text-sm text-white p-1 rounded-sm bg-red-500"
+              onClick={() => confirmRemove(id)}
+            >
+              <IoTrash />
+            </button>
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <div
@@ -326,115 +434,7 @@ export default function Menu() {
         {isLoading ? (
           <TableSkeleton />
         ) : (
-          <table className="min-w-full border-collapse border border-gray-200">
-            <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans text-white">
-              <tr>
-                <th className="px-4 py-3 ">No</th>
-                <th className="px-4 py-3 ">Outlet Name</th>
-                <th className="px-4 py-3">Sub Kategory Name</th>
-                <th className="px-4 py-3">Title</th>
-                <th className="px-4 py-3">Price</th>
-                <th className="px-4 py-3">Detail</th>
-                <th className="px-4 py-3">Photo</th>
-                <th className="px-4 py-3">Stok</th>
-                <th className="px-4 py-3">Best Seller</th>
-                <th className="px-4 py-3 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="text-gray-700 font-nunitoSans">
-              {isLoading ? null : searchQuery.length === 0 ? (
-                <tr>
-                  <td colSpan={10} className="px-4 py-6 text-center">
-                    <NotData />
-                  </td>
-                </tr>
-              ) : (
-                searchQuery.map((item, index) => {
-                  const number = indexOfFirstItem + index + 1;
-                  const imageUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/${item.photo}`;
-                  return (
-                    <tr
-                      key={number}
-                      className="hover:bg-gray-100 transition-all duration-300 border-b-2"
-                    >
-                      <td className="px-4 py-3 text-center">{number}</td>
-                      <td className="px-4 py-3 text-center">
-                        {highlightText(
-                          item.SubCategory.Category.Outlet.outlet_name,
-                          query
-                        )}
-                      </td>
-                      <td className="px-4 py-3">{item.SubCategory.title}</td>
-                      <td className="px-4 py-3">
-                        {highlightText(item.title, queryMenu)}
-                      </td>
-                      <td className="px-4 py-3">{item.price}</td>
-                      <td className="px-4 py-3">{item.details}</td>
-
-                      <td className="px-4 py-3 ">
-                        <img
-                          src={item.photo ? imageUrl : "-"}
-                          alt="Bukti Pembayaran"
-                          className="w-12 h-12 rounded-md shadow-md cursor-pointer mx-auto"
-                          onClick={() => handleImageClick(imageUrl)}
-                        />
-                      </td>
-
-                      <td className="px-4 py-3">
-                        {" "}
-                        <button
-                          className="bg-yellow-700 text-white rounded-lg p-2"
-                          onClick={() =>
-                            handleUpdateStok(
-                              item.id,
-                              item.status === "ready" ? "soldOut" : "ready"
-                            )
-                          }
-                        >
-                          {item.status}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3">
-                        {" "}
-                        <button
-                          className="bg-yellow-700 text-white rounded-lg p-2"
-                          onClick={() =>
-                            handleUpdate(
-                              item.id,
-                              item.best_seller === true ? false : true
-                            )
-                          }
-                        >
-                          {item.best_seller === true ? "true" : "false"}
-                        </button>
-                      </td>
-                      <td className="px-4 py-3 flex justify-center gap-2 text-center">
-                        <a
-                          href={`/admin/menu/edit?id=${item.id}`}
-                          onClick={() => {
-                            localStorage.setItem("id_menu", item.id);
-                            localStorage.setItem(
-                              "outlet_name",
-                              item.SubCategory.Category.Outlet.outlet_name
-                            );
-                          }}
-                          className="text-sm text-white p-1 rounded-sm bg-blue-500"
-                        >
-                          <AiFillEdit />
-                        </a>
-                        <button
-                          className="text-sm text-white p-1 rounded-sm bg-red-500"
-                          onClick={() => confirmRemove(item.id)}
-                        >
-                          <IoTrash />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+          <Table data={searchQuery} columns={columns} />
         )}
         {/* Modal */}
         {isModalOpen && (

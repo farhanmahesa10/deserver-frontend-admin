@@ -14,6 +14,7 @@ import { handleApiError } from "@/app/component/handleError/handleError";
 import { Toaster, toast } from "react-hot-toast";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
+import Table from "@/app/component/table/table";
 
 export default function subCategory() {
   const [subCategory, setSubCategory] = useState([]);
@@ -193,6 +194,58 @@ export default function subCategory() {
     setShowConfirmModal(true);
   };
 
+  const columns = [
+    {
+      id: "No",
+      header: "No",
+      cell: ({ row }) =>
+        role !== "admin" ? row.index + 1 : indexOfFirstItem + row.index + 1,
+    },
+    {
+      header: "Outlet Name",
+      accessorFn: (row) => row.Category.Outlet.outlet_name,
+      cell: ({ getValue }) => highlightText(getValue(), query),
+    },
+    {
+      header: "Category Name",
+      accessorFn: (row) => row.Category.type,
+    },
+    {
+      header: "Title",
+      accessorKey: "title",
+    },
+    {
+      header: "Action",
+      id: "Action",
+      cell: ({ row }) => {
+        const { id, Category } = row.original;
+        return (
+          <div className="flex justify-center gap-2">
+            <a
+              href={`/admin/subCategory/edit?id=${id}`}
+              onClick={() => {
+                localStorage.setItem("id_subCategory", id);
+                localStorage.setItem(
+                  "outlet_name",
+                  Category.Outlet.outlet_name
+                );
+              }}
+              className="text-sm text-white p-1 rounded-sm bg-blue-500"
+            >
+              <AiFillEdit />
+            </a>
+            <button
+              className="text-sm text-white p-1 rounded-sm bg-red-500"
+              onClick={() => confirmRemove(id)}
+            >
+              <IoTrash />
+            </button>
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <div
       ref={targetRef}
@@ -221,70 +274,7 @@ export default function subCategory() {
         {isLoading ? (
           <TableSkeleton />
         ) : (
-          <table className="min-w-full border-collapse border border-gray-200">
-            <thead className="bg-yellow-700  body-text-sm-bold font-nunitoSans text-white">
-              <tr>
-                <th className="px-4 py-3 ">No</th>
-                <th className="px-4 py-3 ">Outlet Name</th>
-                <th className="px-4 py-3">Category Name</th>
-                <th className="px-4 py-3">Title</th>
-                <th className="px-4 py-3 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="text-gray-700 font-nunitoSans">
-              {isLoading ? null : searchQuery.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center">
-                    <NotData />
-                  </td>
-                </tr>
-              ) : (
-                searchQuery.map((item, index) => {
-                  const number = index + 1;
-                  const numberPaginate = indexOfFirstItem + index + 1;
-                  return (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-gray-100 transition-all duration-300 border-b-2"
-                    >
-                      <td className="px-4 py-3 text-center">
-                        {" "}
-                        {role !== "admin" ? number : numberPaginate}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {highlightText(item.Category.Outlet.outlet_name, query)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {item.Category.type}
-                      </td>
-                      <td className="px-4 py-3 text-center">{item.title}</td>
-                      <td className="px-4 py-3 flex justify-center gap-2 text-center">
-                        <a
-                          href={`/admin/subCategory/edit?id=${item.id}`}
-                          onClick={() => {
-                            localStorage.setItem("id_subCategory", item.id);
-                            localStorage.setItem(
-                              "outlet_name",
-                              item.Category.Outlet.outlet_name
-                            );
-                          }}
-                          className="text-sm text-white p-1 rounded-sm bg-blue-500"
-                        >
-                          <AiFillEdit />
-                        </a>
-                        <button
-                          className="text-sm text-white p-1 rounded-sm bg-red-500"
-                          onClick={() => confirmRemove(item.id)}
-                        >
-                          <IoTrash />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+          <Table data={searchQuery} columns={columns} />
         )}
         {/* Modal */}
         {isModalOpen && (

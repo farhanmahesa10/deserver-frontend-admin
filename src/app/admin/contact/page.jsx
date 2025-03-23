@@ -14,6 +14,7 @@ import { NotData } from "@/app/component/notData/notData";
 import { Toaster, toast } from "react-hot-toast";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
+import Table from "@/app/component/table/table";
 
 export default function Lapangan() {
   const [contact, setContact] = useState([]);
@@ -200,6 +201,68 @@ export default function Lapangan() {
     setShowConfirmModal(true);
   };
 
+  const columns = [
+    {
+      id: "No",
+      header: "No",
+      cell: ({ row }) =>
+        role !== "admin" ? row.index + 1 : indexOfFirstItem + row.index + 1,
+    },
+    {
+      header: "Outlet Name",
+      accessorKey: "Outlet.outlet_name",
+      cell: ({ getValue }) => highlightText(getValue(), query),
+    },
+    {
+      header: "Contact Name",
+      accessorKey: "contact_name",
+    },
+    {
+      header: "Value",
+      accessorKey: "value",
+    },
+    {
+      header: "Link",
+      accessorKey: "link",
+    },
+    {
+      header: "Logo",
+      id: "Logo",
+      cell: ({ row }) => {
+        const imageUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/${row.original.logo}`;
+        return (
+          <img
+            src={row.original.logo ? imageUrl : "-"}
+            alt="Logo"
+            className="w-12 h-12 rounded-md shadow-md cursor-pointer mx-auto"
+            onClick={() => handleImageClick(imageUrl)}
+          />
+        );
+      },
+    },
+    {
+      header: "Action",
+      id: "Action",
+      cell: ({ row }) => (
+        <div className="flex justify-center gap-2">
+          <a
+            href={`/admin/contact/edit?id=${row.original.id}`}
+            onClick={() => localStorage.setItem("id_contact", row.original.id)}
+            className="text-sm text-white p-1 rounded-sm bg-blue-500"
+          >
+            <AiFillEdit />
+          </a>
+          <button
+            className="text-sm text-white p-1 rounded-sm bg-red-500"
+            onClick={() => confirmRemove(row.original.id)}
+          >
+            <IoTrash />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div
       ref={targetRef}
@@ -230,79 +293,7 @@ export default function Lapangan() {
         {isLoading ? (
           <TableSkeleton />
         ) : (
-          <table className="min-w-full border-collapse border border-gray-200">
-            <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans text-white">
-              <tr>
-                <th className="px-4 py-3 ">No</th>
-                <th className="px-4 py-3">Outlet Name</th>
-                <th className="px-4 py-3">Contact Name</th>
-                <th className="px-4 py-3">Value</th>
-                <th className="px-4 py-3">Link</th>
-                <th className="px-4 py-3">Logo</th>
-                <th className="px-4 py-3 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="text-gray-700 font-nunitoSans">
-              {isLoading ? null : searchQuery.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center">
-                    <NotData />
-                  </td>
-                </tr>
-              ) : (
-                searchQuery.map((item, index) => {
-                  const number = index + 1;
-                  const numberPaginate = indexOfFirstItem + index + 1;
-                  const imageUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/${item.logo}`;
-                  return (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-gray-100 transition-all duration-300 border-b-2"
-                    >
-                      <td className="px-4 py-3 text-center">
-                        {" "}
-                        {role !== "admin" ? number : numberPaginate}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {highlightText(item.Outlet.outlet_name, query)}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {item.contact_name}
-                      </td>
-                      <td className="px-4 py-3 text-center">{item.value}</td>
-                      <td className="px-4 py-3 text-center">{item.link}</td>
-
-                      <td className="px-4 py-3">
-                        <img
-                          src={item.logo ? imageUrl : "-"}
-                          alt="Bukti Pembayaran"
-                          className="w-12 h-12 rounded-md shadow-md cursor-pointer mx-auto"
-                          onClick={() => handleImageClick(imageUrl)}
-                        />
-                      </td>
-                      <td className="px-4 py-3 flex justify-center gap-2 ">
-                        <a
-                          href={`/admin/contact/edit?id=${item.id}`}
-                          onClick={() =>
-                            localStorage.setItem("id_contact", item.id)
-                          }
-                          className="text-sm text-white p-1 rounded-sm bg-blue-500"
-                        >
-                          <AiFillEdit />
-                        </a>
-                        <button
-                          className="text-sm text-white p-1 rounded-sm bg-red-500"
-                          onClick={() => confirmRemove(item.id)}
-                        >
-                          <IoTrash />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+          <Table data={searchQuery} columns={columns} />
         )}
         {/* Modal */}
         {isModalOpen && (

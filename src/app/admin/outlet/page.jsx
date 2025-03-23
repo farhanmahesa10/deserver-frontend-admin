@@ -14,6 +14,7 @@ import { NotData } from "@/app/component/notData/notData";
 import { handleApiError } from "@/app/component/handleError/handleError";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
+import Table from "@/app/component/table/table";
 
 export default function AdminOutlet() {
   const [outlet, setOutlet] = useState([]);
@@ -202,6 +203,71 @@ export default function AdminOutlet() {
     setShowConfirmModal(true);
   };
 
+  const columns = [
+    {
+      id: "No",
+      header: "No",
+      cell: ({ row }) => indexOfFirstItem + row.index + 1,
+    },
+    {
+      header: "Outlet Name",
+      accessorKey: "outlet_name",
+      cell: ({ getValue }) => highlightText(getValue(), query),
+    },
+    {
+      header: "Email",
+      accessorKey: "email",
+    },
+    {
+      header: "Role",
+      accessorKey: "role",
+    },
+    {
+      header: "History",
+      accessorKey: "history",
+    },
+    {
+      header: "Address",
+      accessorKey: "address",
+    },
+    {
+      header: "Logo",
+      id: "Logo",
+      cell: ({ row }) => {
+        const imageUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/${row.original.logo}`;
+        return (
+          <img
+            src={row.original.logo ? imageUrl : "-"}
+            alt="Logo"
+            className="w-12 h-12 rounded-md shadow-md cursor-pointer mx-auto"
+            onClick={() => handleImageClick(imageUrl)}
+          />
+        );
+      },
+    },
+    {
+      header: "Action",
+      id: "Action",
+      cell: ({ row }) => (
+        <div className="flex justify-center gap-2">
+          <a
+            href={`/admin/outlet/edit?id=${row.original.id}`}
+            onClick={() => localStorage.setItem("id_outlet", row.original.id)}
+            className="text-sm text-white p-1 rounded-sm bg-blue-500"
+          >
+            <AiFillEdit />
+          </a>
+          <button
+            className="text-sm text-white p-1 rounded-sm bg-red-500"
+            onClick={() => confirmRemove(row.original.id)}
+          >
+            <IoTrash />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div
       ref={targetRef}
@@ -232,76 +298,7 @@ export default function AdminOutlet() {
           {isLoading ? (
             <TableSkeleton />
           ) : (
-            <table className="min-w-full border-collapse border border-gray-200">
-              <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans text-white">
-                <tr>
-                  <th className="px-4 py-3">No</th>
-                  <th className="px-4 py-3">Outlet Name</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Role</th>
-                  <th className="px-4 py-3">History</th>
-                  <th className="px-4 py-3">Address</th>
-                  <th className="px-4 py-3">Logo</th>
-                  <th className="px-4 py-3">Action</th>
-                </tr>
-              </thead>
-              <tbody className="text-gray-700 font-nunitoSans">
-                {isLoading ? null : searchQuery.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-6 text-center">
-                      <NotData />
-                    </td>
-                  </tr>
-                ) : (
-                  searchQuery.map((item, index) => {
-                    const number = indexOfFirstItem + index + 1;
-                    const imageUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/${item.logo}`;
-
-                    return (
-                      <tr
-                        key={number}
-                        className="hover:bg-gray-100 transition-all duration-300 border-b-2"
-                      >
-                        <td className="px-4 py-3 text-center">{number}</td>
-                        <td className="px-4 py-3">
-                          {highlightText(item.outlet_name, query)}
-                        </td>
-                        <td className="px-4 py-3 ">{item.email}</td>
-                        <td className="px-4 py-3">{item.role}</td>
-                        <td className="px-4 py-3">{item.history}</td>
-                        <td className="px-4 py-3">{item.address}</td>
-                        <td className="px-4 py-3 ">
-                          <img
-                            src={item.logo ? imageUrl : "-"}
-                            alt="Bukti Pembayaran"
-                            className="w-12 h-12 rounded-md shadow-md cursor-pointer mx-auto"
-                            onClick={() => handleImageClick(imageUrl)}
-                          />
-                        </td>
-
-                        <td className="px-4 py-3 flex justify-center gap-2 text-center">
-                          <a
-                            href={`/admin/outlet/edit?id=${item.id}`}
-                            onClick={() =>
-                              localStorage.setItem("id_outlet", item.id)
-                            }
-                            className="text-sm text-white p-1 rounded-sm bg-blue-500"
-                          >
-                            <AiFillEdit />
-                          </a>
-                          <button
-                            className="text-sm text-white p-1 rounded-sm bg-red-500"
-                            onClick={() => confirmRemove(item.id)}
-                          >
-                            <IoTrash />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+            <Table data={searchQuery} columns={columns} />
           )}
         </div>
 

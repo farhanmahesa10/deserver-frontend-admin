@@ -16,6 +16,7 @@ import { handleApiError } from "@/app/component/handleError/handleError";
 import { Toaster, toast } from "react-hot-toast";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
+import Table from "@/app/component/table/table";
 
 export default function Event() {
   const [event, setEvent] = useState([]);
@@ -202,6 +203,64 @@ export default function Event() {
     setIsModalOpen(true); // Membuka modal
   };
 
+  const columns = [
+    {
+      id: "No",
+      header: "No",
+      cell: ({ row }) =>
+        role !== "admin" ? row.index + 1 : indexOfFirstItem + row.index + 1,
+    },
+    {
+      header: "Outlet Name",
+      accessorKey: "Outlet.outlet_name",
+      cell: ({ getValue }) => highlightText(getValue(), query),
+    },
+    {
+      header: "Title",
+      accessorKey: "title",
+    },
+    {
+      header: "Description",
+      accessorKey: "descriptions",
+    },
+    {
+      header: "Image",
+      id: "Image",
+      cell: ({ row }) => {
+        const imageUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/${row.original.image}`;
+        return (
+          <img
+            src={row.original.image ? imageUrl : "-"}
+            alt="Event Image"
+            className="w-12 h-12 rounded-md shadow-md cursor-pointer mx-auto"
+            onClick={() => handleImageClick(imageUrl)}
+          />
+        );
+      },
+    },
+    {
+      header: "Action",
+      id: "Action",
+      cell: ({ row }) => (
+        <div className="flex justify-center gap-2">
+          <a
+            href={`/admin/event/edit?id=${row.original.id}`}
+            onClick={() => localStorage.setItem("id_event", row.original.id)}
+            className="text-sm text-white p-1 rounded-sm bg-blue-500"
+          >
+            <AiFillEdit />
+          </a>
+          <button
+            className="text-sm text-white p-1 rounded-sm bg-red-500"
+            onClick={() => confirmRemove(row.original.id)}
+          >
+            <IoTrash />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div
       ref={targetRef}
@@ -232,77 +291,7 @@ export default function Event() {
         {isLoading ? (
           <TableSkeleton />
         ) : (
-          <table className="min-w-full border-collapse border border-gray-200">
-            <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans text-white">
-              <tr>
-                <th className="px-4 py-3 ">No</th>
-                <th className="px-4 py-3">Outlet Name</th>
-                <th className="px-4 py-3">Title</th>
-                <th className="px-4 py-3">Description</th>
-                <th className="px-4 py-3">Image</th>
-                <th className="px-4 py-3 text-center">Action</th>
-              </tr>
-            </thead>
-            <tbody className="text-gray-700 font-nunitoSans">
-              {isLoading ? null : searchQuery.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center">
-                    <NotData />
-                  </td>
-                </tr>
-              ) : (
-                searchQuery.map((item, index) => {
-                  const number = index + 1;
-                  const numberPaginate = indexOfFirstItem + index + 1;
-                  const imageUrl = `${process.env.NEXT_PUBLIC_IMAGE_URL}/${item.image}`;
-
-                  return (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-gray-100 transition-all duration-300 border-b-2"
-                    >
-                      <td className="px-4 py-3 text-center">
-                        {role !== "admin" ? number : numberPaginate}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        {highlightText(item.Outlet.outlet_name, query)}
-                      </td>
-                      <td className="px-4 py-3 text-center">{item.title}</td>
-                      <td className="px-4 py-3 text-center">
-                        {item.descriptions}
-                      </td>
-                      <td className="px-4 py-3">
-                        <img
-                          src={item.image ? imageUrl : "-"}
-                          alt="Bukti Pembayaran"
-                          className="w-12 h-12 rounded-md shadow-md cursor-pointer mx-auto"
-                          onClick={() => handleImageClick(imageUrl)}
-                        />
-                      </td>
-
-                      <td className="px-4 py-3 flex justify-center gap-2 text-center">
-                        <a
-                          href={`/admin/event/edit?id=${item.id}`}
-                          onClick={() =>
-                            localStorage.setItem("id_event", item.id)
-                          }
-                          className="text-sm text-white p-1 rounded-sm bg-blue-500"
-                        >
-                          <AiFillEdit />
-                        </a>
-                        <button
-                          className="text-sm text-white p-1 rounded-sm bg-red-500"
-                          onClick={() => confirmRemove(item.id)}
-                        >
-                          <IoTrash />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+          <Table data={searchQuery} columns={columns} />
         )}
         {/* Modal */}
         {isModalOpen && (

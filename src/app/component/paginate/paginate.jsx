@@ -12,6 +12,8 @@ const Pagination = ({
 }) => {
   const totalPages = Math.ceil(rows / itemsPerPage);
 
+  if (totalPages <= 1) return null;
+
   const handleKurang = () => {
     if (currentPage > 1) {
       paginate(currentPage - 1);
@@ -69,7 +71,7 @@ const Pagination = ({
               onClick={handleKurang}
               className={`${
                 currentPage === 1 ? "hidden" : ""
-              } p-1 w-8 h-8 border rounded bg-gray-200 hover:bg-gray-300`}
+              } p-1 w-7 h-7 border rounded bg-gray-200 hover:bg-gray-300`}
             >
               <img src="/img/arah.png" alt="person" className="w-full h-full" />
             </button>
@@ -86,7 +88,7 @@ const Pagination = ({
                 currentPage === number
                   ? "bg-yellow-700 text-white"
                   : "bg-gray-200"
-              } w-8 h-8 flex items-center justify-center rounded cursor-pointer`}
+              }  w-7 h-7 text-sm flex items-center justify-center rounded cursor-pointer`}
             >
               {number}
             </li>
@@ -96,7 +98,7 @@ const Pagination = ({
               onClick={handleTambah}
               className={`${
                 currentPage === totalPages ? "hidden" : ""
-              } p-1 w-8 h-8 border rounded bg-gray-200 hover:bg-gray-300`}
+              } p-1 w-7 h-7 border rounded bg-gray-200 hover:bg-gray-300`}
             >
               <img src="/img/arah.png" alt="person" className="rotate-180" />
             </button>

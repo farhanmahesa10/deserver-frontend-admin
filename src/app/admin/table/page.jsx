@@ -168,11 +168,11 @@ export default function Table() {
           yup.object().shape({
             number_table: yup
               .number()
-              .typeError("Harus berupa angka")
-              .required("Nomor meja wajib diisi"),
+              .typeError("Must be a number")
+              .required("number table is a required"),
           })
         )
-        .min(1, "Minimal 1 meja harus ditambahkan"),
+        .min(1, "Minimum 1 table must be added"),
     }),
   });
 
@@ -220,10 +220,6 @@ export default function Table() {
     setShowConfirmModal(true);
   };
 
-  const iconEdit = () => {
-    setEdit(!edit);
-  };
-
   return (
     <div
       ref={targetRef}
@@ -231,18 +227,9 @@ export default function Table() {
     >
       <Toaster position="top-center" reverseOrder={false} />
       <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
-        table Data Settings
+        Table Data Settings
       </h1>
 
-      <form className="flex gap-2 mb-4">
-        <button
-          onClick={iconEdit}
-          type="button"
-          className={` bg-yellow-700 text-white body-text-sm-bold font-nunitoSans px-4 py-2 md:px-5 md:py-3 rounded-md shadow-md hover:bg-yellow-700 transition-all duration-300`}
-        >
-          <HiMiniPencilSquare />
-        </button>
-      </form>
       {isLoading ? (
         <TableSkeleton />
       ) : (
@@ -256,9 +243,7 @@ export default function Table() {
                 <h1 className="text-4xl font-semibold">{item.number_table}</h1>
                 <button
                   onClick={() => confirmRemove(item.id)}
-                  className={`${
-                    edit ? "hidden" : "absolute"
-                  } -top-1 right-1 text-lg text-red-500 font-bold hover:text-red-700`}
+                  className={`absolute -top-1 right-1 text-lg text-red-500 font-bold hover:text-red-700`}
                 >
                   &times;
                 </button>
@@ -271,29 +256,29 @@ export default function Table() {
               render={(arrayHelpers) => (
                 <div className="flex gap-4 flex-wrap">
                   {formik.values.table.map((friend, index) => (
-                    <div
-                      key={index}
-                      className="w-20 h-20 border-2 rounded-lg flex flex-col justify-center items-center relative bg-white shadow-sm"
-                    >
-                      <button
-                        type="button"
-                        onClick={() => arrayHelpers.remove(index)}
-                        className={`${
-                          edit ? "hidden" : "absolute"
-                        } -top-1 right-1 text-lg text-red-500 font-bold hover:text-red-700`}
+                    <div key={index} className="flex flex-col items-center">
+                      <div
+                        key={index}
+                        className={`border-gray-300 w-20 h-20 border-2 rounded-lg flex flex-col justify-center items-center relative bg-white shadow-sm`}
                       >
-                        &times;
-                      </button>
-                      <input
-                        name={`table[${index}].number_table`}
-                        value={formik.values.table[index].number_table}
-                        onChange={formik.handleChange}
-                        className={`w-full text-4xl text-center rounded-[8px] p-2 focus:outline-none`}
-                      />
+                        <button
+                          type="button"
+                          onClick={() => arrayHelpers.remove(index)}
+                          className={`absolute -top-1 right-1 text-lg text-red-500 font-bold hover:text-red-700`}
+                        >
+                          &times;
+                        </button>
+                        <input
+                          name={`table[${index}].number_table`}
+                          value={formik.values.table[index].number_table}
+                          onChange={formik.handleChange}
+                          className={`w-full text-4xl text-center rounded-[8px] p-2 focus:outline-none`}
+                        />
+                      </div>
                       {formik.touched.table?.[index]?.number_table &&
                         formik.errors.table?.[index]?.number_table && (
-                          <div className="h-6">
-                            <span className="text-sm text-red-400">
+                          <div className="">
+                            <span className="text-xs mt-10 text-red-400">
                               {formik.errors.table[index].number_table}
                             </span>
                           </div>
@@ -302,10 +287,10 @@ export default function Table() {
                   ))}
                   <button
                     type="button"
-                    className={`${
-                      edit ? "hidden" : "flex"
-                    } w-20 h-20 border-2 rounded-lg  flex-col justify-center items-center relative bg-white shadow-sm`}
-                    onClick={() => arrayHelpers.push({ number_table: "" })}
+                    className={`flex w-20 h-20 border-2 rounded-lg text-4xl  flex-col justify-center items-center relative bg-white hover:bg-gray-100 shadow-sm`}
+                    onClick={() => {
+                      arrayHelpers.push({ number_table: "" });
+                    }}
                   >
                     +
                   </button>
@@ -318,7 +303,7 @@ export default function Table() {
 
       <div
         className={`${
-          edit ? "hidden" : "flex"
+          formik.values.table[0]?.number_table == undefined ? "hidden" : "flex"
         } flex mt-5 gap-8 text-white justify-end`}
       >
         <button
@@ -330,17 +315,7 @@ export default function Table() {
         >
           {loadingButton ? "Loading..." : "Submit"}
         </button>
-        <button
-          type="button"
-          className="bg-red-500 border-red-5bg-red-500 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-          onClick={iconEdit}
-        >
-          Cancel
-        </button>
       </div>
-
-      {/* Tampilkan pesan data kosong jika tidak ada data */}
-      {isLoading === false && searchQuery.length === 0 && <NotData />}
 
       {/* modal konfirmasi delete */}
       {showConfirmModal && (
