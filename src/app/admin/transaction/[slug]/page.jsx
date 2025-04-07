@@ -4,12 +4,13 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import EditDataSkeleton from "../../adminSkeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../refreshToken";
-
-export default function AddMenu({ params }) {
-  const [transition, setTransition] = useState({
+import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
+import { getNewAccessToken } from "../../../component/token/refreshToken";
+import { Toaster, toast } from "react-hot-toast";
+export default function AddOrder({ params }) {
+  const [transaction, setTransaction] = useState({
     id_table: "",
+    by_name: "",
     status: "not yet paid",
     pays_method: "cashier",
     total_pay: "",
@@ -21,15 +22,11 @@ export default function AddMenu({ params }) {
   const [pesanan, setPesanan] = useState([]);
   const [table, setTable] = useState([]);
   const [dataMenu, setDataMenu] = useState([]);
-  const [selectedFile, setSelectedFile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
 
   const router = useRouter();
   const { slug } = React.use(params);
-
-  console.log(transition, "ini data transaksi");
-  console.log(pesanan, "ini data pesanan");
 
   // cek token
   useEffect(() => {
@@ -80,7 +77,7 @@ export default function AddMenu({ params }) {
   //         );
 
   //         const data = response.data.transactions[0];
-  //         setTransition(data);
+  //         setTransaction(data);
   //         setPesanan(data.orders);
 
   //         setIsLoading(false);
@@ -156,7 +153,7 @@ export default function AddMenu({ params }) {
 
           const data = response.data;
 
-          setDataMenu(response.data[0].categories);
+          setDataMenu(response.data[0].Categories);
         } catch (error) {
           console.error("Error fetching transaction data:", error);
         }
@@ -170,18 +167,30 @@ export default function AddMenu({ params }) {
 
   //handle chekout
   const handleSubmit = async () => {
+    if (!transaction.id_table) {
+      toast.error("please fill in the table");
+      setLoadingButton(false);
+      return;
+    }
+    if (!transaction.by_name) {
+      toast.error("please fill in the name");
+      setLoadingButton(false);
+      return;
+    }
+    setLoadingButton(true);
     try {
       const total = pesanan.reduce(
         (total, item) => total + item.qty * item.price,
         0
       );
       const dataTransaksi = {
-        id_table: transition.id_table,
+        id_table: transaction.id_table,
+        by_name: transaction.by_name,
         id_outlet: "1",
         status: "not yet paid",
         pays_method: "cashier",
         total_pay: total,
-        note: transition.note,
+        note: transaction.note,
       };
 
       const response = await axios.post(
@@ -190,7 +199,6 @@ export default function AddMenu({ params }) {
       );
 
       const transaksiId = response.data.data.id;
-      console.log(response);
 
       if (!transaksiId) {
         console.error("transaksi_id tidak tersedia");
@@ -217,6 +225,7 @@ export default function AddMenu({ params }) {
       }
     } catch (error) {
       console.log(error);
+      setLoadingButton(false);
     }
   };
 
@@ -229,7 +238,7 @@ export default function AddMenu({ params }) {
   // Handler untuk perubahan nilai input
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setTransition((transaction) => ({
+    setTransaction((transaction) => ({
       ...transaction,
       [name]: value,
     }));
@@ -272,6 +281,7 @@ export default function AddMenu({ params }) {
 
   return (
     <div className="p-8 pt-20 w-full">
+      <Toaster position="top-center" reverseOrder={false} />
       <h2 className="text-xl font-nunito">Manage menu</h2>
       {isLoading ? (
         <EditDataSkeleton />
@@ -313,12 +323,12 @@ export default function AddMenu({ params }) {
                     {item.type}
                   </h1>
 
-                  {item.subcategories.map((sub) => (
+                  {item.SubCategories.map((sub) => (
                     <div
                       key={sub.id}
                       className="mt-6 grid md:grid-cols-5 grid-cols-3  gap-2"
                     >
-                      {sub.menus.map((menu) => {
+                      {sub.Menus.map((menu) => {
                         const imageUrl = `${
                           process.env.NEXT_PUBLIC_BASE_API_URL
                         }/${encodeURIComponent(menu.photo)}`;
@@ -422,11 +432,11 @@ export default function AddMenu({ params }) {
                   className="border p-1 rounded-lg border-primary50 w-full h-8"
                   id="id_table"
                   name="id_table"
-                  value={transition.id_table}
+                  value={transaction.id_table}
                   onChange={handleChange}
                 >
                   <option value="" className="bg-primary50 " disabled>{`${
-                    slug == "create" ? "Select table Number" : transition.title
+                    slug == "create" ? "Select table Number" : transaction.title
                   }`}</option>
                   {table.map((value) => (
                     <option key={value.id} value={value.id}>
@@ -436,20 +446,35 @@ export default function AddMenu({ params }) {
                 </select>
               </div>
 
-              <div className="flex items-center">
-                <label
-                  htmlFor="note"
-                  className="body-text-sm-normal md:body-text-base-normal font-nunitoSans min-w-16 "
-                >
+              {/* nama */}
+
+              <div className="flex items-center gap-4 mb-2">
+                <label htmlFor="by_name" className="font-nunitoSans min-w-16 ">
+                  nama:
+                </label>
+                <input
+                  type="text"
+                  placeholder="By name"
+                  name="by_name"
+                  value={transaction.by_name}
+                  onChange={handleChange}
+                  className="border rounded-md p-1 w-full shadow-inner focus:outline-primary100"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center gap-4">
+                <label htmlFor="note" className=" font-nunitoSans min-w-16 ">
                   catatan
                 </label>
                 <input
                   type="text"
                   placeholder="Catatan"
                   name="note"
-                  value={transition.note}
+                  value={transaction.note}
                   onChange={handleChange}
-                  className="body-text-xs-normal md:body-text-base-normal font-poppins border-[1px] focus:outline-primary100 border-darkgray100 rounded-md  px-3 py-2 h-[20] md:h-[40px] w-full shadow-inner"
+                  className="border rounded-md p-1 w-full shadow-inner focus:outline-primary100"
+                  required
                 />
               </div>
               <div className="flex justify-between mt-5 border-t">
@@ -466,7 +491,7 @@ export default function AddMenu({ params }) {
             </div>
             <div className="flex gap-8 text-white justify-center">
               <button
-                //   type={loadingButton ? "button" : "submit"}
+                disabled={loadingButton}
                 onClick={() => handleSubmit()}
                 className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
               >

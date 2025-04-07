@@ -1,19 +1,23 @@
 "use client";
 
 import axios from "axios";
-import Pagination from "./admin/paginate";
+import Pagination from "./component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-// import Modal from "../modal";
-import AdminSkeleton from "./admin/adminSkeleton/adminSkeleton";
-import { getNewAccessToken } from "./admin/refreshToken";
+import LayoutSkeleton from "./component/skeleton/layoutSkeleton";
+import { getNewAccessToken } from "./component/token/refreshToken";
 import { Toaster, toast } from "react-hot-toast";
 import { io } from "socket.io-client";
 import { IoSearch, IoMedkit, IoTrash, IoPrint } from "react-icons/io5";
 import { AiFillEdit } from "react-icons/ai";
-
-import Layout2 from "./admin/layout2";
+import Layout2 from "./component/layout/layout2";
+import { NotData } from "./component/notData/notData";
+import {
+  IconSkeleton,
+  SearchSkeleton,
+  TableSkeleton,
+} from "./component/skeleton/adminSkeleton";
 
 export default function Transaction() {
   const [transaction, setTransaction] = useState([]);
@@ -59,7 +63,7 @@ export default function Transaction() {
             `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
           )
           .then((response) => {
-            const data = response.data;
+            const data = response.data.data;
             setOutletName(data.outlet_name);
             setRole(data.role);
             setIdOtlet(data.id);
@@ -108,7 +112,7 @@ export default function Transaction() {
         if (orderData) {
           toast.success("Successfully toasted!");
         }
-        console.log("Pesanan Baru Diterima:", orderData);
+
         setOrders((prevOrders) => [...prevOrders, orderData]); // Tambah pesanan baru ke state
       });
 
@@ -145,7 +149,7 @@ export default function Transaction() {
             }
           );
 
-          const data = response.data.transaction;
+          const data = response.data.data;
           setTransaction(data);
           setRows(response.data.totalItems);
         } catch (error) {
@@ -176,7 +180,7 @@ export default function Transaction() {
           }
         );
 
-        const data = response.data.transaction;
+        const data = response.data.data;
         setTransaction(data);
         setRows(response.data.totalItems);
       } catch (error) {
@@ -184,6 +188,8 @@ export default function Transaction() {
       }
     }
   };
+
+  console.log(searchQuery);
 
   // useEffect mengambil data lapangan by limit
   useEffect(() => {
@@ -294,17 +300,18 @@ export default function Transaction() {
   };
 
   //function format tanggal
-  const formatTanggalDenganHari = (tanggal) => {
-    if (tanggal !== null) {
-      const options = {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      };
-      return new Date(tanggal).toLocaleDateString("id-ID", options);
-    }
-  };
+  function formatTanggal(isoString) {
+    const date = new Date(isoString);
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // getMonth() dimulai dari 0
+    const year = date.getFullYear();
+
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+
+    return `${day}-${month}-${year} ${hours}:${minutes}`;
+  }
 
   //handle close modal
   const closeModal = () => {
@@ -318,35 +325,33 @@ export default function Transaction() {
     );
   };
 
-  console.log(orders);
-
   return (
     <div ref={targetRef} className="   pb-8 w-full ">
-      {isLoading ? (
-        <AdminSkeleton />
-      ) : (
-        <div className="flex container">
-          <Layout2 />
-          <div className="pt-20 pl-5 bg-white  border-l-2">
-            <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
-              Transaction Data Settings
-            </h1>
-            <Toaster position="top-center" reverseOrder={false} />
-            <div className="flex flex-wrap  items-center lg:w-full gap-4 md:gap-6 w-full mb-6">
-              <div className="flex gap-3 items-center ">
-                <input
-                  type="text"
-                  placeholder="Outlet Name. . ."
-                  id="search"
-                  className={`${
-                    role === "admin" ? "block" : "hidden"
-                  } px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[190px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm`}
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </div>
+      <div className="flex container">
+        <Layout2 />
+        <div className="pt-20 pl-5 bg-white  border-l-2">
+          <h1 className="my-2 md:my-5 font-ubuntu font-semibold text-darkgray text-lg md:text-xl">
+            Transaction Data Settings
+          </h1>
+          <Toaster position="top-center" reverseOrder={false} />
+          <div className="flex flex-wrap  items-center lg:w-full gap-4 md:gap-6 w-full mb-6">
+            <div className="flex gap-3 items-center ">
+              <input
+                type="text"
+                placeholder="Outlet Name. . ."
+                id="search"
+                className={`${
+                  role === "admin" ? "block" : "hidden"
+                } px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[190px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm`}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
 
-              <div className="flex gap-3 items-center ">
+            <div className="flex gap-3 items-center ">
+              {isLoading ? (
+                <SearchSkeleton />
+              ) : (
                 <input
                   type="text"
                   placeholder="transaction Name. . ."
@@ -355,25 +360,37 @@ export default function Transaction() {
                   value={by_name}
                   onChange={(e) => setQueryByName(e.target.value)}
                 />
+              )}
+              {isLoading ? (
+                <IconSkeleton />
+              ) : (
                 <button
                   onClick={searchData}
                   className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
                 >
                   <IoSearch />
                 </button>
-              </div>
+              )}
             </div>
-            <div className="flex mb-4">
+          </div>
+          <div className="flex mb-4">
+            {isLoading ? (
+              <IconSkeleton />
+            ) : (
               <a
                 className="bg-yellow-700 text-white body-text-sm-bold font-nunitoSans px-4 py-2 md:px-5 md:py-3 rounded-md shadow-md hover:bg-yellow-700 transition-all duration-300"
                 href="/admin/transaction/create"
               >
                 <IoMedkit />
               </a>
-            </div>
-            <div className="rounded-lg  bg-white overflow-x-auto ">
-              <div className="min-w-full ">
-                <div className="text-gray-700 flex flex-wrap gap-2 font-nunitoSans">
+            )}
+          </div>
+          <div className="rounded-lg  bg-white overflow-x-auto ">
+            <div className="min-w-full">
+              {isLoading ? (
+                <TableSkeleton />
+              ) : (
+                <div className="text-gray-700 flex flex-wrap gap-2">
                   {searchQuery &&
                     searchQuery.map((item, index) => {
                       const number = indexOfFirstItem + index + 1;
@@ -384,15 +401,15 @@ export default function Transaction() {
                           className="bg-white shadow-md rounded-lg p-2 w-[222px] border border-gray-300 hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between"
                         >
                           <div className="flex flex-col gap-1 flex-grow">
-                            <h2 className="text-xl font-bold text-gray-800 text-center">
-                              {item.outlet.outlet_name}
+                            <h2 className="text-xl text-gray-800 text-center font-ubuntu font-semibold">
+                              {item.Outlet.outlet_name}
                             </h2>
                             <div className="flex flex-col text-gray-700">
                               <p className="text-md">
                                 <span className="font-semibold text-sm">
                                   Pelanggan:
                                 </span>{" "}
-                                {item.by_name}
+                                {highlightText(item.by_name, by_name)}
                               </p>
                               <p className="text-sm">
                                 <span className="font-semibold">No Meja:</span>{" "}
@@ -403,14 +420,14 @@ export default function Transaction() {
                               <p className="font-semibold text-sm text-gray-800">
                                 Pesanan:
                               </p>
-                              {item.orders.map((order) => (
+                              {item.Orders.map((order) => (
                                 <div key={order.id} className="mb-1">
                                   <div className="flex justify-between text-sm">
-                                    <p>{order.menu.title}</p>
+                                    <p>{order.Menu.title}</p>
                                     <p>{formatIDR(order.total_price)}</p>
                                   </div>
                                   <p className="text-sm">
-                                    {order.qty} x {formatIDR(order.menu.price)}
+                                    {order.qty} x {formatIDR(order.Menu.price)}
                                   </p>
                                 </div>
                               ))}
@@ -466,214 +483,228 @@ export default function Transaction() {
                       );
                     })}
                 </div>
-                <div className="text-gray-700 font-nunitoSans">
-                  {orders &&
-                    orders
-                      .slice()
-                      .reverse()
-                      .map((item, index) => {
-                        const number = index + 1;
+              )}
+              <div className="text-gray-700 font-nunitoSans">
+                {orders &&
+                  orders
+                    .slice()
+                    .reverse()
+                    .map((item, index) => {
+                      const number = index + 1;
 
-                        return (
-                          <div
-                            key={item.id_transaction}
-                            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50"
-                          >
-                            <div className="bg-white shadow-md rounded-lg p-2 w-[222px] border border-gray-300 hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between">
-                              <div className="flex flex-col gap-1 flex-grow">
-                                <h2 className="text-xl font-bold text-gray-800 text-center">
-                                  {item.outlet_name}
-                                </h2>
-                                <div className="flex flex-col text-gray-700">
-                                  <p className="text-md">
-                                    <span className="font-semibold text-sm">
-                                      Pelanggan:
-                                    </span>{" "}
-                                    {item.by_name}
-                                  </p>
-                                  <p className="text-sm">
-                                    <span className="font-semibold">
-                                      No Meja:
-                                    </span>{" "}
-                                    {item.table.number_table}
-                                  </p>
-                                </div>
-                                <div className="bg-gray-100 rounded-lg p-2">
-                                  <p className="font-semibold text-sm text-gray-800">
-                                    Pesanan:
-                                  </p>
-                                  {item.orders.map((order) => (
-                                    <div
-                                      key={order.menu.title}
-                                      className="mb-1"
-                                    >
-                                      <div className="flex justify-between text-sm">
-                                        <p>{order.menu.title}</p>
-                                        <p>{formatIDR(order.total_price)}</p>
-                                      </div>
-                                      <p className="text-sm">
-                                        {order.qty} x{" "}
-                                        {formatIDR(order.menu.price)}
-                                      </p>
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="flex justify-between font-bold text-sm">
-                                  <p>Total</p>
-                                  <p>{formatIDR(item.total_pay)}</p>
-                                </div>
+                      return (
+                        <div
+                          key={item.id_transaction}
+                          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50"
+                        >
+                          <div className="bg-white shadow-md rounded-lg p-2 w-[222px] border border-gray-300 hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between">
+                            <div className="flex flex-col gap-1 flex-grow">
+                              <h2 className="text-xl font-bold text-gray-800 text-center">
+                                {item.outlet_name}
+                              </h2>
+                              <div className="flex flex-col text-gray-700">
+                                <p className="text-md">
+                                  <span className="font-semibold text-sm">
+                                    Pelanggan:
+                                  </span>{" "}
+                                  {item.by_name}
+                                </p>
+                                <p className="text-sm">
+                                  <span className="font-semibold">
+                                    No Meja:
+                                  </span>{" "}
+                                  {item.table.number_table}
+                                </p>
                               </div>
-                              <button
-                                className="bg-gray-800 text-white text-sm rounded-lg py-2 w-full hover:bg-gray-700 transition-colors duration-300 mt-2"
-                                onClick={() =>
-                                  handleUpdate(
-                                    item.id,
-                                    item.status === "not yet paid"
-                                      ? "lunas"
-                                      : "not yet paid"
-                                  )
-                                }
-                              >
-                                {item.status === "not yet paid"
-                                  ? "Belum Bayar"
-                                  : "Lunas"}
-                              </button>
-                              <div className="flex justify-between mt-2">
-                                <a
-                                  href={`/admin/transaction/edit?id=${item.id}`}
-                                  onClick={() => {
-                                    localStorage.setItem(
-                                      "id_transaction",
-                                      item.id
-                                    );
-                                    localStorage.setItem(
-                                      "outlet_name",
-                                      item.outlet_name
-                                    );
-                                  }}
-                                  className="text-sm text-white p-1 rounded-sm bg-blue-500"
-                                >
-                                  <AiFillEdit />
-                                </a>
-                                <button
-                                  className="text-sm text-white p-1 rounded-sm bg-gray-600 "
-                                  onClick={() => setPrintData([item])}
-                                >
-                                  <IoPrint />
-                                </button>
-                                <button
-                                  className=" text-sm text-white p-1 rounded-sm bg-red-600"
-                                  onClick={() => handleRemove(item.id)}
-                                >
-                                  <IoTrash />
-                                </button>
+                              <div className="bg-gray-100 rounded-lg p-2">
+                                <p className="font-semibold text-sm text-gray-800">
+                                  Pesanan:
+                                </p>
+                                {item.orders.map((order) => (
+                                  <div key={order.menu.title} className="mb-1">
+                                    <div className="flex justify-between text-sm">
+                                      <p>{order.menu.title}</p>
+                                      <p>{formatIDR(order.total_price)}</p>
+                                    </div>
+                                    <p className="text-sm">
+                                      {order.qty} x{" "}
+                                      {formatIDR(order.menu.price)}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="flex justify-between font-bold text-sm">
+                                <p>Total</p>
+                                <p>{formatIDR(item.total_pay)}</p>
                               </div>
                             </div>
                             <button
+                              className="bg-gray-800 text-white text-sm rounded-lg py-2 w-full hover:bg-gray-700 transition-colors duration-300 mt-2"
                               onClick={() =>
-                                closeModalOrder(item.id_transaction)
+                                handleUpdate(
+                                  item.id_transaction,
+                                  item.status === "not yet paid"
+                                    ? "lunas"
+                                    : "not yet paid"
+                                )
                               }
-                              className="absolute top-6 h-8 w-8 bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full right-10 text-red-600 text-2xl flex items-center justify-center"
                             >
-                              &times;
+                              {item.status === "not yet paid"
+                                ? "Belum Bayar"
+                                : "Lunas"}
                             </button>
+                            <div className="flex justify-between mt-2">
+                              <a
+                                href={`/admin/transaction/edit?id=${item.id_transaction}`}
+                                onClick={() => {
+                                  localStorage.setItem(
+                                    "id_transaction",
+                                    item.id_transaction
+                                  );
+                                  localStorage.setItem(
+                                    "outlet_name",
+                                    item.outlet_name
+                                  );
+                                }}
+                                className="text-sm text-white p-1 rounded-sm bg-blue-500"
+                              >
+                                <AiFillEdit />
+                              </a>
+                              <button
+                                className="text-sm text-white p-1 rounded-sm bg-gray-600 "
+                                onClick={() => setPrintData([item])}
+                              >
+                                <IoPrint />
+                              </button>
+                              <button
+                                className=" text-sm text-white p-1 rounded-sm bg-red-600"
+                                onClick={() =>
+                                  handleRemove(item.id_transaction)
+                                }
+                              >
+                                <IoTrash />
+                              </button>
+                            </div>
                           </div>
-                        );
-                      })}
-                </div>
+                          <button
+                            onClick={() => closeModalOrder(item.id_transaction)}
+                            className="absolute top-6 h-8 w-8 bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full right-10 text-red-600 text-2xl flex items-center justify-center"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      );
+                    })}
               </div>
             </div>
-
-            {/* Tampilkan navigasi pagination */}
-            {searchQuery.length > 0 && (
-              <Pagination
-                itemsPerPage={itemsPerPage}
-                rows={rows}
-                paginate={paginate}
-                currentPage={currentPage}
-              />
-            )}
-
-            {/* Tampilkan pesan data kosong jika tidak ada data */}
-            {searchQuery.length === 0 && (
-              <div className="flex justify-center mt-6">
-                <p className="italic text-red-500 border-b border-red-500">
-                  Data tidak ditemukan!
-                </p>
-              </div>
-            )}
           </div>
-          //print
-          {printData &&
-            printData.map((item) => {
-              return (
-                <div
-                  key={item.id}
-                  className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50"
-                >
-                  <div className="max-w-sm  p-4  bg-white shadow-md rounded-md font-mono text-sm">
-                    <div className="text-center">
-                      <h1 className="font-bold text-lg">
-                        {item.outlet.outlet_name}
-                      </h1>
-                      {/* <p>Jl. Medayu Utara 50, Surabaya</p>
-                      <p>81529620220414142434</p> */}
-                    </div>
 
-                    <div className="border-t border-dashed my-2"></div>
+          {/* Tampilkan navigasi pagination */}
+          {searchQuery.length > 0 && (
+            <Pagination
+              itemsPerPage={itemsPerPage}
+              rows={rows}
+              paginate={paginate}
+              currentPage={currentPage}
+            />
+          )}
 
-                    <div className="flex justify-between">
-                      <p>{formatTanggalDenganHari(item.updatedAt)}</p>
-                    </div>
-                    <div className="flex justify-between">
-                      <p>{item.by_name}</p>
-                    </div>
-                    <p>No.{item.table.number_table}</p>
+          {/* Tampilkan pesan data kosong jika tidak ada data */}
+          {isLoading === false && searchQuery.length === 0 && <NotData />}
+        </div>
 
-                    <div className="border-t border-dashed my-2"></div>
-
-                    {item.orders.map((order) => (
-                      <div key={order.id} className="mb-1">
-                        <div className="flex justify-between text-sm">
-                          <p>{order.menu.title}</p>
-                          <p>{formatIDR(order.total_price)}</p>
-                        </div>
-                        <p className="text-sm">
-                          {order.qty} x {formatIDR(order.menu.price)}
-                        </p>
-                      </div>
-                    ))}
-
-                    <div className="border-t border-dashed my-2"></div>
-
-                    <div className="flex justify-between font-bold">
-                      <p>Total</p>
-                      <p>{formatIDR(item.total_pay)}</p>
-                    </div>
-                    <div className="flex justify-between">
-                      <p>Bayar ({item.pays_method})</p>
-                      <p>{formatIDR(item.total_pay)}</p>
-                    </div>
-
-                    <div className="border-t border-dashed my-2"></div>
-
-                    <div className="text-center">
-                      <p>Link Kritik dan Saran:</p>
-                      <p>olshopin.com/f/748488</p>
+        {printData &&
+          printData.map((item) => {
+            return (
+              <div
+                key={item.id}
+                className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50"
+              >
+                <div className="max-w-sm  p-4  bg-white shadow-md rounded-md font-mono text-sm">
+                  <div className="flex justify-center ">
+                    <div className="flex p-1 w-14 h-10">
+                      {/* Ganti placeholder dengan logo jika ada */}
+                      {item.outlet.profile.logo ? (
+                        <img
+                          src={`${process.env.NEXT_PUBLIC_BASE_API_URL}/${item.outlet.profile.logo}`}
+                          className="w-full h-full object-contain"
+                          alt="Logo"
+                        />
+                      ) : (
+                        <h1 className=" text-xl  text-yellow-700 font-pacifico">
+                          {item.outlet.profile.cafe_name}
+                        </h1>
+                      )}
                     </div>
                   </div>
+                  <div>
+                    <h1 className="font-bold text-lg w-full text-center">
+                      {item.outlet.outlet_name}
+                    </h1>
+                    <p className="text-center">{item.outlet.profile.address}</p>
+                  </div>
 
-                  <button
-                    onClick={closeModal}
-                    className=" -mt-72 ml-10 h-8 pb-4 w-8 bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full  text-red-600 text-2xl flex text-center justify-center"
-                  >
-                    &times;
-                  </button>
+                  <div className="border-t border-dashed my-2"></div>
+
+                  <div className="flex justify-between">
+                    <p className="w-20">{formatTanggal(item.updatedAt)}</p>
+                    <p className="w-24 text-end">{item.by_name}</p>
+                  </div>
+                  <div className="flex justify-between">
+                    <p>No.{item.table.number_table}</p>
+                  </div>
+
+                  <div className="border-t border-dashed my-2"></div>
+
+                  {item.orders.map((order) => (
+                    <div key={order.id} className="mb-1">
+                      <div className="flex justify-between text-sm">
+                        <p>{order.menu.title}</p>
+                        <p>{formatIDR(order.total_price)}</p>
+                      </div>
+                      <p className="text-sm">
+                        {order.qty} x {formatIDR(order.menu.price)}
+                      </p>
+                    </div>
+                  ))}
+
+                  <div className="border-t border-dashed my-2"></div>
+
+                  <div className="flex justify-between font-bold">
+                    <p>Total</p>
+                    <p>{formatIDR(item.total_pay)}</p>
+                  </div>
+                  <div className="flex justify-between">
+                    <p>Bayar ({item.pays_method})</p>
+                    <p>{formatIDR(item.total_pay)}</p>
+                  </div>
+
+                  <div className="border-t border-dashed my-2"></div>
+
+                  <div>
+                    <p className="text-center">- Thank You -</p>
+
+                    {item.outlet.contacts.map((contact) => {
+                      return (
+                        <div key={contact.id} className="flex text-xs">
+                          <p className="w-20  ">{contact.contact_name}</p>
+                          <p>: {contact.value}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              );
-            })}
-        </div>
-      )}
+
+                <button
+                  onClick={closeModal}
+                  className=" -mt-96 ml-10 h-8 pb-4 w-8 bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full  text-red-600 text-2xl flex text-center justify-center"
+                >
+                  &times;
+                </button>
+              </div>
+            );
+          })}
+      </div>
     </div>
   );
 }

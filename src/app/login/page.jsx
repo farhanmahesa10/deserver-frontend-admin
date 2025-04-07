@@ -3,11 +3,12 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
-// import { Toaster, toast } from "react-hot-toast";
-import { jwtDecode } from "jwt-decode";
+import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
+import { useFormik } from "formik";
+import * as yup from "yup";
+import Input from "../component/form/input";
 
 export default function Login() {
-  const [login, setLogin] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loadingButton, setLoadingButton] = useState(false);
   const [msgError, setMsgError] = useState(false);
@@ -18,110 +19,107 @@ export default function Login() {
     setIsOpen(!isOpen);
   };
 
-  //handle email dan password
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setLogin({ ...login, [name]: value });
-  };
-
   //handle untuk login
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const onSubmit = async (e) => {
+    // e.preventDefault();
     setLoadingButton(true);
     try {
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/login`,
-        login
+        formik.values
       );
 
-      const token = response.data.accessToken;
-      const refreshToken = response.data.refreshToken;
+      if (response.status === 200) {
+        const token = response.data.AccessToken;
+        const refreshToken = response.data.refreshToken;
 
-      localStorage.setItem("token", token);
-      localStorage.setItem("refreshToken", refreshToken);
+        localStorage.setItem("token", token);
+        localStorage.setItem("refreshToken", refreshToken);
 
-      const decoded = jwtDecode(token);
-      const outlet_id = decoded.id;
-
-      //request ke api agar mengaetahui role nya admin atau user
-      axios
-        .get(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-        )
-        .then((response) => {
-          const data = response.data;
-
-          if (data.role === "admin") {
-            router.push("/");
-          } else {
-            router.push("/");
-          }
-        })
-        .catch((error) => {
-          console.error("Error fetching data:", error);
-        });
+        router.push("/");
+      }
     } catch (error) {
       setMsgError("email atau password salah!");
-    } finally {
       setLoadingButton(false);
     }
   };
 
+  const formik = useFormik({
+    initialValues: {
+      email: "",
+      password: "",
+    },
+    onSubmit,
+    validationSchema: yup.object({
+      email: yup.string().email("Invalid email").required("Email is required"),
+      password: yup.string().required("Password is required"),
+      // .min(6, "Password minimal 6 karakter")
+      // .matches(
+      //   /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/,
+      //   "Password harus mengandung huruf dan angka"
+      // ),
+    }),
+  });
+
+  // Handler untuk perubahan nilai input
+  const handleChange = (e) => {
+    const { target } = e;
+    formik.setFieldValue(target.name, target.value);
+  };
+
   return (
     <section id="login">
-      <div className="p-4 sm:p-8 md:px-20 lg:px-44 md:pt-8 md:pb-40 grid justify-center">
+      <div className="p-4 sm:p-8 md:px-20 lg:px-44 md:pt-8 md:pb-40 grid justify-center font-nunito">
         {/* <Toaster position="top-center" reverseOrder={false} /> */}
-        <form>
+        <form onSubmit={formik.handleSubmit}>
           <div className="w-[277px] max-w-sm md:max-w-md lg:max-w-lg py-8 px-8 bg-white shadow-lg border-[1px]  rounded-lg md:w-[398px]">
-            <h1 className="text-center mobile-h4 mb-8">Masuk</h1>
-            <div className="w-full px-4 mb-4">
-              <label htmlFor="email" className="text-sm">
-                Email
-              </label>
-              <input
+            <div className=" p-1 w-20 h-10 md:w-28 md:h-16 mx-auto ">
+              <img
+                src={`/img/logo.png`}
+                className="w-full h-full object-contain"
+                alt="Logo"
+              />
+            </div>
+            <h1 className="text-center font-ubuntu mobile-h4 mb-8">D-SERVE</h1>
+            <div className="mb-6">
+              <Input
+                label="Email"
                 type="text"
                 placeholder="masukan email"
                 id="email"
                 name="email"
                 onChange={handleChange}
-                className="w-full text-dark text-xs p-3 rounded-md focus:outline-none border border-primary"
-                required
+                errorMessage={formik.errors.email}
+                isError={
+                  formik.touched.email && formik.errors.email ? true : false
+                }
               />
             </div>
-            <div className="w-full px-4 mb-4">
-              <label htmlFor="katasandi" className="text-sm">
-                Katasandi
-              </label>
-              <div className="w-full flex text-dark text-sm p-3 rounded-md border border-primary">
-                <input
-                  type={`${!isOpen ? "password" : "text"}`}
-                  id="password"
-                  name="password"
-                  onChange={handleChange}
-                  className="w-full text-xs focus:outline-none"
-                  placeholder="*********"
-                  required
-                />
-                <div
-                  onClick={onClickPassword}
-                  className="self-center cursor-pointer"
-                >
-                  <div
-                    className={`${
-                      isOpen ? "absolute" : " hidden"
-                    } bg-slate-700 w-4 h-[2px] -rotate-45 mt-1`}
-                  ></div>
-                  <img src="/img/mata.png" alt="visibility" className="" />
-                </div>
-              </div>
-            </div>
-            <div className="w-full px-4 mb-4 ">
+
+            <Input
+              label="Password"
+              type={`${!isOpen ? "password" : "text"}`}
+              placeholder="*********"
+              id="password"
+              name="password"
+              onChange={handleChange}
+              rightIcon={isOpen ? <IoEyeOutline /> : <IoEyeOffOutline />}
+              errorMessage={formik.errors.password}
+              isError={
+                formik.touched.password && formik.errors.password ? true : false
+              }
+              onRightIconCLick={onClickPassword}
+              rightIconClassName={"cursor-pointer"}
+            />
+            <div className="w-full mt-14 ">
               <button
-                onClick={handleSubmit}
+                type="submit"
                 disabled={loadingButton}
-                className="text-base bg-yellow-700 text-white  py-3 px-8 rounded-md w-full hover:opacity-80 hover:shadow-lg transition duration-500"
+                className={`${
+                  loadingButton ? "bg-gray-400" : "bg-yellow-700"
+                } font-ubuntu mobile-h4  text-white  py-3 px-8 rounded-md w-full hover:opacity-80 hover:shadow-lg transition duration-500`}
               >
-                {loadingButton ? "Loading..." : "Masuk"}
+                {loadingButton ? "Loading..." : "Login"}
               </button>
               <h1 className="text-xs text-center text-red-600">{msgError}</h1>
             </div>

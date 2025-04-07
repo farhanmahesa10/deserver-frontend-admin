@@ -19,49 +19,67 @@ import {
   MdTableRestaurant,
 } from "react-icons/md";
 import { TfiGallery } from "react-icons/tfi";
+import { handleApiError } from "../handleError/handleError";
+import { useRouter } from "next/navigation";
 
 function Sidebar({ isOpen, setIsOpen }) {
   const pathname = usePathname();
   const [url, setUrl] = useState("");
   const [role, setRole] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
     setUrl(pathname);
   }, [pathname]);
+
   const handleSetIsOpen = () => {
     setIsOpen(false);
   };
 
+  // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
+    const loadData = async () => {
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
 
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
 
-      if (currentTime > expirationTime) {
-        localStorage.clear();
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          const data = response.data.data;
+
+          setRole(data.role);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
       } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data;
-            setRole(data.role);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
+        router.push(`/login`);
       }
-    }
+    };
+
+    loadData();
   }, []);
 
   return (
     <div
       className={`${
         isOpen ? "" : "hidden"
-      } absolute p-5 bg-white shadow-lg rounded-lg lg:shadow-none lg:rounded-none right-4 max-w-[250px] w-[200px] lg:flex lg:static lg:w-[250px] lg:border-r lg:border-lightgray mt-20 lg:h-[630px] h-[530px] transition-all duration-300`}
+      } absolute p-5 bg-white shadow-lg rounded-lg lg:shadow-none lg:rounded-none right-4 max-w-[250px] w-[200px] lg:flex lg:static lg:w-[250px] lg:border-r lg:border-lightgray mt-20 lg:h-[630px] h-[610px] transition-all duration-300`}
     >
       <div className="flex flex-wrap gap-5 pt-4 h-[500px]">
         <Link
@@ -89,17 +107,18 @@ function Sidebar({ isOpen, setIsOpen }) {
           </div>
           Outlet
         </Link>
+
         <Link
           onClick={() => handleSetIsOpen()}
-          href="/admin"
-          className={`${role === "admin" ? "hidden" : ""} ${
-            url == "/admin" ? "bg-yellow-700 text-white" : "bg-gray-100"
-          } flex items-center gap-2 body-text-sm-normal lg:body-text-lg-normal font-poppins lg:w-[195px] w-[150px] h-[44px] lg:h-[56px] rounded-lg px-4 py-3 cursor-pointer  hover:bg-yellow-700 hover:text-white hover:shadow-md transition duration-300`}
+          href="/admin/table"
+          className={`${
+            url == "/admin/table" ? "bg-yellow-700 text-white" : "bg-gray-100"
+          } flex items-center gap-2 body-text-sm-normal lg:body-text-lg-normal font-poppins lg:w-[195px] w-[150px] h-[44px] lg:h-[56px] rounded-lg px-4 py-3 cursor-pointer  hover:bg-yellow-700 hover:text-white  hover:shadow-md transition duration-300`}
         >
-          <div className="mb-1">
-            <IoPersonSharp />
+          <div className="mb-1 ">
+            <MdTableRestaurant />
           </div>
-          Profile
+          Room
         </Link>
 
         <Link
@@ -170,18 +189,6 @@ function Sidebar({ isOpen, setIsOpen }) {
           Event
         </Link>
 
-        <Link
-          onClick={() => handleSetIsOpen()}
-          href="/admin/table"
-          className={`${
-            url == "/admin/table" ? "bg-yellow-700 text-white" : "bg-gray-100"
-          } flex items-center gap-2 body-text-sm-normal lg:body-text-lg-normal font-poppins lg:w-[195px] w-[150px] h-[44px] lg:h-[56px] rounded-lg px-4 py-3 cursor-pointer  hover:bg-yellow-700 hover:text-white  hover:shadow-md transition duration-300`}
-        >
-          <div className="mb-1 ">
-            <MdTableRestaurant />
-          </div>
-          Table
-        </Link>
         <Link
           onClick={() => handleSetIsOpen()}
           href="/admin/contact"

@@ -1,4 +1,4 @@
-import Layout2 from "./layout2";
+import Layout2 from "../component/layout/layout2";
 
 export default function RootLayout({ children }) {
   return (

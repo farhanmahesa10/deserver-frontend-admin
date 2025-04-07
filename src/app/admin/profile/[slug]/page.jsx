@@ -4,8 +4,9 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import EditDataSkeleton from "../../adminSkeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../refreshToken";
+import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
+import { getNewAccessToken } from "../../../component/token/refreshToken";
+import ButtonCreateUpdate from "@/app/component/button/button";
 
 export default function AddProfile({ params }) {
   const [profile, setProfile] = useState({
@@ -37,6 +38,7 @@ export default function AddProfile({ params }) {
   // cek token
   useEffect(() => {
     const savedToken = localStorage.getItem("refreshToken");
+    const token = localStorage.getItem("token");
 
     if (savedToken) {
       const decoded = jwtDecode(savedToken);
@@ -50,7 +52,12 @@ export default function AddProfile({ params }) {
       } else {
         axios
           .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           )
           .then((response) => {
             const data = response.data;
@@ -376,21 +383,10 @@ export default function AddProfile({ params }) {
               />
             </div>
           )}
-          <div className="flex gap-8 text-white justify-end">
-            <button
-              type={loadingButton ? "button" : "submit"}
-              className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-            >
-              {loadingButton ? "Loading..." : "Simpan"}
-            </button>
-            <button
-              type="button"
-              className="bg-red-500 border-red-5bg-red-500 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-              onClick={handleCancel}
-            >
-              Cancel
-            </button>
-          </div>
+          <ButtonCreateUpdate
+            loadingButton={loadingButton}
+            handleCancel={handleCancel}
+          />
         </form>
       )}
     </div>
