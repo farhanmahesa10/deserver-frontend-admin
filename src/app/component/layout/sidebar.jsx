@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
@@ -9,7 +8,6 @@ import {
   IoBagHandle,
   IoCallSharp,
   IoImages,
-  IoPersonSharp,
   IoStorefront,
 } from "react-icons/io5";
 import { BiSolidFoodMenu } from "react-icons/bi";
@@ -20,59 +18,40 @@ import {
 } from "react-icons/md";
 import { TfiGallery } from "react-icons/tfi";
 import { handleApiError } from "../handleError/handleError";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
+import SidebarComp from "./sidebarComponent";
+import { useSelector } from "react-redux";
 
 function Sidebar({ isOpen, setIsOpen }) {
   const pathname = usePathname();
   const [url, setUrl] = useState("");
-  const [role, setRole] = useState("");
   const router = useRouter();
+  const dataOutlet = useSelector((state) => state.counter.outlet);
 
   useEffect(() => {
     setUrl(pathname);
   }, [pathname]);
 
-  const handleSetIsOpen = () => {
+  const handleRoute = (route) => {
     setIsOpen(false);
+    router.push(route);
   };
 
   // cek token
   useEffect(() => {
-    const loadData = async () => {
-      const refreshToken = localStorage.getItem("refreshToken");
-      const token = localStorage.getItem("token");
-      if (refreshToken) {
-        const decoded = jwtDecode(refreshToken);
-        const outlet_id = decoded.id;
-        const expirationTime = new Date(decoded.exp * 1000);
-        const currentTime = new Date();
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const decoded = jwtDecode(refreshToken);
+      const expirationTime = new Date(decoded.exp * 1000);
+      const currentTime = new Date();
 
-        if (currentTime > expirationTime) {
-          localStorage.clear();
-          router.push(`/login`);
-        }
-
-        try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-          const data = response.data.data;
-
-          setRole(data.role);
-        } catch (error) {
-          await handleApiError(error, loadData, router);
-        }
-      } else {
+      if (currentTime > expirationTime) {
+        localStorage.clear();
         router.push(`/login`);
       }
-    };
-
-    loadData();
+    } else {
+      router.push(`/login`);
+    }
   }, []);
 
   return (
@@ -82,125 +61,76 @@ function Sidebar({ isOpen, setIsOpen }) {
       } absolute p-5 bg-white shadow-lg rounded-lg lg:shadow-none lg:rounded-none right-4 max-w-[250px] w-[200px] lg:flex lg:static lg:w-[250px] lg:border-r lg:border-lightgray mt-20 lg:h-[630px] h-[610px] transition-all duration-300`}
     >
       <div className="flex flex-wrap gap-5 pt-4 h-[500px]">
-        <Link
-          onClick={() => handleSetIsOpen()}
-          href="/"
-          className={`${
-            url == "/" ? "bg-yellow-700 text-white" : "bg-gray-100"
-          } flex items-center gap-2 body-text-sm-normal lg:body-text-lg-normal font-poppins lg:w-[195px] w-[150px] h-[44px] lg:h-[56px] rounded-lg px-4 py-3 cursor-pointer  hover:bg-yellow-700 hover:text-white hover:shadow-md transition duration-300`}
-        >
-          <div className="mb-1">
-            <IoBagHandle />
-          </div>
-          Transaction
-        </Link>
+        <SidebarComp
+          handleRoute={() => handleRoute("/")}
+          url={url}
+          route={"/"}
+          icon={<IoBagHandle />}
+          menuName={"Transaction"}
+        />
 
-        <Link
-          onClick={() => handleSetIsOpen()}
-          href="/admin/outlet"
-          className={`${role !== "admin" ? "hidden" : ""} ${
-            url == "/admin/outlet" ? "bg-yellow-700 text-white" : "bg-gray-100"
-          } flex items-center gap-2 body-text-sm-normal lg:body-text-lg-normal font-poppins lg:w-[195px] w-[150px] h-[44px] lg:h-[56px] rounded-lg px-4 py-3 cursor-pointer  hover:bg-yellow-700 hover:text-white hover:shadow-md transition duration-300`}
-        >
-          <div className="mb-1">
-            <IoStorefront />
-          </div>
-          Outlet
-        </Link>
+        <SidebarComp
+          handleRoute={() => handleRoute("/admin/outlet")}
+          url={url}
+          route={"/admin/outlet"}
+          roleAdmin={`${dataOutlet.role !== "admin" ? "hidden" : ""}`}
+          icon={<IoStorefront />}
+          menuName={"Outlet"}
+        />
 
-        <Link
-          onClick={() => handleSetIsOpen()}
-          href="/admin/table"
-          className={`${
-            url == "/admin/table" ? "bg-yellow-700 text-white" : "bg-gray-100"
-          } flex items-center gap-2 body-text-sm-normal lg:body-text-lg-normal font-poppins lg:w-[195px] w-[150px] h-[44px] lg:h-[56px] rounded-lg px-4 py-3 cursor-pointer  hover:bg-yellow-700 hover:text-white  hover:shadow-md transition duration-300`}
-        >
-          <div className="mb-1 ">
-            <MdTableRestaurant />
-          </div>
-          Room
-        </Link>
+        <SidebarComp
+          handleRoute={() => handleRoute("/admin/table")}
+          url={url}
+          route={"/admin/table"}
+          icon={<MdTableRestaurant />}
+          menuName={"Room"}
+        />
+        <SidebarComp
+          handleRoute={() => handleRoute("/admin/category")}
+          url={url}
+          route={"/admin/category"}
+          icon={<BiSolidFoodMenu />}
+          menuName={"Category"}
+        />
+        <SidebarComp
+          handleRoute={() => handleRoute("/admin/subCategory")}
+          url={url}
+          route={"/admin/subCategory"}
+          icon={<MdOutlineFoodBank />}
+          menuName={"Sub Category"}
+        />
 
-        <Link
-          onClick={() => handleSetIsOpen()}
-          href="/admin/category"
-          className={`${
-            url == "/admin/category"
-              ? "bg-yellow-700 text-white"
-              : "bg-gray-100"
-          } flex items-center gap-2 body-text-sm-normal lg:body-text-lg-normal font-poppins lg:w-[195px] w-[150px] h-[44px] lg:h-[56px] rounded-lg px-4 py-3 cursor-pointer  hover:bg-yellow-700 hover:text-white hover:shadow-md transition duration-300`}
-        >
-          <div className="mb-1">
-            <BiSolidFoodMenu />
-          </div>
-          Category
-        </Link>
+        <SidebarComp
+          handleRoute={() => handleRoute("/admin/menu")}
+          url={url}
+          route={"/admin/menu"}
+          icon={<MdFastfood />}
+          menuName={"Menu"}
+        />
 
-        <Link
-          onClick={() => handleSetIsOpen()}
-          href="/admin/subCategory"
-          className={`${
-            url == "/admin/subCategory"
-              ? "bg-yellow-700 text-white"
-              : "bg-gray-100"
-          } flex items-center gap-2 body-text-sm-normal lg:body-text-lg-normal font-poppins lg:w-[195px] w-[150px] h-[44px] lg:h-[56px] rounded-lg px-4 py-3 cursor-pointer  hover:bg-yellow-700 hover:text-white hover:shadow-md transition duration-300`}
-        >
-          <div className="mb-1">
-            <MdOutlineFoodBank />
-          </div>
-          Sub Category
-        </Link>
+        <SidebarComp
+          handleRoute={() => handleRoute("/admin/gallery")}
+          url={url}
+          route={"/admin/gallery"}
+          icon={<IoImages />}
+          menuName={"Gallery"}
+        />
 
-        <Link
-          onClick={() => handleSetIsOpen()}
-          href="/admin/menu"
-          className={`${
-            url == "/admin/menu" ? "bg-yellow-700 text-white" : "bg-gray-100"
-          } flex items-center gap-2 body-text-sm-normal lg:body-text-lg-normal font-poppins lg:w-[195px] w-[150px] h-[44px] lg:h-[56px] rounded-lg px-4 py-3 cursor-pointer  hover:bg-yellow-700 hover:text-white hover:shadow-md transition duration-300`}
-        >
-          <div className="mb-1">
-            <MdFastfood />
-          </div>
-          Menu
-        </Link>
-        <Link
-          onClick={() => handleSetIsOpen()}
-          href="/admin/gallery"
-          className={`${
-            url == "/admin/gallery" ? "bg-yellow-700 text-white" : "bg-gray-100"
-          } flex items-center gap-2 body-text-sm-normal lg:body-text-lg-normal font-poppins lg:w-[195px] w-[150px] h-[44px] lg:h-[56px] rounded-lg px-4 py-3 cursor-pointer  hover:bg-yellow-700 hover:text-white hover:shadow-md transition duration-300`}
-        >
-          <div className="mb-1">
-            <IoImages />
-          </div>
-          Gallery
-        </Link>
+        <SidebarComp
+          handleRoute={() => handleRoute("/admin/event")}
+          url={url}
+          route={"/admin/event"}
+          icon={<TfiGallery />}
+          menuName={"Event"}
+        />
 
-        <Link
-          onClick={() => handleSetIsOpen()}
-          href="/admin/event"
-          className={`${
-            url == "/admin/event" ? "bg-yellow-700 text-white" : "bg-gray-100"
-          } flex items-center gap-2 body-text-sm-normal lg:body-text-lg-normal font-poppins lg:w-[195px] w-[150px] h-[44px] lg:h-[56px] rounded-lg px-4 py-3 cursor-pointer  hover:bg-yellow-700 hover:text-white hover:shadow-md transition duration-300`}
-        >
-          <div className="mb-1">
-            <TfiGallery />
-          </div>
-          Event
-        </Link>
-
-        <Link
-          onClick={() => handleSetIsOpen()}
-          href="/admin/contact"
-          className={`${
-            url == "/admin/contact" ? "bg-yellow-700 text-white" : "bg-gray-100"
-          } flex items-center gap-2 body-text-sm-normal lg:body-text-lg-normal font-poppins lg:w-[195px] w-[150px] h-[44px] lg:h-[56px] rounded-lg px-4 py-3 cursor-pointer  hover:bg-yellow-700 hover:text-white hover:shadow-md transition duration-300`}
-        >
-          <div className="mb-1">
-            <IoCallSharp />
-          </div>
-          Contact
-        </Link>
+        <SidebarComp
+          handleRoute={() => handleRoute("/admin/contact")}
+          url={url}
+          route={"/admin/contact"}
+          icon={<IoCallSharp />}
+          menuName={"Contact"}
+        />
       </div>
     </div>
   );

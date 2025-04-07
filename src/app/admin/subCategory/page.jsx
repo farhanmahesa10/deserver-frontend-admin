@@ -3,22 +3,21 @@
 import axios from "axios";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import Modal from "../../component/modal/modal";
 import Pagination from "../../component/paginate/paginate";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
-import { NotData } from "@/app/component/notData/notData";
 import { handleApiError } from "@/app/component/handleError/handleError";
 import { Toaster, toast } from "react-hot-toast";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
 import Table from "@/app/component/table/table";
+import { useSelector } from "react-redux";
 
 export default function subCategory() {
   const [subCategory, setSubCategory] = useState([]);
-  const [role, setRole] = useState("");
   const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentImage, setCurrentImage] = useState("");
@@ -27,6 +26,7 @@ export default function subCategory() {
   const [query, setQuery] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [dataToRemove, setDataToRemove] = useState(null);
+  const dataOutlet = useSelector((state) => state.counter.outlet);
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
@@ -49,45 +49,21 @@ export default function subCategory() {
     }
   }, []);
 
-  //cek token
+  // cek token
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      const refreshToken = localStorage.getItem("refreshToken");
-      const token = localStorage.getItem("token");
-      if (refreshToken) {
-        const decoded = jwtDecode(refreshToken);
-        const outlet_id = decoded.id;
-        const expirationTime = new Date(decoded.exp * 1000);
-        const currentTime = new Date();
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const decoded = jwtDecode(refreshToken);
+      const expirationTime = new Date(decoded.exp * 1000);
+      const currentTime = new Date();
 
-        if (currentTime > expirationTime) {
-          localStorage.clear();
-          router.push(`/login`);
-        }
-
-        try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-          const data = response.data.data;
-
-          setRole(data.role);
-          setIsLoading(false);
-        } catch (error) {
-          await handleApiError(error, loadData, router);
-        }
-      } else {
+      if (currentTime > expirationTime) {
+        localStorage.clear();
         router.push(`/login`);
       }
-    };
-
-    loadData();
+    } else {
+      router.push(`/login`);
+    }
   }, []);
 
   // useEffect untuk search
@@ -111,7 +87,7 @@ export default function subCategory() {
     try {
       // Mengambil data transaksi menggunakan axios dengan query params
       const response = await axios.get(
-        `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showpaginated`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showpaginated`,
         {
           params: params,
           headers: {
@@ -146,10 +122,10 @@ export default function subCategory() {
       }
     };
 
-    if (role) {
+    if (dataOutlet.role) {
       loadData();
     }
-  }, [itemsPerPage, currentPage, role]);
+  }, [itemsPerPage, currentPage, dataOutlet.role]);
 
   //stabilo pencarian
   const highlightText = (text, query) => {
@@ -199,7 +175,9 @@ export default function subCategory() {
       id: "No",
       header: "No",
       cell: ({ row }) =>
-        role !== "admin" ? row.index + 1 : indexOfFirstItem + row.index + 1,
+        dataOutlet.role !== "admin"
+          ? row.index + 1
+          : indexOfFirstItem + row.index + 1,
     },
     {
       header: "Outlet Name",
@@ -257,7 +235,7 @@ export default function subCategory() {
       </h1>
       <div>
         <InputSearch
-          role={role}
+          role={dataOutlet.role}
           type="text"
           placeholder="Outlet Name. . ."
           id="search"

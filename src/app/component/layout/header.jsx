@@ -1,15 +1,21 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "nextjs-toploader/app";
 import { IoExit, IoPersonCircle } from "react-icons/io5";
-import Link from "next/link";
 import HanldeRemove from "../handleRemove/handleRemove";
+import { usePathname } from "next/navigation";
 
 export default function Header({ isOpen, onClickHeader }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [dataToRemove, setDataToRemove] = useState(null);
+  const [url, setUrl] = useState("");
+
+  useEffect(() => {
+    setUrl(pathname);
+  }, [pathname]);
 
   const confirmRemove = () => {
     setDataToRemove();
@@ -19,6 +25,10 @@ export default function Header({ isOpen, onClickHeader }) {
   const handleLogout = () => {
     localStorage.clear();
     router.push("/login");
+  };
+
+  const handleProfile = () => {
+    router.push("/admin");
   };
 
   return (
@@ -32,12 +42,16 @@ export default function Header({ isOpen, onClickHeader }) {
           />
         </div>
         <div className="flex gap-5  mr-16 lg:mr-0">
-          <Link
-            href={"/admin"}
+          <button
+            onClick={() => handleProfile()}
             className="flex gap-2 items-center cursor-pointer rounded-xl h-8  "
           >
-            <IoPersonCircle className="w-8 h-8 transition-all duration-300 hover:scale-110 hover:text-yellow-700" />
-          </Link>
+            <IoPersonCircle
+              className={`${
+                url == "/admin" ? "text-yellow-700 scale-110" : ""
+              } w-8 h-8 transition-all duration-300 hover:scale-110 hover:text-yellow-700`}
+            />
+          </button>
           <button
             onClick={() => confirmRemove()}
             className="flex gap-2 items-center cursor-pointer rounded-md h-8 px-4 shadow-inner border border-lightgray bg-white 
@@ -67,8 +81,8 @@ export default function Header({ isOpen, onClickHeader }) {
         <HanldeRemove
           handleRemove={handleLogout}
           setShowConfirmModal={() => setShowConfirmModal(false)}
-          text={"keluar"}
-          konfirmasi={"Apakah kamu yakin ingin keluar?"}
+          text={"Exit"}
+          confirmation={"Are you sure you want to exit?"}
         />
       )}
     </header>

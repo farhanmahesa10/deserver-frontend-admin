@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
 import ButtonCreateUpdate from "@/app/component/button/button";
 import { useFormik } from "formik";
@@ -11,13 +11,14 @@ import * as yup from "yup";
 import Input from "@/app/component/form/input";
 import Select from "@/app/component/form/select";
 import { handleApiError } from "@/app/component/handleError/handleError";
+import { useSelector } from "react-redux";
 
 export default function AddMenu({ params }) {
-  const [role, setRole] = useState("");
   const [outlet, setOutlet] = useState([]);
   const [subCategory, setSubCategory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
+  const dataOutlet = useSelector((state) => state.counter.outlet);
 
   const router = useRouter();
   const { slug } = React.use(params);
@@ -43,10 +44,10 @@ export default function AddMenu({ params }) {
           formData,
           { headers }
         );
+        router.push("/admin/menu");
         localStorage.removeItem("id_menu");
         localStorage.removeItem("outlet_name");
         localStorage.setItem("newData", "update successfully!");
-        router.push("/admin/menu");
       } else {
         setLoadingButton(true);
         await axios.post(
@@ -54,8 +55,8 @@ export default function AddMenu({ params }) {
           formData,
           { headers }
         );
-        localStorage.setItem("newData", "create successfully!");
         router.push("/admin/menu");
+        localStorage.setItem("newData", "create successfully!");
       }
     } catch (error) {
       await handleApiError(error, onSubmit, router);
@@ -105,51 +106,32 @@ export default function AddMenu({ params }) {
 
   // cek token
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      const refreshToken = localStorage.getItem("refreshToken");
-      const token = localStorage.getItem("token");
-      if (refreshToken) {
-        const decoded = jwtDecode(refreshToken);
-        const outlet_id = decoded.id;
-        const expirationTime = new Date(decoded.exp * 1000);
-        const currentTime = new Date();
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const decoded = jwtDecode(refreshToken);
+      const expirationTime = new Date(decoded.exp * 1000);
+      const currentTime = new Date();
 
-        if (currentTime > expirationTime) {
-          localStorage.clear();
-          router.push(`/login`);
-        }
-
-        try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-          const data = response.data.data;
-          if (data.role === "admin") {
-            if (slug == "edit") {
-              formik.setFieldValue("outlet_name", data.outlet_name);
-            }
-          } else {
-            formik.setFieldValue("outlet_name", data.outlet_name);
-          }
-          setRole(data.role);
-
-          setIsLoading(false);
-        } catch (error) {
-          await handleApiError(error, loadData, router);
-        }
-      } else {
+      if (currentTime > expirationTime) {
+        localStorage.clear();
         router.push(`/login`);
       }
-    };
-
-    loadData();
+    } else {
+      router.push(`/login`);
+    }
   }, []);
+
+  useEffect(() => {
+    const outletName = localStorage.getItem("outlet_name");
+
+    if (dataOutlet.role === "admin") {
+      if (slug == "edit") {
+        formik.setFieldValue("outlet_name", outletName);
+      }
+    } else {
+      formik.setFieldValue("outlet_name", dataOutlet.outlet_name);
+    }
+  }, [dataOutlet]);
 
   //menampilkan semua DATA OUTLET
   useEffect(() => {
@@ -220,7 +202,7 @@ export default function AddMenu({ params }) {
           const idMenu = localStorage.getItem("id_menu");
 
           const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/showbyid/${idMenu}`,
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/show/${idMenu}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -228,8 +210,7 @@ export default function AddMenu({ params }) {
             }
           );
 
-          const data = response.data.data[0];
-          console.log(data, "rrrr");
+          const data = response.data.data.SubCategories[0].Menus[0];
 
           formik.setValues(data);
           setIsLoading(false);
@@ -271,7 +252,11 @@ export default function AddMenu({ params }) {
           className="mt-4 border p-8 grid gap-4"
           onSubmit={formik.handleSubmit}
         >
-          <div className={`${role !== "admin" ? "hidden" : "flex"} gap-4 mb-2`}>
+          <div
+            className={`${
+              dataOutlet.role !== "admin" ? "hidden" : "flex"
+            } gap-4 mb-2`}
+          >
             <Select
               label="Outlate Name:"
               id="outlet_name"

@@ -2,16 +2,19 @@
 
 import React, { useState } from "react";
 import axios from "axios";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
 import { useFormik } from "formik";
 import * as yup from "yup";
 import Input from "../component/form/input";
+import { useDispatch } from "react-redux";
+import { setOutlet } from "@/store/slice";
 
 export default function Login() {
   const [isOpen, setIsOpen] = useState(false);
   const [loadingButton, setLoadingButton] = useState(false);
   const [msgError, setMsgError] = useState(false);
+  const dispatch = useDispatch();
   const router = useRouter();
 
   //function untuk password terlihat atau tidak
@@ -20,8 +23,7 @@ export default function Login() {
   };
 
   //handle untuk login
-  const onSubmit = async (e) => {
-    // e.preventDefault();
+  const onSubmit = async () => {
     setLoadingButton(true);
     try {
       const response = await axios.post(
@@ -32,14 +34,29 @@ export default function Login() {
       if (response.status === 200) {
         const token = response.data.AccessToken;
         const refreshToken = response.data.refreshToken;
+        const outlet_id = response.data.curroutlet;
 
-        localStorage.setItem("token", token);
-        localStorage.setItem("refreshToken", refreshToken);
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          const data = response.data.data;
+          dispatch(setOutlet(data));
+          localStorage.setItem("token", token);
+          localStorage.setItem("refreshToken", refreshToken);
 
-        router.push("/");
+          router.push("/");
+        } catch (error) {
+          console.log(error);
+        }
       }
     } catch (error) {
-      setMsgError("email atau password salah!");
+      setMsgError("Incorrect email or password!");
       setLoadingButton(false);
     }
   };
@@ -53,11 +70,6 @@ export default function Login() {
     validationSchema: yup.object({
       email: yup.string().email("Invalid email").required("Email is required"),
       password: yup.string().required("Password is required"),
-      // .min(6, "Password minimal 6 karakter")
-      // .matches(
-      //   /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]+$/,
-      //   "Password harus mengandung huruf dan angka"
-      // ),
     }),
   });
 

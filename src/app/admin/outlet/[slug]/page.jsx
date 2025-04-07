@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
 import ButtonCreateUpdate from "@/app/component/button/button";
@@ -14,10 +14,9 @@ import Select from "@/app/component/form/select";
 import { handleApiError } from "@/app/component/handleError/handleError";
 
 export default function AddProfile({ params }) {
-  const [role, setRole] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [isOpenVerify, setIsOpenVerify] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [loadingButton, setLoadingButton] = useState(false);
   const router = useRouter();
   const { slug } = React.use(params);
@@ -59,9 +58,9 @@ export default function AddProfile({ params }) {
           }
         );
 
+        router.push(`/admin/outlet`);
         localStorage.removeItem("id_outlet");
         localStorage.setItem("newData", "updated successfully!");
-        router.push(`/admin/outlet`);
       } else {
         setLoadingButton(true);
         const response = await axios.post(
@@ -142,52 +141,25 @@ export default function AddProfile({ params }) {
 
   // cek token
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      const refreshToken = localStorage.getItem("refreshToken");
-      const token = localStorage.getItem("token");
-      if (refreshToken) {
-        const decoded = jwtDecode(refreshToken);
-        const outlet_id = decoded.id;
-        const expirationTime = new Date(decoded.exp * 1000);
-        const currentTime = new Date();
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const decoded = jwtDecode(refreshToken);
+      const expirationTime = new Date(decoded.exp * 1000);
+      const currentTime = new Date();
 
-        if (currentTime > expirationTime) {
-          localStorage.clear();
-          router.push(`/login`);
-        }
-
-        try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-          const data = response.data.data;
-
-          if (data.role !== "admin") {
-            router.push("/admin");
-          }
-          setRole(data.role);
-          setIsLoading(false);
-        } catch (error) {
-          await handleApiError(error, loadData, router);
-        }
-      } else {
+      if (currentTime > expirationTime) {
+        localStorage.clear();
         router.push(`/login`);
       }
-    };
-
-    loadData();
+    } else {
+      router.push(`/login`);
+    }
   }, []);
   //CARI DATA BERDASARKAN ID KETIKA EDIT
   useEffect(() => {
     if (slug === "edit") {
-      const token = localStorage.getItem("token");
       setIsLoading(true);
+      const token = localStorage.getItem("token");
       const fetchData = async () => {
         try {
           const idOutlet = localStorage.getItem("id_outlet");

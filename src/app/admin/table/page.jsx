@@ -3,26 +3,26 @@
 import axios from "axios";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
-import { useRouter } from "next/navigation";
-import { HiMiniPencilSquare } from "react-icons/hi2";
+import { useRouter } from "nextjs-toploader/app";
 import { Toaster, toast } from "react-hot-toast";
 import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
-import { NotData } from "@/app/component/notData/notData";
 import { handleApiError } from "@/app/component/handleError/handleError";
 import * as yup from "yup";
 import { FormikProvider, useFormik, FieldArray } from "formik";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
+import Select from "@/app/component/form/select";
 
 export default function Table() {
   const [table, setTable] = useState([]);
   const [role, setRole] = useState("");
+  const [outletName, setOutletName] = useState("");
   const [idOutlet, setIdOutlet] = useState("");
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
-  const [edit, setEdit] = useState(true);
   const [searchQuery, setSearchQuery] = useState([]);
   const [query, setQuery] = useState("");
+  const [outlet, setOutlet] = useState([{ outlet_name: "" }]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [dataToRemove, setDataToRemove] = useState(null);
 
@@ -76,6 +76,7 @@ export default function Table() {
           const data = response.data.data;
 
           setRole(data.role);
+          setOutletName(data.outlet_name);
           setIdOutlet(data.id);
           setIsLoading(false);
         } catch (error) {
@@ -104,12 +105,12 @@ export default function Table() {
     const params = {
       page: isSearchMode ? 1 : currentPage,
       limit: itemsPerPage,
-      search: query,
+      search: query.outlet_name == undefined ? outletName : query.outlet_name,
     };
     try {
       // Mengambil data transaksi menggunakan axios dengan query params
       const response = await axios.get(
-        `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/showpaginated`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/showpaginated`,
         {
           params: params,
           headers: {
@@ -134,7 +135,7 @@ export default function Table() {
   //handle edit dan create
   const onSubmit = async () => {
     const formData = formik.values.table.map((d) => ({
-      id_outlet: idOutlet,
+      id_outlet: query.id == undefined ? idOutlet : query.id,
       number_table: d.number_table,
     }));
 
@@ -176,6 +177,35 @@ export default function Table() {
     }),
   });
 
+  //menampilkan semua DATA OUTLET
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    setIsLoading(true);
+    const fetchData = async () => {
+      try {
+        // Mengambil data transaksi menggunakan axios dengan query params
+        const response = await axios.get(
+          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const data = response.data.data;
+
+        setOutlet(data);
+      } catch (error) {
+        console.error("Error fetching transaction data:", error);
+      }
+    };
+
+    setIsLoading(false);
+
+    fetchData();
+  }, []);
+
   //useEffect mengambil data table
   useEffect(() => {
     const loadData = async () => {
@@ -189,10 +219,8 @@ export default function Table() {
       }
     };
 
-    if (role) {
-      loadData();
-    }
-  }, [itemsPerPage, currentPage, role]);
+    loadData();
+  }, [itemsPerPage, currentPage, query, outletName]);
 
   //handle untuk menghapus data
   const handleRemove = async () => {
@@ -220,6 +248,13 @@ export default function Table() {
     setShowConfirmModal(true);
   };
 
+  const handleInputChange = (event) => {
+    const selectedOutlet = outlet.find(
+      (item) => item.outlet_name === event.target.value
+    );
+    setQuery(selectedOutlet);
+  };
+
   return (
     <div
       ref={targetRef}
@@ -229,6 +264,22 @@ export default function Table() {
       <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
         Table Data Settings
       </h1>
+
+      <div className={`${role !== "admin" ? "hidden" : "flex"} gap-4 mb-2`}>
+        <Select
+          label="Outlet Name:"
+          id="outlet_name"
+          name="outlet_name"
+          value={query?.outlet_name || ""}
+          options={outlet.map((value, index) => (
+            <option key={index} value={value.outlet_name}>
+              {value.outlet_name}
+            </option>
+          ))}
+          placeholder={"Select outlet name"}
+          onChange={handleInputChange}
+        />
+      </div>
 
       {isLoading ? (
         <TableSkeleton />

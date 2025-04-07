@@ -5,19 +5,16 @@ import Pagination from "./component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import LayoutSkeleton from "./component/skeleton/layoutSkeleton";
 import { getNewAccessToken } from "./component/token/refreshToken";
 import { Toaster, toast } from "react-hot-toast";
 import { io } from "socket.io-client";
-import { IoSearch, IoMedkit, IoTrash, IoPrint } from "react-icons/io5";
+import { IoSearch, IoTrash, IoPrint } from "react-icons/io5";
 import { AiFillEdit } from "react-icons/ai";
 import Layout2 from "./component/layout/layout2";
 import { NotData } from "./component/notData/notData";
-import {
-  IconSkeleton,
-  SearchSkeleton,
-  TableSkeleton,
-} from "./component/skeleton/adminSkeleton";
+import { TableSkeleton } from "./component/skeleton/adminSkeleton";
+import { handleApiError } from "./component/handleError/handleError";
+import InputSearch from "./component/form/inputSearch";
 
 export default function Transaction() {
   const [transaction, setTransaction] = useState([]);
@@ -46,34 +43,45 @@ export default function Transaction() {
 
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
+    const loadData = async () => {
+      setIsLoading(true);
+      const refreshToken = localStorage.getItem("refreshToken");
+      const token = localStorage.getItem("token");
+      if (refreshToken) {
+        const decoded = jwtDecode(refreshToken);
+        const outlet_id = decoded.id;
+        const expirationTime = new Date(decoded.exp * 1000);
+        const currentTime = new Date();
 
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+        if (currentTime > expirationTime) {
+          localStorage.clear();
+          router.push(`/login`);
+        }
 
-      if (currentTime > expirationTime) {
-        localStorage.removeItem("token");
-        router.push(`/login`);
+        try {
+          const response = await axios.get(
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          const data = response.data.data;
+
+          setRole(data.role);
+          setOutletName(data.outlet_name);
+          setIsLoading(false);
+        } catch (error) {
+          await handleApiError(error, loadData, router);
+        }
       } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data.data;
-            setOutletName(data.outlet_name);
-            setRole(data.role);
-            setIdOtlet(data.id);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
+        router.push(`/login`);
       }
-    } else {
-      router.push(`/login`);
-    }
-  }, [router]);
+    };
+
+    loadData();
+  }, []);
 
   //setiap kali ada perubahan di current page maka scroll ke atas
   useEffect(() => {
@@ -113,7 +121,7 @@ export default function Transaction() {
           toast.success("Successfully toasted!");
         }
 
-        setOrders((prevOrders) => [...prevOrders, orderData]); // Tambah pesanan baru ke state
+        setOrders((prevOrders) => [...prevOrders, orderData]);
       });
 
       // Membersihkan listener saat komponen unmount
@@ -128,77 +136,51 @@ export default function Transaction() {
     setSearchQuery(transaction);
   }, [transaction]);
 
-  //handle pencarian
-  const searchData = () => {
-    setIsLoading(true);
-    setCurrentPage(1);
-    const fetchData = async () => {
-      if (outletName) {
-        const params = {
-          page: currentPage,
-          limit: itemsPerPage,
-          search: role === "admin" ? query : outletName,
-          by_name: by_name,
-        };
-        try {
-          // Mengambil data transaksi menggunakan axios dengan query params
-          const response = await axios.get(
-            `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/transaction/showpaginated`,
-            {
-              params: params,
-            }
-          );
-
-          const data = response.data.data;
-          setTransaction(data);
-          setRows(response.data.totalItems);
-        } catch (error) {
-          console.error("Error fetching transaction data:", error);
-        }
-      }
-    };
-    setIsLoading(false);
-
-    fetchData();
-  };
-
   // function mengambil data lapangan by limit
-  const fetchData = async () => {
-    if (role) {
-      const params = {
-        page: currentPage,
-        limit: itemsPerPage,
-        search: role === "admin" ? "" : outletName,
-        by_name: by_name,
-      };
-      try {
-        // Mengambil data transaksi menggunakan axios dengan query params
-        const response = await axios.get(
-          `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/transaction/showpaginated`,
-          {
-            params: params,
-          }
-        );
+  const fetchDataPaginated = async (isSearchMode = false) => {
+    setIsLoading(true);
+    if (isSearchMode) {
+      setCurrentPage(1); // Reset ke page 1 jika pencarian
+    }
+    const token = localStorage.getItem("token");
 
-        const data = response.data.data;
-        setTransaction(data);
-        setRows(response.data.totalItems);
-      } catch (error) {
-        console.error("Error fetching transaction data:", error);
-      }
+    const params = {
+      page: isSearchMode ? 1 : currentPage,
+      limit: itemsPerPage,
+      search: role == "user" ? outletName : query,
+      by_name: by_name,
+    };
+    try {
+      // Mengambil data transaksi menggunakan axios dengan query params
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/transaction/showpaginated`,
+        {
+          params: params,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = response.data.data;
+      setTransaction(data);
+      setRows(response.data.totalItems);
+      setIsLoading(false);
+    } catch (error) {
+      await handleApiError(
+        error,
+        () => fetchDataPaginated(isSearchMode),
+        router
+      );
     }
   };
-
-  console.log(searchQuery);
 
   // useEffect mengambil data lapangan by limit
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true); // Tampilkan loading
       try {
-        if (role) {
-          await fetchData();
-        }
+        await fetchDataPaginated();
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -206,9 +188,7 @@ export default function Transaction() {
       }
     };
 
-    if (role) {
-      loadData();
-    }
+    loadData();
   }, [itemsPerPage, currentPage, role, outletName]);
 
   //handle untuk menghapus data
@@ -329,62 +309,32 @@ export default function Transaction() {
     <div ref={targetRef} className="   pb-8 w-full ">
       <div className="flex container">
         <Layout2 />
-        <div className="pt-20 pl-5 bg-white  border-l-2">
+        <div className="pl-5 pt-20 pb-8 w-full bg-white border-l-2">
+          <Toaster position="top-center" reverseOrder={false} />
           <h1 className="my-2 md:my-5 font-ubuntu font-semibold text-darkgray text-lg md:text-xl">
             Transaction Data Settings
           </h1>
-          <Toaster position="top-center" reverseOrder={false} />
-          <div className="flex flex-wrap  items-center lg:w-full gap-4 md:gap-6 w-full mb-6">
-            <div className="flex gap-3 items-center ">
-              <input
-                type="text"
-                placeholder="Outlet Name. . ."
-                id="search"
-                className={`${
-                  role === "admin" ? "block" : "hidden"
-                } px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[190px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm`}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
 
-            <div className="flex gap-3 items-center ">
-              {isLoading ? (
-                <SearchSkeleton />
-              ) : (
-                <input
-                  type="text"
-                  placeholder="transaction Name. . ."
-                  id="search"
-                  className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[190px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm"
-                  value={by_name}
-                  onChange={(e) => setQueryByName(e.target.value)}
-                />
-              )}
-              {isLoading ? (
-                <IconSkeleton />
-              ) : (
-                <button
-                  onClick={searchData}
-                  className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] bg-yellow-700 text-white text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
-                >
-                  <IoSearch />
-                </button>
-              )}
-            </div>
+          <div>
+            <InputSearch
+              role={role}
+              type="text"
+              placeholder="Outlet Name. . ."
+              id="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onRightButtonCLick={() => fetchDataPaginated(true)}
+              rightButton={<IoSearch />}
+              isLoading={isLoading}
+              inputLeft={true}
+              typeLeft={"text"}
+              placeholderLeft={"Name Transaction. . ."}
+              idLeft={"by_name"}
+              valueLeft={by_name}
+              onchangeLeft={(e) => setQueryByName(e.target.value)}
+            />
           </div>
-          <div className="flex mb-4">
-            {isLoading ? (
-              <IconSkeleton />
-            ) : (
-              <a
-                className="bg-yellow-700 text-white body-text-sm-bold font-nunitoSans px-4 py-2 md:px-5 md:py-3 rounded-md shadow-md hover:bg-yellow-700 transition-all duration-300"
-                href="/admin/transaction/create"
-              >
-                <IoMedkit />
-              </a>
-            )}
-          </div>
+
           <div className="rounded-lg  bg-white overflow-x-auto ">
             <div className="min-w-full">
               {isLoading ? (

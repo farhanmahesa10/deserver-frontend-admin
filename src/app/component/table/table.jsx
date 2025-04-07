@@ -29,10 +29,10 @@ const Table = ({ data, columns }) => {
                       ? "min-w-[40px] w-[50px] text-center"
                       : ""
                   } ${
-                    header.id === "Action"
+                    header.id === "Action" || "Logo" || "Photo" || "Image"
                       ? "min-w-[40px] w-[60px] text-center"
                       : ""
-                  }`}
+                  } `}
                 >
                   {flexRender(
                     header.column.columnDef.header,

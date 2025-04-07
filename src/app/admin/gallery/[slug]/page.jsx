@@ -3,66 +3,46 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../../component/token/refreshToken";
 import ButtonCreateUpdate from "@/app/component/button/button";
 import { useFormik } from "formik";
 import * as yup from "yup";
 import Input from "@/app/component/form/input";
 import Select from "@/app/component/form/select";
 import { handleApiError } from "@/app/component/handleError/handleError";
+import { useSelector } from "react-redux";
 
 export default function AddGallery({ params }) {
   const [outlet, setOutlet] = useState([]);
-  const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
   const router = useRouter();
   const { slug } = React.use(params);
+  const dataOutlet = useSelector((state) => state.counter.outlet);
 
   // cek token
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      const refreshToken = localStorage.getItem("refreshToken");
-      const token = localStorage.getItem("token");
-      if (refreshToken) {
-        const decoded = jwtDecode(refreshToken);
-        const outlet_id = decoded.id;
-        const expirationTime = new Date(decoded.exp * 1000);
-        const currentTime = new Date();
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const decoded = jwtDecode(refreshToken);
+      const expirationTime = new Date(decoded.exp * 1000);
+      const currentTime = new Date();
 
-        if (currentTime > expirationTime) {
-          localStorage.clear();
-          router.push(`/login`);
-        }
-
-        try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-          const data = response.data.data;
-          setRole(data.role);
-          if (data.role !== "admin") {
-            formik.setFieldValue("id_outlet", data.id);
-          }
-          setIsLoading(false);
-        } catch (error) {
-          await handleApiError(error, loadData, router);
-        }
-      } else {
+      if (currentTime > expirationTime) {
+        localStorage.clear();
         router.push(`/login`);
       }
-    };
-
-    loadData();
+    } else {
+      router.push(`/login`);
+    }
   }, []);
+
+  useEffect(() => {
+    if (dataOutlet.role !== "admin") {
+      formik.setFieldValue("id_outlet", dataOutlet.id);
+    }
+  }, [dataOutlet]);
 
   //handle edit dan create
   const onSubmit = async (e) => {
@@ -82,9 +62,9 @@ export default function AddGallery({ params }) {
           formData,
           { headers }
         );
+        router.push("/admin/gallery");
         localStorage.removeItem("id_gallery");
         localStorage.setItem("newData", "update successfully!");
-        router.push("/admin/gallery");
       } else {
         setLoadingButton(true);
         await axios.post(
@@ -92,8 +72,8 @@ export default function AddGallery({ params }) {
           formData,
           { headers }
         );
-        localStorage.setItem("newData", "create successfully!");
         router.push("/admin/gallery");
+        localStorage.setItem("newData", "create successfully!");
       }
     } catch (error) {
       await handleApiError(error, onSubmit, router);
@@ -222,7 +202,11 @@ export default function AddGallery({ params }) {
           className="mt-4 border p-8 grid gap-4 "
           onSubmit={formik.handleSubmit}
         >
-          <div className={`${role !== "admin" ? "hidden" : "flex"} gap-4 mb-2`}>
+          <div
+            className={`${
+              dataOutlet.role !== "admin" ? "hidden" : "flex"
+            } gap-4 mb-2`}
+          >
             <Select
               label="Outlate Name:"
               id="id_outlet"
