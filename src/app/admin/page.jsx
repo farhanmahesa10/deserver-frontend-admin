@@ -219,7 +219,7 @@ export default function AddProfile({ params }) {
       <h2 className="text-xl font-nunito text-center">Manage profile</h2>
       <div
         onClick={() => setCollapseProfile(!collapseProfile)}
-        className="flex relative w-full bg-yellow-700   items-center px-4 py-2 border border-gray-300 rounded-t-md shadow-sm cursor-pointer  hover:bg-yellow-800 transition-all duration-300"
+        className="flex relative w-full bg-yellow-700  items-center px-4 py-2 border border-gray-300 rounded-t-md shadow-sm cursor-pointer  hover:bg-yellow-800 transition-all duration-300"
       >
         <h1 className="font-nunitoSans text-base text-white  ">Profile</h1>
         <IoCaretForward

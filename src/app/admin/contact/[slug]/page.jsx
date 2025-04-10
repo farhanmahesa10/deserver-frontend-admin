@@ -223,138 +223,144 @@ export default function AddContact({ params }) {
 
   return (
     <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage Contact</h2>
-      {isLoading ? (
-        <EditDataSkeleton />
-      ) : (
-        <form
-          className="mt-4 border p-8 grid gap-4"
-          onSubmit={formik.handleSubmit}
-        >
-          <div className={`${role !== "admin" ? "hidden" : "flex"} gap-4 mb-2`}>
+      <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
+        <h2 className="text-xl font-nunito">Manage Contact</h2>
+        {isLoading ? (
+          <EditDataSkeleton />
+        ) : (
+          <form
+            className="mt-4 border p-8 grid gap-4"
+            onSubmit={formik.handleSubmit}
+          >
+            <div
+              className={`${role !== "admin" ? "hidden" : "flex"} gap-4 mb-2`}
+            >
+              <Select
+                label="Outlate Name:"
+                id="id_outlet"
+                name="id_outlet"
+                value={formik.values.id_outlet}
+                options={outlet.map((value) => (
+                  <option key={value.id} value={value.id}>
+                    {value.outlet_name}
+                  </option>
+                ))}
+                placeholder={"Select outlet name"}
+                onChange={handleChange}
+                errorMessage={formik.errors.id_outlet}
+                isError={
+                  formik.touched.id_outlet && formik.errors.id_outlet
+                    ? true
+                    : false
+                }
+              />
+            </div>
+
             <Select
-              label="Outlate Name:"
-              id="id_outlet"
-              name="id_outlet"
-              value={formik.values.id_outlet}
-              options={outlet.map((value) => (
-                <option key={value.id} value={value.id}>
-                  {value.outlet_name}
+              label="Contact name:"
+              id="contact_name"
+              name="contact_name"
+              value={formik.values.contact_name}
+              options={valueContact.map((value) => (
+                <option key={value.contact_name} value={value.contact_name}>
+                  {value.contact_name}
                 </option>
               ))}
-              placeholder={"Select outlet name"}
+              placeholder={`${
+                slug == "create"
+                  ? "Select contact name"
+                  : formik.values.contact_name
+              }`}
               onChange={handleChange}
-              errorMessage={formik.errors.id_outlet}
+              errorMessage={formik.errors.contact_name}
               isError={
-                formik.touched.id_outlet && formik.errors.id_outlet
+                formik.touched.contact_name && formik.errors.contact_name
                   ? true
                   : false
               }
             />
-          </div>
 
-          <Select
-            label="Contact name:"
-            id="contact_name"
-            name="contact_name"
-            value={formik.values.contact_name}
-            options={valueContact.map((value) => (
-              <option key={value.contact_name} value={value.contact_name}>
-                {value.contact_name}
-              </option>
-            ))}
-            placeholder={`${
-              slug == "create"
-                ? "Select contact name"
-                : formik.values.contact_name
-            }`}
-            onChange={handleChange}
-            errorMessage={formik.errors.contact_name}
-            isError={
-              formik.touched.contact_name && formik.errors.contact_name
-                ? true
-                : false
-            }
-          />
+            <Input
+              label="Value :"
+              id="value"
+              placeholder="Value"
+              name="value"
+              type="text"
+              value={formik.values.value}
+              onChange={handleChange}
+              errorMessage={formik.errors.value}
+              isError={
+                formik.touched.value && formik.errors.value ? true : false
+              }
+            />
+            <Input
+              label="Link :"
+              id="link"
+              placeholder="Link"
+              name="link"
+              type="text"
+              value={formik.values.link}
+              onChange={handleChange}
+              errorMessage={formik.errors.link}
+              isError={formik.touched.link && formik.errors.link ? true : false}
+            />
 
-          <Input
-            label="Value :"
-            id="value"
-            placeholder="Value"
-            name="value"
-            type="text"
-            value={formik.values.value}
-            onChange={handleChange}
-            errorMessage={formik.errors.value}
-            isError={formik.touched.value && formik.errors.value ? true : false}
-          />
-          <Input
-            label="Link :"
-            id="link"
-            placeholder="Link"
-            name="link"
-            type="text"
-            value={formik.values.link}
-            onChange={handleChange}
-            errorMessage={formik.errors.link}
-            isError={formik.touched.link && formik.errors.link ? true : false}
-          />
-
-          <div className="flex gap-4 mb-2 ">
-            <label htmlFor="photo" className="min-w-28 lg:w-40 ">
-              Pilih Logo:
-            </label>
-            <div className="flex gap-2 flex-wrap ">
-              {[
-                "instagram.png",
-                "tiktok.png",
-                "facebook.png",
-                "whatsapp.png",
-                "twitter.png",
-                "youtube.png",
-              ].map((image) => (
-                <button
-                  key={image}
-                  type="button"
-                  className="border p-2 rounded-lg hover:bg-yellow-700"
-                  onClick={() => handleSelectImage(image)}
-                >
-                  <img
-                    src={`/img/${image}`}
-                    alt={image}
-                    className="w-10 h-10 object-cover"
-                  />
-                </button>
-              ))}
+            <div className="flex gap-4 mb-2 ">
+              <label htmlFor="photo" className="min-w-28 lg:w-40 ">
+                Pilih Logo:
+              </label>
+              <div className="flex gap-2 flex-wrap ">
+                {[
+                  "instagram.png",
+                  "tiktok.png",
+                  "facebook.png",
+                  "whatsapp.png",
+                  "twitter.png",
+                  "youtube.png",
+                ].map((image) => (
+                  <button
+                    key={image}
+                    type="button"
+                    className="border p-2 rounded-lg hover:bg-yellow-700"
+                    onClick={() => handleSelectImage(image)}
+                  >
+                    <img
+                      src={`/img/${image}`}
+                      alt={image}
+                      className="w-10 h-10 object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          {formik.touched.logo && formik.errors.logo && (
-            <div className="h-6 ">
-              <span className="text-sm text-red-400 ">
-                {formik.errors.logo}
-              </span>
-            </div>
-          )}
-          {formik.values.logo && (
-            <div className="flex gap-4 mb-2">
-              <label className="min-w-28 lg:w-52">Preview:</label>
-              <img
-                src={
-                  typeof formik.values.logo === "object"
-                    ? URL.createObjectURL(formik.values.logo)
-                    : `${process.env.NEXT_PUBLIC_IMAGE_URL}/${formik.values.logo}`
-                }
-                alt="event Preview"
-                className="mx-auto w-40 h-40 object-cover"
-              />
-            </div>
-          )}
-          <ButtonCreateUpdate
-            loadingButton={loadingButton}
-            handleCancel={handleCancel}
-          />
-        </form>
-      )}
+            {formik.touched.logo && formik.errors.logo && (
+              <div className="h-6 ">
+                <span className="text-sm text-red-400 ">
+                  {formik.errors.logo}
+                </span>
+              </div>
+            )}
+            {formik.values.logo && (
+              <div className="flex gap-4 mb-2">
+                <label className="min-w-28 lg:w-52">Preview:</label>
+                <img
+                  src={
+                    typeof formik.values.logo === "object"
+                      ? URL.createObjectURL(formik.values.logo)
+                      : `${process.env.NEXT_PUBLIC_IMAGE_URL}/${formik.values.logo}`
+                  }
+                  alt="event Preview"
+                  className="mx-auto w-40 h-40 object-cover"
+                />
+              </div>
+            )}
+            <ButtonCreateUpdate
+              loadingButton={loadingButton}
+              handleCancel={handleCancel}
+            />
+          </form>
+        )}
+      </div>
     </div>
   );
 }

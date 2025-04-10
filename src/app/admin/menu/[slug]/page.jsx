@@ -244,168 +244,174 @@ export default function AddMenu({ params }) {
   };
   return (
     <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage Menu</h2>
-      {isLoading ? (
-        <EditDataSkeleton />
-      ) : (
-        <form
-          className="mt-4 border p-8 grid gap-4"
-          onSubmit={formik.handleSubmit}
-        >
-          <div
-            className={`${
-              dataOutlet.role !== "admin" ? "hidden" : "flex"
-            } gap-4 mb-2`}
+      <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
+        <h2 className="text-xl font-nunito">Manage Menu</h2>
+        {isLoading ? (
+          <EditDataSkeleton />
+        ) : (
+          <form
+            className="mt-4 border p-8 grid gap-4"
+            onSubmit={formik.handleSubmit}
           >
+            <div
+              className={`${
+                dataOutlet.role !== "admin" ? "hidden" : "flex"
+              } gap-4 mb-2`}
+            >
+              <Select
+                label="Outlate Name:"
+                id="outlet_name"
+                name="outlet_name"
+                value={formik.values.outlet_name}
+                options={outlet.map((value) => (
+                  <option key={value.id} value={value.outlet_name}>
+                    {value.outlet_name}
+                  </option>
+                ))}
+                placeholder={"Select outlet name"}
+                onChange={handleChange}
+                errorMessage={formik.errors.outlet_name}
+                isError={
+                  formik.touched.outlet_name && formik.errors.outlet_name
+                    ? true
+                    : false
+                }
+              />
+            </div>
+
             <Select
-              label="Outlate Name:"
-              id="outlet_name"
-              name="outlet_name"
-              value={formik.values.outlet_name}
-              options={outlet.map((value) => (
-                <option key={value.id} value={value.outlet_name}>
-                  {value.outlet_name}
+              label="Subcategory:"
+              id="id_subcategory"
+              name="id_subcategory"
+              value={formik.values.id_subcategory}
+              options={subCategory.map((value) => (
+                <option key={value.id} value={value.id}>
+                  {value.title}
                 </option>
               ))}
-              placeholder={"Select outlet name"}
+              placeholder={"Select subcategory name"}
               onChange={handleChange}
-              errorMessage={formik.errors.outlet_name}
+              errorMessage={formik.errors.id_subcategory}
               isError={
-                formik.touched.outlet_name && formik.errors.outlet_name
+                formik.touched.id_subcategory && formik.errors.id_subcategory
                   ? true
                   : false
               }
             />
-          </div>
-
-          <Select
-            label="Subcategory:"
-            id="id_subcategory"
-            name="id_subcategory"
-            value={formik.values.id_subcategory}
-            options={subCategory.map((value) => (
-              <option key={value.id} value={value.id}>
-                {value.title}
-              </option>
-            ))}
-            placeholder={"Select subcategory name"}
-            onChange={handleChange}
-            errorMessage={formik.errors.id_subcategory}
-            isError={
-              formik.touched.id_subcategory && formik.errors.id_subcategory
-                ? true
-                : false
-            }
-          />
-          <Input
-            label="Title :"
-            id="title"
-            placeholder="Title"
-            name="title"
-            type="text"
-            value={formik.values.title}
-            onChange={handleChange}
-            errorMessage={formik.errors.title}
-            isError={formik.touched.title && formik.errors.title ? true : false}
-          />
-          <Input
-            label="Details :"
-            id="details"
-            placeholder="Details"
-            name="details"
-            type="text"
-            value={formik.values.details}
-            onChange={handleChange}
-            errorMessage={formik.errors.details}
-            isError={
-              formik.touched.details && formik.errors.details ? true : false
-            }
-          />
-
-          <Input
-            label="Price :"
-            id="price"
-            placeholder="Price"
-            name="price"
-            type="number"
-            value={formik.values.price}
-            onChange={handleChange}
-            errorMessage={formik.errors.price}
-            isError={formik.touched.price && formik.errors.price ? true : false}
-          />
-
-          <Select
-            label="Status :"
-            id="status"
-            name="status"
-            value={formik.values.status}
-            options={["Ready", "SoldOut"].map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-            placeholder={"Is the product available?"}
-            onChange={handleChange}
-            errorMessage={formik.errors.status}
-            isError={
-              formik.touched.status && formik.errors.status ? true : false
-            }
-          />
-
-          <Select
-            label="Best seller :"
-            id="best_seller"
-            name="best_seller"
-            value={formik.values.best_seller}
-            options={["true", "false"].map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-            placeholder={"Is the product available?"}
-            onChange={handleChange}
-            errorMessage={formik.errors.best_seller}
-            isError={
-              formik.touched.best_seller && formik.errors.best_seller
-                ? true
-                : false
-            }
-          />
-          <div className="flex gap-4 mb-2">
             <Input
-              label="Photo :"
-              id="photo"
-              placeholder="Photo"
-              name="photo"
-              type="file"
-              inputBorder="w-52"
-              onChange={handleFileChange}
-              errorMessage={formik.errors.photo}
+              label="Title :"
+              id="title"
+              placeholder="Title"
+              name="title"
+              type="text"
+              value={formik.values.title}
+              onChange={handleChange}
+              errorMessage={formik.errors.title}
               isError={
-                formik.touched.photo && formik.errors.photo ? true : false
+                formik.touched.title && formik.errors.title ? true : false
               }
             />
-          </div>
-          {formik.values.photo && (
+            <Input
+              label="Details :"
+              id="details"
+              placeholder="Details"
+              name="details"
+              type="text"
+              value={formik.values.details}
+              onChange={handleChange}
+              errorMessage={formik.errors.details}
+              isError={
+                formik.touched.details && formik.errors.details ? true : false
+              }
+            />
+
+            <Input
+              label="Price :"
+              id="price"
+              placeholder="Price"
+              name="price"
+              type="number"
+              value={formik.values.price}
+              onChange={handleChange}
+              errorMessage={formik.errors.price}
+              isError={
+                formik.touched.price && formik.errors.price ? true : false
+              }
+            />
+
+            <Select
+              label="Status :"
+              id="status"
+              name="status"
+              value={formik.values.status}
+              options={["Ready", "SoldOut"].map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+              placeholder={"Is the product available?"}
+              onChange={handleChange}
+              errorMessage={formik.errors.status}
+              isError={
+                formik.touched.status && formik.errors.status ? true : false
+              }
+            />
+
+            <Select
+              label="Best seller :"
+              id="best_seller"
+              name="best_seller"
+              value={formik.values.best_seller}
+              options={["true", "false"].map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+              placeholder={"Is the product available?"}
+              onChange={handleChange}
+              errorMessage={formik.errors.best_seller}
+              isError={
+                formik.touched.best_seller && formik.errors.best_seller
+                  ? true
+                  : false
+              }
+            />
             <div className="flex gap-4 mb-2">
-              <label className="min-w-28 lg:w-52">Preview:</label>
-              <img
-                src={
-                  typeof formik.values.photo === "object"
-                    ? URL.createObjectURL(formik.values.photo)
-                    : `${process.env.NEXT_PUBLIC_IMAGE_URL}/${formik.values.photo}`
+              <Input
+                label="Photo :"
+                id="photo"
+                placeholder="Photo"
+                name="photo"
+                type="file"
+                inputBorder="w-52"
+                onChange={handleFileChange}
+                errorMessage={formik.errors.photo}
+                isError={
+                  formik.touched.photo && formik.errors.photo ? true : false
                 }
-                alt="event Preview"
-                className="mx-auto w-40 h-40 object-cover"
               />
             </div>
-          )}
-          <ButtonCreateUpdate
-            loadingButton={loadingButton}
-            handleCancel={handleCancel}
-          />
-        </form>
-      )}
+            {formik.values.photo && (
+              <div className="flex gap-4 mb-2">
+                <label className="min-w-28 lg:w-52">Preview:</label>
+                <img
+                  src={
+                    typeof formik.values.photo === "object"
+                      ? URL.createObjectURL(formik.values.photo)
+                      : `${process.env.NEXT_PUBLIC_IMAGE_URL}/${formik.values.photo}`
+                  }
+                  alt="event Preview"
+                  className="mx-auto w-40 h-40 object-cover"
+                />
+              </div>
+            )}
+            <ButtonCreateUpdate
+              loadingButton={loadingButton}
+              handleCancel={handleCancel}
+            />
+          </form>
+        )}
+      </div>
     </div>
   );
 }

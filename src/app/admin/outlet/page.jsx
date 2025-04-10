@@ -281,10 +281,10 @@ export default function AdminOutlet() {
   return (
     <div
       ref={targetRef}
-      className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
+      className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto lg:border-l-2"
     >
       <Toaster position="top-center" reverseOrder={false} />
-      <>
+      <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
         <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
           Outlet Data Settings
         </h1>
@@ -338,7 +338,7 @@ export default function AdminOutlet() {
             setShowConfirmModal={() => setShowConfirmModal(false)}
           />
         )}
-      </>
+      </div>
     </div>
   );
 }

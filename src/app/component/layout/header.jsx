@@ -33,7 +33,7 @@ export default function Header({ isOpen, onClickHeader }) {
 
   return (
     <header className="fixed top-0 left-0 w-full h-20 flex items-center z-10 shadow-md bg-white">
-      <div className="container flex justify-between items-center">
+      <div className="container flex justify-between items-center ">
         <div className="flex p-1 w-28 h-16 ml-8 ">
           <img
             src={`/img/logo.png`}
@@ -68,7 +68,7 @@ export default function Header({ isOpen, onClickHeader }) {
           type="button"
           className={`${
             !isOpen ? "" : "hamburger-active"
-          } block absolute right-4 z-30 lg:hidden`}
+          } block  right-4 z-30 lg:hidden`}
         >
           <span className="hamburger-line transition duration-300 ease-in-out bg-black origin-top-left "></span>
           <span className="hamburger-line transition duration-300 ease-in-out bg-black"></span>

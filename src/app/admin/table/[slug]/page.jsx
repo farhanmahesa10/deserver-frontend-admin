@@ -13,7 +13,7 @@ import Select from "@/app/component/form/select";
 import { handleApiError } from "@/app/component/handleError/handleError";
 import { useSelector } from "react-redux";
 
-export default function AddGallery({ params }) {
+export default function AddTable({ params }) {
   const [outlet, setOutlet] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
@@ -46,11 +46,6 @@ export default function AddGallery({ params }) {
 
   //handle edit dan create
   const onSubmit = async (e) => {
-    const formData = new FormData();
-    formData.append("id_outlet", formik.values.id_outlet);
-    formData.append("title", formik.values.title);
-    formData.append("image", formik.values.image);
-
     try {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
@@ -58,21 +53,21 @@ export default function AddGallery({ params }) {
       if (formik.values.id) {
         setLoadingButton(true);
         await axios.put(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/gallery/update/${formik.values.id}`,
-          formData,
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/update/${formik.values.id}`,
+          formik.values,
           { headers }
         );
-        router.push("/admin/gallery");
-        localStorage.removeItem("id_gallery");
+        router.push("/admin/table");
+        localStorage.removeItem("id_table");
         localStorage.setItem("newData", "update successfully!");
       } else {
         setLoadingButton(true);
         await axios.post(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/gallery/create`,
-          formData,
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/create`,
+          formik.values,
           { headers }
         );
-        router.push("/admin/gallery");
+        router.push("/admin/table");
         localStorage.setItem("newData", "create successfully!");
       }
     } catch (error) {
@@ -83,31 +78,15 @@ export default function AddGallery({ params }) {
   const formik = useFormik({
     initialValues: {
       id_outlet: "",
-      title: "",
-      image: "",
+      number_table: "",
     },
     onSubmit,
     validationSchema: yup.object({
       id_outlet: yup.number().required(),
-      title: yup.string().required(),
-      image: yup.mixed().when("id", {
-        is: (id) => !id,
-        then: (schema) =>
-          schema
-            .required()
-            .test(
-              "fileType",
-              "Invalid image format (jpg, jpeg, png only)",
-              (value) =>
-                ["image/jpeg", "image/png", "image/jpg"].includes(value?.type)
-            )
-            .test(
-              "fileSize",
-              "Maximum image size 2MB",
-              (value) => value && value.size <= 2 * 1024 * 1024
-            ),
-        otherwise: (schema) => schema.notRequired(),
-      }),
+      number_table: yup
+        .number()
+        .typeError("Must be a number")
+        .required("number table is a required"),
     }),
   });
 
@@ -140,16 +119,16 @@ export default function AddGallery({ params }) {
     fetchData();
   }, []);
 
-  //mengambildata gallery ketika edit
+  //mengambildata table ketika edit
   useEffect(() => {
     const token = localStorage.getItem("token");
     const fetchData = async () => {
       try {
         if (slug === "edit") {
-          const idGallery = localStorage.getItem("id_gallery");
+          const tableCode = localStorage.getItem("table_code");
 
           const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/gallery/show/${idGallery}`,
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/showtablecode/${tableCode}`,
             {
               headers: {
                 Authorization: `Bearer ${token}`,
@@ -172,8 +151,8 @@ export default function AddGallery({ params }) {
   }, []);
 
   const handleCancel = () => {
-    router.push("/admin/gallery");
-    localStorage.removeItem("id_gallery");
+    router.push("/admin/table");
+    localStorage.removeItem("id_table");
   };
 
   // Handler untuk perubahan nilai input
@@ -182,20 +161,10 @@ export default function AddGallery({ params }) {
     formik.setFieldValue(target.name, target.value);
   };
 
-  // Handle pilihan gambar dari folder
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file && file.size > 2 * 1024 * 1024) {
-      alert("Ukuran file terlalu besar (maksimal 2MB)!");
-      return;
-    }
-    formik.setFieldValue("image", file);
-  };
-
   return (
     <div className="p-8 pt-20 w-full">
       <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
-        <h2 className="text-xl font-nunito">Manage Gallery</h2>
+        <h2 className="text-xl font-nunito">Manage Table</h2>
         {isLoading ? (
           <EditDataSkeleton />
         ) : (
@@ -230,48 +199,21 @@ export default function AddGallery({ params }) {
             </div>
 
             <Input
-              label="Title :"
-              id="title"
-              placeholder="Title"
-              name="title"
+              label="Number Table :"
+              id="number_table"
+              placeholder="number table"
+              name="number_table"
               type="text"
-              value={formik.values.title}
+              value={formik.values.number_table}
               onChange={handleChange}
-              errorMessage={formik.errors.title}
+              errorMessage={formik.errors.number_table}
               isError={
-                formik.touched.title && formik.errors.title ? true : false
+                formik.touched.number_table && formik.errors.number_table
+                  ? true
+                  : false
               }
             />
 
-            <div className="flex gap-4 mb-2">
-              <Input
-                label="Image :"
-                id="image"
-                placeholder="image"
-                name="image"
-                type="file"
-                inputBorder="w-52"
-                onChange={handleFileChange}
-                errorMessage={formik.errors.image}
-                isError={
-                  formik.touched.image && formik.errors.image ? true : false
-                }
-              />
-            </div>
-            {formik.values.image && (
-              <div className="flex gap-4 mb-2">
-                <label className="min-w-28 lg:w-52">Preview:</label>
-                <img
-                  src={
-                    typeof formik.values.image === "object"
-                      ? URL.createObjectURL(formik.values.image)
-                      : `${process.env.NEXT_PUBLIC_IMAGE_URL}/${formik.values.image}`
-                  }
-                  alt="event Preview"
-                  className="mx-auto w-40 h-40 object-cover"
-                />
-              </div>
-            )}
             <ButtonCreateUpdate
               loadingButton={loadingButton}
               handleCancel={handleCancel}

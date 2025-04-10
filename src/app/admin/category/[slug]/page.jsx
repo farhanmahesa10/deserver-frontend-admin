@@ -171,72 +171,74 @@ export default function AddCategory({ params }) {
 
   return (
     <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage Category</h2>
-      {isLoading ? (
-        <EditDataSkeleton />
-      ) : (
-        <form
-          className="mt-4 border p-8 grid gap-4"
-          onSubmit={formik.handleSubmit}
-        >
-          <div
-            className={`${
-              dataOutlet.role !== "admin" ? "hidden" : "flex"
-            } gap-4 mb-2`}
+      <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
+        <h2 className="text-xl font-nunito">Manage Category</h2>
+        {isLoading ? (
+          <EditDataSkeleton />
+        ) : (
+          <form
+            className="mt-4 border p-8 grid gap-4"
+            onSubmit={formik.handleSubmit}
           >
-            <Select
-              label="Outlate Name:"
-              id="id_outlet"
-              name="id_outlet"
-              value={formik.values.id_outlet}
-              options={outlet.map((value) => (
-                <option key={value.id} value={value.id}>
-                  {value.outlet_name}
-                </option>
-              ))}
-              placeholder={"Select Outlet Name"}
+            <div
+              className={`${
+                dataOutlet.role !== "admin" ? "hidden" : "flex"
+              } gap-4 mb-2`}
+            >
+              <Select
+                label="Outlate Name:"
+                id="id_outlet"
+                name="id_outlet"
+                value={formik.values.id_outlet}
+                options={outlet.map((value) => (
+                  <option key={value.id} value={value.id}>
+                    {value.outlet_name}
+                  </option>
+                ))}
+                placeholder={"Select Outlet Name"}
+                onChange={handleChange}
+                errorMessage={formik.errors.id_outlet}
+                isError={
+                  formik.touched.id_outlet && formik.errors.id_outlet
+                    ? true
+                    : false
+                }
+              />
+            </div>
+
+            <Input
+              label="Type :"
+              id="type"
+              placeholder="Type"
+              name="type"
+              type="text"
+              value={formik.values.type}
               onChange={handleChange}
-              errorMessage={formik.errors.id_outlet}
+              errorMessage={formik.errors.type}
+              isError={formik.touched.type && formik.errors.type ? true : false}
+            />
+            <Input
+              label="Descriptions :"
+              id="descriptions"
+              placeholder="Descriptions"
+              name="descriptions"
+              type="text"
+              value={formik.values.descriptions}
+              onChange={handleChange}
+              errorMessage={formik.errors.descriptions}
               isError={
-                formik.touched.id_outlet && formik.errors.id_outlet
+                formik.touched.descriptions && formik.errors.descriptions
                   ? true
                   : false
               }
             />
-          </div>
-
-          <Input
-            label="Type :"
-            id="type"
-            placeholder="Type"
-            name="type"
-            type="text"
-            value={formik.values.type}
-            onChange={handleChange}
-            errorMessage={formik.errors.type}
-            isError={formik.touched.type && formik.errors.type ? true : false}
-          />
-          <Input
-            label="Descriptions :"
-            id="descriptions"
-            placeholder="Descriptions"
-            name="descriptions"
-            type="text"
-            value={formik.values.descriptions}
-            onChange={handleChange}
-            errorMessage={formik.errors.descriptions}
-            isError={
-              formik.touched.descriptions && formik.errors.descriptions
-                ? true
-                : false
-            }
-          />
-          <ButtonCreateUpdate
-            loadingButton={loadingButton}
-            handleCancel={handleCancel}
-          />
-        </form>
-      )}
+            <ButtonCreateUpdate
+              loadingButton={loadingButton}
+              handleCancel={handleCancel}
+            />
+          </form>
+        )}
+      </div>
     </div>
   );
 }

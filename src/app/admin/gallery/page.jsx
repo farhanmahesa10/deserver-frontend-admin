@@ -234,63 +234,65 @@ export default function Gallery() {
   return (
     <div
       ref={targetRef}
-      className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
+      className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto lg:border-l-2"
     >
       <Toaster position="top-center" reverseOrder={false} />
-      <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
-        Gallery Data Settings
-      </h1>
+      <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
+        <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
+          Gallery Data Settings
+        </h1>
 
-      <div>
-        <InputSearch
-          role={dataOutlet.role}
-          type="text"
-          placeholder="Outlet Name. . ."
-          id="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onRightButtonCLick={() => fetchDataPaginated(true)}
-          rightButton={<IoSearch />}
-          createData={<IoMedkit />}
-          linkCreate={"/admin/gallery/create"}
-          isLoading={isLoading}
-        />
-      </div>
+        <div>
+          <InputSearch
+            role={dataOutlet.role}
+            type="text"
+            placeholder="Outlet Name. . ."
+            id="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onRightButtonCLick={() => fetchDataPaginated(true)}
+            rightButton={<IoSearch />}
+            createData={<IoMedkit />}
+            linkCreate={"/admin/gallery/create"}
+            isLoading={isLoading}
+          />
+        </div>
 
-      <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
-        {isLoading ? (
-          <TableSkeleton />
-        ) : (
-          <Table data={searchQuery} columns={columns} />
+        <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
+          {isLoading ? (
+            <TableSkeleton />
+          ) : (
+            <Table data={searchQuery} columns={columns} />
+          )}
+          {/* Modal */}
+          {isModalOpen && (
+            <Modal
+              currentImage={currentImage}
+              setIsModalOpen={setIsModalOpen}
+              setCurrentImage={setCurrentImage}
+            />
+          )}
+        </div>
+
+        {/* Tampilkan navigasi pagination */}
+        {searchQuery && searchQuery.length > 0 && (
+          <Pagination
+            itemsPerPage={itemsPerPage}
+            rows={rows}
+            paginate={paginate}
+            currentPage={currentPage}
+            isLoading={isLoading}
+          />
         )}
-        {/* Modal */}
-        {isModalOpen && (
-          <Modal
-            currentImage={currentImage}
-            setIsModalOpen={setIsModalOpen}
-            setCurrentImage={setCurrentImage}
+
+        {/* modal konfirmasi delete */}
+        {showConfirmModal && (
+          <HanldeRemove
+            handleRemove={handleRemove}
+            setShowConfirmModal={() => setShowConfirmModal(false)}
           />
         )}
       </div>
-
-      {/* Tampilkan navigasi pagination */}
-      {searchQuery && searchQuery.length > 0 && (
-        <Pagination
-          itemsPerPage={itemsPerPage}
-          rows={rows}
-          paginate={paginate}
-          currentPage={currentPage}
-          isLoading={isLoading}
-        />
-      )}
-
-      {/* modal konfirmasi delete */}
-      {showConfirmModal && (
-        <HanldeRemove
-          handleRemove={handleRemove}
-          setShowConfirmModal={() => setShowConfirmModal(false)}
-        />
-      )}
     </div>
   );
 }

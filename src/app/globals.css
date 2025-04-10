@@ -193,10 +193,13 @@
     line-height: 15px;
     letter-spacing: 0%;
   }
-}
-
-/* @layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  /* Custom scrollbar dengan ukuran sedang dan tetap ada panahnya */
+  .custom-scrollbar {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE 10+ */
   }
-} */
+
+  .custom-scrollbar::-webkit-scrollbar {
+    display: none; /* Safari & Chrome */
+  }
+}

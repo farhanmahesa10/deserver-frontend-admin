@@ -198,103 +198,107 @@ export default function AddEvent({ params }) {
 
   return (
     <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage Event</h2>
-      {isLoading ? (
-        <EditDataSkeleton />
-      ) : (
-        <form
-          className="mt-4 border p-8 grid gap-4"
-          onSubmit={formik.handleSubmit}
-        >
-          <div
-            className={`${
-              dataOutlet.role !== "admin" ? "hidden" : "flex"
-            } gap-4 mb-2`}
+      <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
+        <h2 className="text-xl font-nunito">Manage Event</h2>
+        {isLoading ? (
+          <EditDataSkeleton />
+        ) : (
+          <form
+            className="mt-4 border p-8 grid gap-4"
+            onSubmit={formik.handleSubmit}
           >
-            <Select
-              label="Outlate Name:"
-              id="id_outlet"
-              name="id_outlet"
-              value={formik.values.id_outlet}
-              options={outlet.map((value) => (
-                <option key={value.id} value={value.id}>
-                  {value.outlet_name}
-                </option>
-              ))}
-              placeholder={"Select outlet name"}
+            <div
+              className={`${
+                dataOutlet.role !== "admin" ? "hidden" : "flex"
+              } gap-4 mb-2`}
+            >
+              <Select
+                label="Outlate Name:"
+                id="id_outlet"
+                name="id_outlet"
+                value={formik.values.id_outlet}
+                options={outlet.map((value) => (
+                  <option key={value.id} value={value.id}>
+                    {value.outlet_name}
+                  </option>
+                ))}
+                placeholder={"Select outlet name"}
+                onChange={handleChange}
+                errorMessage={formik.errors.id_outlet}
+                isError={
+                  formik.touched.id_outlet && formik.errors.id_outlet
+                    ? true
+                    : false
+                }
+              />
+            </div>
+
+            <Input
+              label="Title :"
+              id="title"
+              placeholder="Title"
+              name="title"
+              type="text"
+              value={formik.values.title}
               onChange={handleChange}
-              errorMessage={formik.errors.id_outlet}
+              errorMessage={formik.errors.title}
               isError={
-                formik.touched.id_outlet && formik.errors.id_outlet
+                formik.touched.title && formik.errors.title ? true : false
+              }
+            />
+
+            <Input
+              label="Descriptions :"
+              id="descriptions"
+              placeholder="Descriptions"
+              name="descriptions"
+              type="text"
+              value={formik.values.descriptions}
+              onChange={handleChange}
+              errorMessage={formik.errors.descriptions}
+              isError={
+                formik.touched.descriptions && formik.errors.descriptions
                   ? true
                   : false
               }
             />
-          </div>
 
-          <Input
-            label="Title :"
-            id="title"
-            placeholder="Title"
-            name="title"
-            type="text"
-            value={formik.values.title}
-            onChange={handleChange}
-            errorMessage={formik.errors.title}
-            isError={formik.touched.title && formik.errors.title ? true : false}
-          />
-
-          <Input
-            label="Descriptions :"
-            id="descriptions"
-            placeholder="Descriptions"
-            name="descriptions"
-            type="text"
-            value={formik.values.descriptions}
-            onChange={handleChange}
-            errorMessage={formik.errors.descriptions}
-            isError={
-              formik.touched.descriptions && formik.errors.descriptions
-                ? true
-                : false
-            }
-          />
-
-          <div className="flex gap-4 mb-2">
-            <Input
-              label="Image :"
-              id="image"
-              placeholder="image"
-              name="image"
-              type="file"
-              inputBorder="w-52"
-              onChange={handleFileChange}
-              errorMessage={formik.errors.image}
-              isError={
-                formik.touched.image && formik.errors.image ? true : false
-              }
-            />
-          </div>
-          {formik.values.image && (
             <div className="flex gap-4 mb-2">
-              <label className="min-w-28 lg:w-52">Preview:</label>
-              <img
-                src={
-                  typeof formik.values.image === "object"
-                    ? URL.createObjectURL(formik.values.image)
-                    : `${process.env.NEXT_PUBLIC_IMAGE_URL}/${formik.values.image}`
+              <Input
+                label="Image :"
+                id="image"
+                placeholder="image"
+                name="image"
+                type="file"
+                inputBorder="w-52"
+                onChange={handleFileChange}
+                errorMessage={formik.errors.image}
+                isError={
+                  formik.touched.image && formik.errors.image ? true : false
                 }
-                alt="event Preview"
-                className="mx-auto w-40 h-40 object-cover"
               />
             </div>
-          )}
-          <ButtonCreateUpdate
-            loadingButton={loadingButton}
-            handleCancel={handleCancel}
-          />
-        </form>
-      )}
+            {formik.values.image && (
+              <div className="flex gap-4 mb-2">
+                <label className="min-w-28 lg:w-52">Preview:</label>
+                <img
+                  src={
+                    typeof formik.values.image === "object"
+                      ? URL.createObjectURL(formik.values.image)
+                      : `${process.env.NEXT_PUBLIC_IMAGE_URL}/${formik.values.image}`
+                  }
+                  alt="event Preview"
+                  className="mx-auto w-40 h-40 object-cover"
+                />
+              </div>
+            )}
+            <ButtonCreateUpdate
+              loadingButton={loadingButton}
+              handleCancel={handleCancel}
+            />
+          </form>
+        )}
+      </div>
     </div>
   );
 }
