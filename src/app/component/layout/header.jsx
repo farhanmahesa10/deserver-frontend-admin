@@ -41,39 +41,40 @@ export default function Header({ isOpen, onClickHeader }) {
             alt="Logo"
           />
         </div>
-        <div className="flex gap-5  mr-16 lg:mr-0">
-          <button
-            onClick={() => handleProfile()}
-            className="flex gap-2 items-center cursor-pointer rounded-xl h-8  "
-          >
-            <IoPersonCircle
-              className={`${
-                url == "/admin" ? "text-yellow-700 scale-110" : ""
-              } w-8 h-8 transition-all duration-300 hover:scale-110 hover:text-yellow-700`}
-            />
-          </button>
-          <button
-            onClick={() => confirmRemove()}
-            className="flex gap-2 items-center cursor-pointer rounded-md h-8 px-4 shadow-inner border border-lightgray bg-white 
+        <div className="flex gap-5">
+          <div className="flex gap-5   lg:mr-0">
+            <button
+              onClick={() => handleProfile()}
+              className="flex gap-2 items-center cursor-pointer rounded-xl h-8  "
+            >
+              <IoPersonCircle
+                className={`${
+                  url == "/admin" ? "text-yellow-700 scale-110" : ""
+                } w-8 h-8 transition-all duration-300 hover:scale-110 hover:text-yellow-700`}
+              />
+            </button>
+            <button
+              onClick={() => confirmRemove()}
+              className="flex items-center cursor-pointer rounded-md h-[30px] px-4 mt-1 shadow-inner border border-lightgray bg-white 
              hover:bg-yellow-700 hover:text-white hover:shadow-md transition-all duration-300 hover:scale-105"
+            >
+              <IoExit className="text-inherit" />
+            </button>
+          </div>
+          <button
+            onClick={onClickHeader}
+            id="hamburger"
+            name="hamburger"
+            type="button"
+            className={`${
+              !isOpen ? "" : "hamburger-active"
+            } block  right-4 z-30 lg:hidden`}
           >
-            <IoExit className="text-inherit" />
-            <h1 className="body-text-sm-normal font-nunitoSans">Logout</h1>
+            <span className="hamburger-line transition duration-300 ease-in-out bg-black origin-top-left "></span>
+            <span className="hamburger-line transition duration-300 ease-in-out bg-black"></span>
+            <span className="hamburger-line transition duration-300 ease-in-out bg-black origin-bottom-left"></span>
           </button>
         </div>
-        <button
-          onClick={onClickHeader}
-          id="hamburger"
-          name="hamburger"
-          type="button"
-          className={`${
-            !isOpen ? "" : "hamburger-active"
-          } block  right-4 z-30 lg:hidden`}
-        >
-          <span className="hamburger-line transition duration-300 ease-in-out bg-black origin-top-left "></span>
-          <span className="hamburger-line transition duration-300 ease-in-out bg-black"></span>
-          <span className="hamburger-line transition duration-300 ease-in-out bg-black origin-bottom-left"></span>
-        </button>
       </div>
 
       {/* modal konfirmasi delete */}

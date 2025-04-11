@@ -30,7 +30,7 @@ const Table = ({ data, columns }) => {
                       : ""
                   } ${
                     header.id === "Action" || "Logo" || "Photo" || "Image"
-                      ? "min-w-[40px] w-[60px] text-center"
+                      ? "min-w-[40px]  text-center"
                       : ""
                   } `}
                 >

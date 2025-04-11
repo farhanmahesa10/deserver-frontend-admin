@@ -22,8 +22,6 @@ export default function Table2() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState([]);
   const [query, setQuery] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentImage, setCurrentImage] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [dataToRemove, setDataToRemove] = useState(null);
   const dataOutlet = useSelector((state) => state.counter.outlet);
@@ -31,7 +29,7 @@ export default function Table2() {
   //use state untuk pagination
   const [rows, setRows] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5); // 5 item per halaman
+  const [itemsPerPage] = useState(1); // 5 item per halaman
   const targetRef = useRef(null);
 
   // Menghitung indeks awal dan akhir untuk menampilkan nomber
@@ -220,7 +218,7 @@ export default function Table2() {
       <Toaster position="top-center" reverseOrder={false} />
       <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
         <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
-          table Data Settings
+          Table Data Settings
         </h1>
 
         <div>

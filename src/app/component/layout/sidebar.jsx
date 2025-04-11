@@ -61,7 +61,7 @@ function Sidebar({ isOpen, setIsOpen }) {
     <aside
       className={`${
         isOpen ? "flex" : "hidden"
-      } fixed z-50 top-0 right-0 mt-20 bg-white shadow-lg rounded-lg lg:shadow-none lg:rounded-none lg:static lg:flex lg:w-[250px] w-[200px] h-[calc(100vh-80px)] transition-all duration-300`}
+      } fixed z-50 top-0 pt-4 px-4 right-0 mt-20 bg-white shadow-lg rounded-lg lg:shadow-none lg:rounded-none lg:static lg:flex lg:w-[250px] w-[200px] h-[calc(100vh-80px)] transition-all duration-300`}
     >
       <div className="flex flex-col w-full gap-6 overflow-y-auto overflow-x-hidden p-5 lg:p-0 custom-scrollbar ">
         {/* TRANSAKSI */}
