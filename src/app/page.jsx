@@ -264,7 +264,7 @@ export default function Transaction() {
     setShowConfirmModal(true);
   };
 
-  console.log(orders, "pppp");
+  console.log(printData, "pppp");
 
   //handle close gambar besar
   const closeModalOrder = (id_transaction) => {
@@ -375,22 +375,6 @@ export default function Transaction() {
                                 : "Lunas"}
                             </button>
                             <div className="flex justify-between mt-2">
-                              <a
-                                href={`/admin/transaction/edit?id=${item.id}`}
-                                onClick={() => {
-                                  localStorage.setItem(
-                                    "id_transaction",
-                                    item.id
-                                  );
-                                  localStorage.setItem(
-                                    "outlet_name",
-                                    item.outlet.outlet_name
-                                  );
-                                }}
-                                className="text-sm text-white p-1 rounded-sm bg-blue-500"
-                              >
-                                <AiFillEdit />
-                              </a>
                               <button
                                 className="text-sm text-white p-1 rounded-sm bg-gray-600 "
                                 onClick={() => setPrintData([item])}
@@ -552,28 +536,28 @@ export default function Transaction() {
                 >
                   <div className="max-w-sm  p-4  bg-white shadow-md rounded-md font-mono text-sm">
                     <div className="flex justify-center ">
-                      <div className="flex p-1 w-14 h-10">
-                        {/* Ganti placeholder dengan logo jika ada */}
-                        {item.outlet.profile.logo ? (
+                      {/* <div className="flex p-1 w-14 h-10">
+                       
+                        {item.Outlet.logo ? (
                           <img
-                            src={`${process.env.NEXT_PUBLIC_BASE_API_URL}/${item.outlet.profile.logo}`}
+                            src={`${process.env.NEXT_PUBLIC_IMAGE_URL}/${item.Outlet.logo}`}
                             className="w-full h-full object-contain"
                             alt="Logo"
                           />
                         ) : (
                           <h1 className=" text-xl  text-yellow-700 font-pacifico">
-                            {item.outlet.profile.cafe_name}
+                            {item.Outlet.outlet_name}
                           </h1>
                         )}
-                      </div>
+                      </div> */}
                     </div>
                     <div>
                       <h1 className="font-bold text-lg w-full text-center">
-                        {item.outlet.outlet_name}
+                        {item.Outlet.outlet_name}
                       </h1>
-                      <p className="text-center">
+                      {/* <p className="text-center">
                         {item.outlet.profile.address}
-                      </p>
+                      </p> */}
                     </div>
 
                     <div className="border-t border-dashed my-2"></div>
@@ -583,19 +567,19 @@ export default function Transaction() {
                       <p className="w-24 text-end">{item.by_name}</p>
                     </div>
                     <div className="flex justify-between">
-                      <p>No.{item.table.number_table}</p>
+                      <p>No.{item.Table.number_table}</p>
                     </div>
 
                     <div className="border-t border-dashed my-2"></div>
 
-                    {item.orders.map((order) => (
+                    {item.Orders.map((order) => (
                       <div key={order.id} className="mb-1">
                         <div className="flex justify-between text-sm">
-                          <p>{order.menu.title}</p>
+                          <p>{order.Menu.title}</p>
                           <p>{formatIDR(order.total_price)}</p>
                         </div>
                         <p className="text-sm">
-                          {order.qty} x {formatIDR(order.menu.price)}
+                          {order.qty} x {formatIDR(order.Menu.price)}
                         </p>
                       </div>
                     ))}
@@ -616,7 +600,7 @@ export default function Transaction() {
                     <div>
                       <p className="text-center">- Thank You -</p>
 
-                      {item.outlet.contacts.map((contact) => {
+                      {item.Outlet.Contacts.map((contact) => {
                         return (
                           <div key={contact.id} className="flex text-xs">
                             <p className="w-20  ">{contact.contact_name}</p>
