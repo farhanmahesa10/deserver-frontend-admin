@@ -30,6 +30,7 @@ export default function Transaction() {
   const [dataToRemove, setDataToRemove] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const dataOutlet = useSelector((state) => state.counter.outlet);
+  const [countdown, setCountdown] = useState(100); // start dari 10
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
@@ -65,6 +66,30 @@ export default function Transaction() {
     targetRef.current.scrollIntoView({ behavior: "smooth" });
   }, [currentPage]);
 
+  useEffect(() => {
+    let timer;
+
+    if (orders.length > 0) {
+      timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev === 1) {
+            clearInterval(timer);
+
+            // Hapus orders berdasarkan id_transaction saat countdown selesai
+            const orderToRemove = orders[0]; // Misalnya, kita hapus order pertama yang sedang di-map
+            closeModalOrder(orderToRemove.id_transaction); // Menghapus berdasarkan ID transaksi
+            // toast.success("Order Received");
+            fetchDataPaginated(true);
+            return 10; // Reset countdown jika ingin dipakai ulang
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => clearInterval(timer); // Cleanup ketika komponen di-unmount
+  }, [orders]);
+
   //stabilo pencarian
   const highlightText = (text, query) => {
     if (!query) return text;
@@ -95,12 +120,16 @@ export default function Transaction() {
       // Menerima pesan pesanan baru
       socket.on("newOrder", (orderData) => {
         if (orderData) {
-          toast.success("Successfully toasted!");
+          toast.success("New Order!");
+          const audio = new Audio("/sounds/notification.mp3"); // sesuaikan path
+          audio.play().catch((err) => {
+            console.error("Gagal memutar suara:", err);
+          });
         }
 
-        setOrders((prevOrders) => [...prevOrders, orderData.data]);
+        setOrders((prevOrders) => [...prevOrders, orderData.data.payload]);
 
-        console.log(orderData, "pppp");
+        console.log(orderData.data.payload, "ppppooo");
       });
 
       // Membersihkan listener saat komponen unmount
@@ -185,6 +214,7 @@ export default function Transaction() {
         await fetchDataPaginated();
         setShowConfirmModal(false);
         setIsLoading(false);
+        toast.success("Order successfully deleted");
       }
     } catch (error) {
       await handleApiError(error, handleRemove, router);
@@ -263,8 +293,6 @@ export default function Transaction() {
     setDataToRemove(dataRemove);
     setShowConfirmModal(true);
   };
-
-  console.log(printData, "pppp");
 
   //handle close gambar besar
   const closeModalOrder = (id_transaction) => {
@@ -407,6 +435,10 @@ export default function Transaction() {
                             className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50"
                           >
                             <div className="bg-white shadow-md rounded-lg p-2 w-[222px] border border-gray-300 hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between">
+                              <div className="absolute top-2 right-3 text-sm font-bold text-gray-500">
+                                {countdown}s
+                              </div>
+
                               <div className="flex flex-col gap-1 flex-grow">
                                 <h2 className="text-xl font-bold text-gray-800 text-center">
                                   {item.outlet_name}
@@ -422,25 +454,21 @@ export default function Transaction() {
                                     <span className="font-semibold">
                                       No Meja:
                                     </span>{" "}
-                                    {item.table.number_table}
+                                    {/* {item.table.number_table} */}
                                   </p>
                                 </div>
                                 <div className="bg-gray-100 rounded-lg p-2">
                                   <p className="font-semibold text-sm text-gray-800">
                                     Pesanan:
                                   </p>
-                                  {item.orders.map((order) => (
-                                    <div
-                                      key={order.menu.title}
-                                      className="mb-1"
-                                    >
+                                  {item.orderData.map((order) => (
+                                    <div key={order.title} className="mb-1">
                                       <div className="flex justify-between text-sm">
-                                        <p>{order.menu.title}</p>
+                                        <p>{order.title}</p>
                                         <p>{formatIDR(order.total_price)}</p>
                                       </div>
                                       <p className="text-sm">
-                                        {order.qty} x{" "}
-                                        {formatIDR(order.menu.price)}
+                                        {order.qty} x {formatIDR(order.price)}
                                       </p>
                                     </div>
                                   ))}
@@ -451,61 +479,23 @@ export default function Transaction() {
                                 </div>
                               </div>
                               <button
+                                onClick={() => {
+                                  closeModalOrder(item.id_transaction),
+                                    fetchDataPaginated(true);
+                                }}
                                 className="bg-gray-800 text-white text-sm rounded-lg py-2 w-full hover:bg-gray-700 transition-colors duration-300 mt-2"
-                                onClick={() =>
-                                  handleUpdate(
-                                    item.id_transaction,
-                                    item.status === "not pay"
-                                      ? "lunas"
-                                      : "not yet paid"
-                                  )
-                                }
                               >
-                                {item.status === "not yet paid"
-                                  ? "Belum Bayar"
-                                  : "Lunas"}
+                                Accept
                               </button>
-                              <div className="flex justify-between mt-2">
-                                <a
-                                  href={`/admin/transaction/edit?id=${item.id_transaction}`}
-                                  onClick={() => {
-                                    localStorage.setItem(
-                                      "id_transaction",
-                                      item.id_transaction
-                                    );
-                                    localStorage.setItem(
-                                      "outlet_name",
-                                      item.outlet_name
-                                    );
-                                  }}
-                                  className="text-sm text-white p-1 rounded-sm bg-blue-500"
-                                >
-                                  <AiFillEdit />
-                                </a>
-                                <button
-                                  className="text-sm text-white p-1 rounded-sm bg-gray-600 "
-                                  onClick={() => setPrintData([item])}
-                                >
-                                  <IoPrint />
-                                </button>
-                                <button
-                                  className=" text-sm text-white p-1 rounded-sm bg-red-600"
-                                  onClick={() =>
-                                    handleRemove(item.id_transaction)
-                                  }
-                                >
-                                  <IoTrash />
-                                </button>
-                              </div>
+                              <button
+                                onClick={() =>
+                                  confirmRemove(item.id_transaction)
+                                }
+                                className="bg-red-500 text-white text-sm rounded-lg py-2 w-full hover:bg-red-600 transition-colors duration-300 mt-2"
+                              >
+                                Reject
+                              </button>
                             </div>
-                            <button
-                              onClick={() =>
-                                closeModalOrder(item.id_transaction)
-                              }
-                              className="absolute top-6 h-8 w-8 bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full right-10 text-red-600 text-2xl flex items-center justify-center"
-                            >
-                              &times;
-                            </button>
                           </div>
                         );
                       })}
