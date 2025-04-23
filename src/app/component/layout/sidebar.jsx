@@ -4,9 +4,9 @@ import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { setCollapse } from "@/store/slice";
 import { Collapse } from "react-collapse";
-
 import {
   IoBagHandle,
   IoCallSharp,
@@ -21,15 +21,15 @@ import {
   MdTableRestaurant,
 } from "react-icons/md";
 import { TfiGallery } from "react-icons/tfi";
-
 import SidebarComp from "./sidebarComponent";
 
 function Sidebar({ isOpen, setIsOpen }) {
   const pathname = usePathname();
   const [url, setUrl] = useState("");
-  const [collapse, setCollapse] = useState(false);
   const router = useRouter();
   const dataOutlet = useSelector((state) => state.counter.outlet);
+  const dispatch = useDispatch();
+  const collapse = useSelector((state) => state.counter.collapse);
 
   useEffect(() => {
     setUrl(pathname);
@@ -65,16 +65,25 @@ function Sidebar({ isOpen, setIsOpen }) {
     >
       <div className="flex flex-col w-full gap-6 overflow-y-auto overflow-x-hidden p-5 lg:p-0 custom-scrollbar ">
         {/* TRANSAKSI */}
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-2">
           <h3 className="text-xs text-gray-500 font-semibold uppercase tracking-widest px-1">
             Transaksi
           </h3>
+
           <SidebarComp
             handleRoute={() => handleRoute("/")}
             url={url}
             route={"/"}
             icon={<IoBagHandle />}
             menuName={"Transaction"}
+          />
+
+          <SidebarComp
+            handleRoute={() => handleRoute("/admin/history")}
+            url={url}
+            route={"/admin/history"}
+            icon={<IoBagHandle />}
+            menuName={"History"}
           />
         </div>
 
@@ -84,7 +93,7 @@ function Sidebar({ isOpen, setIsOpen }) {
         <div className="flex flex-col gap-1">
           <div
             className="flex items-center justify-between px-1 cursor-pointer"
-            onClick={() => setCollapse(!collapse)}
+            onClick={() => dispatch(setCollapse(!collapse))}
           >
             <h3 className="text-xs text-gray-500 font-semibold uppercase tracking-widest">
               Data Master

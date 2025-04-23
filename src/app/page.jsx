@@ -5,11 +5,9 @@ import Pagination from "./component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
-import { getNewAccessToken } from "./component/token/refreshToken";
 import { Toaster, toast } from "react-hot-toast";
 import { io } from "socket.io-client";
 import { IoSearch, IoTrash, IoPrint } from "react-icons/io5";
-import { AiFillEdit } from "react-icons/ai";
 import Layout2 from "./component/layout/layout2";
 import { NotData } from "./component/notData/notData";
 import { TableSkeleton } from "./component/skeleton/adminSkeleton";
@@ -17,10 +15,12 @@ import { handleApiError } from "./component/handleError/handleError";
 import InputSearch from "./component/form/inputSearch";
 import { useSelector } from "react-redux";
 import HanldeRemove from "./component/handleRemove/handleRemove";
+import HanldeUpdateStatus from "./component/handleUpdate/updateStatus";
 
 export default function Transaction() {
   const [transaction, setTransaction] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [orderActive, setOrderActive] = useState([]);
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [by_name, setQueryByName] = useState("");
@@ -28,7 +28,10 @@ export default function Transaction() {
   const [searchQuery, setSearchQuery] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dataToRemove, setDataToRemove] = useState(null);
+  const [idUpdate, setIdUpdate] = useState(null);
+  const [dataToUpdate, setDataToUpdate] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showConfirmModalUpdate, setShowConfirmModalUpdate] = useState(false);
   const dataOutlet = useSelector((state) => state.counter.outlet);
   const [countdown, setCountdown] = useState(100); // start dari 10
 
@@ -107,6 +110,7 @@ export default function Transaction() {
     );
   };
 
+  //integrasi socket.io
   useEffect(() => {
     if (dataOutlet.id) {
       const socket = io("http://localhost:3000", {
@@ -121,20 +125,15 @@ export default function Transaction() {
       socket.on("newOrder", (orderData) => {
         if (orderData) {
           toast.success("New Order!");
-          const audio = new Audio("/sounds/notification.mp3"); // sesuaikan path
-          audio.play().catch((err) => {
-            console.error("Gagal memutar suara:", err);
-          });
         }
 
         setOrders((prevOrders) => [...prevOrders, orderData.data.payload]);
-
-        console.log(orderData.data.payload, "ppppooo");
       });
 
       // Membersihkan listener saat komponen unmount
       return () => {
         socket.off("newOrder");
+        socket.disconnect();
       };
     }
   }, []);
@@ -172,6 +171,7 @@ export default function Transaction() {
 
       const data = response.data.data;
       setTransaction(data);
+
       setRows(response.data.pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
@@ -183,7 +183,32 @@ export default function Transaction() {
     }
   };
 
-  // useEffect mengambil data lapangan by limit
+  //mengambil data active
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/grafik/info/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        const data = response.data;
+        setOrderActive(data.notPay + data.onProses);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchData();
+  }, [searchQuery]);
+
+  // useEffect mengambil data transaksi by limit
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true); // Tampilkan loading
@@ -211,6 +236,7 @@ export default function Transaction() {
       );
 
       if (response.status === 200) {
+        closeModalOrder(dataToRemove);
         await fetchDataPaginated();
         setShowConfirmModal(false);
         setIsLoading(false);
@@ -220,44 +246,37 @@ export default function Transaction() {
       await handleApiError(error, handleRemove, router);
     }
   };
-  const handleUpdate = async (dataUdate, boolean) => {
+  const handleUpdate = async () => {
     const savedToken = localStorage.getItem("token");
-    const best = {
-      status: boolean,
-    };
-
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleUpdate(dataUdate, boolean); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting contact:", error);
-      }
+    const data = {
+      status: dataToUpdate,
     };
 
     try {
       const response = await axios.put(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/transaction/update/${dataUdate}`,
-        best,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/transaction/update/${idUpdate}`,
+        data,
         { headers: { Authorization: `Bearer ${savedToken}` } }
       );
 
       if (response.status === 200) {
-        if (dataOutlet.role) {
-          await fetchDataPaginated();
-        }
+        closeModalOrder(idUpdate);
+        await fetchDataPaginated();
+        setShowConfirmModalUpdate(false);
         setIsLoading(false);
+        setIsLoading(false);
+        if (dataToUpdate == "rejected") {
+          toast.success("Order successfully rejected");
+        } else if (dataToUpdate == "onproses") {
+          toast.success("Order is being processed");
+        } else if (dataToUpdate == "cancel") {
+          toast.success("Order successfully cancel");
+        } else if (dataToUpdate == "success") {
+          toast.success("Order successfully success");
+        }
       }
     } catch (error) {
-      await handleError(error);
+      await handleApiError(error, handleUpdate, router);
     }
   };
 
@@ -293,6 +312,11 @@ export default function Transaction() {
     setDataToRemove(dataRemove);
     setShowConfirmModal(true);
   };
+  const confirmUpdate = (id, data) => {
+    setIdUpdate(id);
+    setDataToUpdate(data);
+    setShowConfirmModalUpdate(true);
+  };
 
   //handle close gambar besar
   const closeModalOrder = (id_transaction) => {
@@ -302,7 +326,7 @@ export default function Transaction() {
   };
 
   return (
-    <div ref={targetRef} className="   pb-8 w-full ">
+    <div ref={targetRef} className="pb-8 w-full">
       <div className="flex">
         <Layout2 />
         <div className=" pl-5 pt-20  w-full bg-white overflow-auto lg:border-l-2">
@@ -312,7 +336,7 @@ export default function Transaction() {
               Transaction Data Settings
             </h1>
 
-            <div>
+            <div className="flex mb-1">
               <InputSearch
                 role={dataOutlet.role}
                 type="text"
@@ -330,6 +354,15 @@ export default function Transaction() {
                 valueLeft={by_name}
                 onchangeLeft={(e) => setQueryByName(e.target.value)}
               />
+
+              <div className="bg-white shadow-lg rounded-xl p-2 border border-gray-200 w-60 h-[65px] text-center ">
+                <p className="text-2xl font-extrabold text-green-600">
+                  {orderActive}
+                </p>
+                <h3 className="text-md font-bold text-gray-700 ">
+                  Active Orders
+                </h3>
+              </div>
             </div>
 
             <div className="rounded-lg  bg-white overflow-x-auto ">
@@ -337,84 +370,109 @@ export default function Transaction() {
                 {isLoading ? (
                   <TableSkeleton />
                 ) : (
-                  <div className="text-gray-700 flex flex-wrap gap-5 ">
+                  <div className="text-gray-700 flex flex-wrap md:grid md:grid-cols-2 gap-2">
                     {searchQuery &&
                       searchQuery.map((item, index) => {
-                        const number = indexOfFirstItem + index + 1;
-
                         return (
                           <div
                             key={item.id}
-                            className="bg-white shadow-md rounded-lg p-2 w-[222px] border border-gray-300 hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between"
+                            className="bg-white border border-gray-300 shadow-sm rounded-lg p-4 w-full flex flex-col justify-between relative"
                           >
-                            <div className="flex flex-col gap-1 flex-grow">
-                              <h2 className="text-xl text-gray-800 text-center font-ubuntu font-semibold">
-                                {item.Outlet.outlet_name}
-                              </h2>
-                              <div className="flex flex-col text-gray-700">
-                                <p className="text-md">
-                                  <span className="font-semibold text-sm">
-                                    Pelanggan:
-                                  </span>{" "}
-                                  {highlightText(item.by_name, by_name)}
-                                </p>
-                                <p className="text-sm">
-                                  <span className="font-semibold">
-                                    No Meja:
-                                  </span>{" "}
-                                  {item.id_table}
-                                </p>
-                              </div>
-                              <div className="bg-gray-100 rounded-lg p-2">
-                                <p className="font-semibold text-sm text-gray-800">
-                                  Pesanan:
-                                </p>
-                                {item.Orders.map((order) => (
-                                  <div key={order.id} className="mb-1">
-                                    <div className="flex justify-between text-sm">
-                                      <p>{order.Menu.title}</p>
-                                      <p>{formatIDR(order.total_price)}</p>
-                                    </div>
-                                    <p className="text-sm">
-                                      {order.qty} x{" "}
-                                      {formatIDR(order.Menu.price)}
-                                    </p>
-                                  </div>
-                                ))}
-                              </div>
-                              <div className="flex justify-between font-bold text-sm">
-                                <p>Total</p>
-                                <p>{formatIDR(item.total_pay)}</p>
-                              </div>
+                            {/* Nomor Meja */}
+                            <div className="absolute top-0 left-0 rounded-tl-md rounded-br-md bg-white border  w-14 h-8 flex items-center justify-center font-bold text-sm">
+                              {item.id_table}
                             </div>
-                            <button
-                              className="bg-gray-800 text-white text-sm rounded-lg py-2 w-full hover:bg-gray-700 transition-colors duration-300 mt-2"
-                              onClick={() =>
-                                handleUpdate(
-                                  item.id,
-                                  item.status === "not pay"
-                                    ? "lunas"
-                                    : "not pay"
-                                )
-                              }
+
+                            {/* Status */}
+                            <div
+                              className={`absolute top-0 right-0 px-2 py-1  w-16 h-8 text-xs rounded-tr-md rounded-bl-md bg-gray-100 font-semibold capitalize flex items-center justify-center
+                            ${
+                              item.status === "not pay"
+                                ? "text-yellow-600"
+                                : item.status === "onproses"
+                                ? "text-green-600"
+                                : item.status === "success"
+                                ? "text-blue-600"
+                                : item.status === "cancel" ||
+                                  item.status === "rejected"
+                                ? "text-red-600"
+                                : ""
+                            }`}
                             >
-                              {item.status === "not pay"
-                                ? "Belum Bayar"
-                                : "Lunas"}
-                            </button>
-                            <div className="flex justify-between mt-2">
-                              <button
-                                className="text-sm text-white p-1 rounded-sm bg-gray-600 "
-                                onClick={() => setPrintData([item])}
-                              >
-                                <IoPrint />
-                              </button>
-                              <button
-                                className=" text-sm text-white p-1 rounded-sm bg-red-600"
-                                onClick={() => confirmRemove(item.id)}
-                              >
-                                <IoTrash />
-                              </button>
+                              {item.status}
+                            </div>
+
+                            {/* Outlet & Customer */}
+                            <div className="mt-10">
+                              <p className="text-sm text-gray-500">
+                                {highlightText(item.by_name, by_name)}
+                              </p>
+                            </div>
+
+                            {/* Pesanan */}
+                            <div className="mt-2 bg-gray-50 rounded p-2">
+                              <p className="font-semibold text-sm mb-1 text-gray-800">
+                                Order:
+                              </p>
+                              {item.Orders.map((order) => (
+                                <div key={order.id} className="mb-1 text-sm">
+                                  <div className="flex justify-between">
+                                    <p>{order.Menu.title}</p>
+                                    <p>{formatIDR(order.total_price)}</p>
+                                  </div>
+                                  <p className="text-xs text-gray-500">
+                                    {order.qty} x {formatIDR(order.Menu.price)}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex justify-end font-bold text-sm mt-1 p-2">
+                              <p>{formatIDR(item.total_pay)}</p>
+                            </div>
+
+                            {/* Tombol */}
+                            <div className="mt-4 flex gap-2">
+                              {item.status === "not pay" && (
+                                <button
+                                  className="bg-blue-100 w-1/2 text-blue-700 text-sm py-1 rounded hover:bg-blue-200"
+                                  onClick={() =>
+                                    confirmUpdate(item.id, "onproses")
+                                  }
+                                >
+                                  Paid
+                                </button>
+                              )}
+                              {item.status === "onproses" && (
+                                <button
+                                  className="w-1/2 bg-green-100 text-green-700 text-sm py-1 rounded hover:bg-green-200"
+                                  onClick={() =>
+                                    confirmUpdate(item.id, "success")
+                                  }
+                                >
+                                  Finish Order
+                                </button>
+                              )}
+
+                              {item.status === "success" && (
+                                <button
+                                  className="w-full bg-gray-200 text-gray-700 text-sm py-1 rounded hover:bg-gray-200"
+                                  onClick={() => setPrintData([item])}
+                                >
+                                  Print
+                                </button>
+                              )}
+                              {!["rejected", "success", "cancel"].includes(
+                                item.status
+                              ) && (
+                                <button
+                                  className="w-1/2 bg-red-100 text-red-600 text-sm py-1 rounded hover:bg-red-200"
+                                  onClick={() =>
+                                    confirmUpdate(item.id, "cancel")
+                                  }
+                                >
+                                  Cancel
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
@@ -446,20 +504,20 @@ export default function Transaction() {
                                 <div className="flex flex-col text-gray-700">
                                   <p className="text-md">
                                     <span className="font-semibold text-sm">
-                                      Pelanggan:
+                                      Customer:
                                     </span>{" "}
                                     {item.by_name}
                                   </p>
                                   <p className="text-sm">
                                     <span className="font-semibold">
-                                      No Meja:
+                                      Table Number:
                                     </span>{" "}
-                                    {/* {item.table.number_table} */}
+                                    {item.number_table}
                                   </p>
                                 </div>
                                 <div className="bg-gray-100 rounded-lg p-2">
                                   <p className="font-semibold text-sm text-gray-800">
-                                    Pesanan:
+                                    Order:
                                   </p>
                                   {item.orderData.map((order) => (
                                     <div key={order.title} className="mb-1">
@@ -489,7 +547,7 @@ export default function Transaction() {
                               </button>
                               <button
                                 onClick={() =>
-                                  confirmRemove(item.id_transaction)
+                                  confirmUpdate(item.id_transaction, "rejected")
                                 }
                                 className="bg-red-500 text-white text-sm rounded-lg py-2 w-full hover:bg-red-600 transition-colors duration-300 mt-2"
                               >
@@ -524,36 +582,29 @@ export default function Transaction() {
                   key={item.id}
                   className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50"
                 >
-                  <div className="max-w-sm  p-4  bg-white shadow-md rounded-md font-mono text-sm">
+                  <div className="w-[350px]  p-4  bg-white shadow-md rounded-md font-mono text-sm">
                     <div className="flex justify-center ">
-                      {/* <div className="flex p-1 w-14 h-10">
-                       
-                        {item.Outlet.logo ? (
+                      <div className="flex p-1 w-14 h-10">
+                        {item.Outlet.logo && (
                           <img
                             src={`${process.env.NEXT_PUBLIC_IMAGE_URL}/${item.Outlet.logo}`}
                             className="w-full h-full object-contain"
                             alt="Logo"
                           />
-                        ) : (
-                          <h1 className=" text-xl  text-yellow-700 font-pacifico">
-                            {item.Outlet.outlet_name}
-                          </h1>
                         )}
-                      </div> */}
+                      </div>
                     </div>
                     <div>
                       <h1 className="font-bold text-lg w-full text-center">
                         {item.Outlet.outlet_name}
                       </h1>
-                      {/* <p className="text-center">
-                        {item.outlet.profile.address}
-                      </p> */}
+                      <p className="text-center">{item.Outlet.address}</p>
                     </div>
 
                     <div className="border-t border-dashed my-2"></div>
 
                     <div className="flex justify-between">
-                      <p className="w-20">{formatTanggal(item.updatedAt)}</p>
+                      <p className="w-32">{formatTanggal(item.updatedAt)}</p>
                       <p className="w-24 text-end">{item.by_name}</p>
                     </div>
                     <div className="flex justify-between">
@@ -581,7 +632,7 @@ export default function Transaction() {
                       <p>{formatIDR(item.total_pay)}</p>
                     </div>
                     <div className="flex justify-between">
-                      <p>Bayar ({item.pays_method})</p>
+                      <p>Payed ({item.pays_method})</p>
                       <p>{formatIDR(item.total_pay)}</p>
                     </div>
 
@@ -616,6 +667,13 @@ export default function Transaction() {
             <HanldeRemove
               handleRemove={handleRemove}
               setShowConfirmModal={() => setShowConfirmModal(false)}
+            />
+          )}
+          {showConfirmModalUpdate && (
+            <HanldeUpdateStatus
+              handleUpdate={handleUpdate}
+              setShowConfirmModalUpdate={() => setShowConfirmModalUpdate(false)}
+              text={dataToUpdate}
             />
           )}
         </div>
