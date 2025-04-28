@@ -3,69 +3,110 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import { useRouter } from "next/navigation";
-import EditDataSkeleton from "../../adminSkeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../refreshToken";
+import { useRouter } from "nextjs-toploader/app";
+import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
+import ButtonCreateUpdate from "@/app/component/button/button";
+import { useFormik } from "formik";
+import * as yup from "yup";
+import Input from "@/app/component/form/input";
+import Select from "@/app/component/form/select";
+import { handleApiError } from "@/app/component/handleError/handleError";
+import { useSelector } from "react-redux";
 
 export default function AddTable({ params }) {
-  const [table, setTable] = useState({
-    id_outlet: "",
-    number_table: "",
-  });
   const [outlet, setOutlet] = useState([]);
-  const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
-
   const router = useRouter();
   const { slug } = React.use(params);
+  const dataOutlet = useSelector((state) => state.counter.outlet);
 
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
-
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const decoded = jwtDecode(refreshToken);
       const expirationTime = new Date(decoded.exp * 1000);
       const currentTime = new Date();
 
       if (currentTime > expirationTime) {
         localStorage.clear();
         router.push(`/login`);
-      } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data;
-            setRole(data.role);
-            if (data.role !== "admin") {
-              setTable((table) => ({
-                ...table,
-                id_outlet: data.id,
-              }));
-            }
-          })
-          .catch((error) => console.error("Error fetching data:", error));
       }
     } else {
       router.push(`/login`);
     }
-  }, [router]);
+  }, []);
+
+  useEffect(() => {
+    if (dataOutlet.role !== "admin") {
+      formik.setFieldValue("id_outlet", dataOutlet.id);
+    }
+  }, [dataOutlet]);
+
+  //handle edit dan create
+  const onSubmit = async (e) => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+
+      if (formik.values.id) {
+        setLoadingButton(true);
+        await axios.put(
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/update/${formik.values.id}`,
+          formik.values,
+          { headers }
+        );
+        router.push("/admin/table");
+        localStorage.removeItem("id_table");
+        localStorage.setItem("newData", "update successfully!");
+      } else {
+        setLoadingButton(true);
+        await axios.post(
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/create`,
+          formik.values,
+          { headers }
+        );
+        router.push("/admin/table");
+        localStorage.setItem("newData", "create successfully!");
+      }
+    } catch (error) {
+      await handleApiError(error, onSubmit, router);
+    }
+  };
+
+  const formik = useFormik({
+    initialValues: {
+      id_outlet: "",
+      number_table: "",
+    },
+    onSubmit,
+    validationSchema: yup.object({
+      id_outlet: yup.number().required(),
+      number_table: yup
+        .number()
+        .typeError("Must be a number")
+        .required("number table is a required"),
+    }),
+  });
 
   //menampilkan semua DATA OUTLET
   useEffect(() => {
     setIsLoading(true);
+    const token = localStorage.getItem("token");
     const fetchData = async () => {
       try {
         // Mengambil data transaksi menggunakan axios dengan query params
         const response = await axios.get(
-          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`
+          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
-        const data = response.data;
+        const data = response.data.data;
 
         setOutlet(data);
       } catch (error) {
@@ -80,18 +121,23 @@ export default function AddTable({ params }) {
 
   //mengambildata table ketika edit
   useEffect(() => {
+    const token = localStorage.getItem("token");
     const fetchData = async () => {
       try {
         if (slug === "edit") {
-          const idTable = localStorage.getItem("id_table");
+          const tableCode = localStorage.getItem("table_code");
 
           const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/show/${idTable}`
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/showtablecode/${tableCode}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           );
 
-          const data = response.data;
-          setTable(data);
-
+          const data = response.data.data;
+          formik.setValues(data);
           setIsLoading(false);
         } else {
           setIsLoading(false);
@@ -104,67 +150,6 @@ export default function AddTable({ params }) {
     fetchData();
   }, []);
 
-  //handle edit dan create
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!table.number_table) {
-      alert("Harap isi semua field!");
-      return;
-    }
-
-    const formData = {
-      id_outlet: table.id_outlet,
-      number_table: table.number_table,
-    };
-
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleSubmit(e); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting table:", error);
-      }
-    };
-
-    try {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
-
-      if (table.id) {
-        setLoadingButton(true);
-        await axios.put(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/update/${table.id}`,
-          formData,
-          { headers }
-        );
-        localStorage.removeItem("id_table");
-        alert("Data berhasil diperbarui!");
-      } else {
-        setLoadingButton(true);
-        await axios.post(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/table/create`,
-          formData,
-          { headers }
-        );
-        alert("Data berhasil ditambahkan!");
-      }
-
-      router.push("/admin/table");
-      setLoadingButton(false);
-    } catch (error) {
-      await handleError(error);
-    }
-  };
-
   const handleCancel = () => {
     router.push("/admin/table");
     localStorage.removeItem("id_table");
@@ -172,79 +157,70 @@ export default function AddTable({ params }) {
 
   // Handler untuk perubahan nilai input
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setTable((table) => ({
-      ...table,
-      [name]: value,
-    }));
+    const { target } = e;
+    formik.setFieldValue(target.name, target.value);
   };
 
   return (
     <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage table</h2>
-      {isLoading ? (
-        <EditDataSkeleton />
-      ) : (
-        <form className="mt-4 border p-8 grid gap-4" onSubmit={handleSubmit}>
-          <div className={`${role !== "admin" ? "hidden" : "flex"} gap-4 mb-2`}>
-            <label htmlFor="id_outlet" className="min-w-28 lg:w-52">
-              Outlate Name:
-            </label>
-            <select
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="id_outlet"
-              name="id_outlet"
-              value={table.id_outlet}
-              onChange={handleChange}
+      <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
+        <h2 className="text-xl font-nunito">Manage Table</h2>
+        {isLoading ? (
+          <EditDataSkeleton />
+        ) : (
+          <form
+            className="mt-4 border p-8 grid gap-4 "
+            onSubmit={formik.handleSubmit}
+          >
+            <div
+              className={`${
+                dataOutlet.role !== "admin" ? "hidden" : "flex"
+              } gap-4 mb-2`}
             >
-              <option
-                value=""
-                className="bg-primary50 font-semibold text-black"
-                disabled
-              >{`${
-                slug == "create" ? "Select Outlet Name" : "Select Outlet Name"
-              }`}</option>
-              {outlet.map((value) => (
-                <option key={value.id} value={value.id}>
-                  {value.outlet_name}
-                </option>
-              ))}
-            </select>
-          </div>
+              <Select
+                label="Outlate Name:"
+                id="id_outlet"
+                name="id_outlet"
+                value={formik.values.id_outlet}
+                options={outlet.map((value) => (
+                  <option key={value.id} value={value.id}>
+                    {value.outlet_name}
+                  </option>
+                ))}
+                placeholder={"Select outlet name"}
+                onChange={handleChange}
+                errorMessage={formik.errors.id_outlet}
+                isError={
+                  formik.touched.id_outlet && formik.errors.id_outlet
+                    ? true
+                    : false
+                }
+              />
+            </div>
 
-          <div className="flex gap-4 mb-2">
-            <label htmlFor="number_table" className="min-w-28 lg:w-52">
-              number_table:
-            </label>
-            <input
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
+            <Input
+              label="Number Table :"
               id="number_table"
-              placeholder="number_table"
-              type="text"
+              placeholder="number table"
               name="number_table"
-              value={table.number_table}
+              type="text"
+              value={formik.values.number_table}
               onChange={handleChange}
-              required
+              errorMessage={formik.errors.number_table}
+              isError={
+                formik.touched.number_table && formik.errors.number_table
+                  ? true
+                  : false
+              }
             />
-          </div>
 
-          <div className="flex gap-8 text-white justify-end">
-            <button
-              type={loadingButton ? "button" : "submit"}
-              className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-            >
-              {loadingButton ? "Loading..." : "Submit"}
-            </button>
-            <button
-              type="button"
-              className="bg-red-500 border-red-5bg-red-500 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-              onClick={handleCancel}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+            <ButtonCreateUpdate
+              loadingButton={loadingButton}
+              handleCancel={handleCancel}
+            />
+          </form>
+        )}
+      </div>
     </div>
   );
 }

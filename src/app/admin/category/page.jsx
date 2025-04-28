@@ -3,27 +3,34 @@
 import axios from "axios";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
-import { useRouter } from "next/navigation";
-
-import AdminSkeleton from "../adminSkeleton/adminSkeleton";
-import { getNewAccessToken } from "../refreshToken";
-import Pagination from "../paginate";
+import { useRouter } from "nextjs-toploader/app";
+import Pagination from "../../component/paginate/paginate";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
+import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
+import { handleApiError } from "@/app/component/handleError/handleError";
+import { Toaster, toast } from "react-hot-toast";
+import HanldeRemove from "@/app/component/handleRemove/handleRemove";
+import InputSearch from "@/app/component/form/inputSearch";
+import Table from "@/app/component/table/table";
+import { Collapse } from "react-collapse";
+import { useSelector } from "react-redux";
 
 export default function Category() {
   const [category, setCategory] = useState([]);
-  const [outletName, setOutletName] = useState("");
-  const [role, setRole] = useState("");
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState([]);
   const [query, setQuery] = useState("");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [dataToRemove, setDataToRemove] = useState(null);
+  const [openRows, setOpenRows] = useState({});
+  const dataOutlet = useSelector((state) => state.counter.outlet);
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5); // 5 item per halaman
+  const [itemsPerPage] = useState(10); // 5 item per halaman
   const targetRef = useRef(null);
 
   // Menghitung indeks awal dan akhir untuk menampilkan nomber
@@ -32,173 +39,114 @@ export default function Category() {
   //set untuk page yg di tampilkan
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
+  //toast data baru
+  useEffect(() => {
+    const newData = localStorage.getItem("newData");
+    if (newData) {
+      toast.success(newData);
+      localStorage.removeItem("newData");
+    }
+  }, []);
+
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
-
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const decoded = jwtDecode(refreshToken);
       const expirationTime = new Date(decoded.exp * 1000);
       const currentTime = new Date();
 
       if (currentTime > expirationTime) {
         localStorage.clear();
         router.push(`/login`);
-      } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data;
-            setOutletName(data.outlet_name);
-            setRole(data.role);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
       }
     } else {
       router.push(`/login`);
     }
-  }, [router]);
+  }, []);
 
   // useEffect untuk search
   useEffect(() => {
     setSearchQuery(category);
   }, [category]);
 
-  //handle pencarian
-  const searchData = () => {
-    setIsLoading(true);
-    setCurrentPage(1);
-    const fetchData = async () => {
-      const params = {
-        page: currentPage,
-        limit: itemsPerPage,
-        search: query,
-      };
-      try {
-        // Mengambil data transaksi menggunakan axios dengan query params
-        const response = await axios.get(
-          `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/showpaginated`,
-          {
-            params: params,
-          }
-        );
-
-        const data = response.data.category;
-        setCategory(data);
-        setRows(response.data.totalItems);
-      } catch (error) {
-        console.error("Error fetching transaction data:", error);
-      }
-    };
-    setIsLoading(false);
-
-    fetchData();
-  };
-
   // function mengambil data lapangan by limit
-  const fetchDataPaginated = async () => {
+  const fetchDataPaginated = async (isSearchMode = false) => {
+    setIsLoading(true);
+    if (isSearchMode) {
+      setCurrentPage(1);
+    }
+    const token = localStorage.getItem("token");
+
     const params = {
-      page: currentPage,
+      page: isSearchMode ? 1 : currentPage,
       limit: itemsPerPage,
       search: query,
     };
     try {
       // Mengambil data transaksi menggunakan axios dengan query params
       const response = await axios.get(
-        `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/showpaginated`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/showpaginated`,
         {
           params: params,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
-      const data = response.data.category;
+      const data = response.data.data;
       setCategory(data);
-      setRows(response.data.totalItems);
+      setRows(response.data.pagination.totalItems);
+      setIsLoading(false);
     } catch (error) {
-      console.error("Error fetching transaction data:", error);
+      await handleApiError(
+        error,
+        () => fetchDataPaginated(isSearchMode),
+        router
+      );
     }
   };
 
   //useEffect mengambil data category
   useEffect(() => {
     const loadData = async () => {
-      setIsLoading(true); // Tampilkan loading
       try {
-        if (role === "admin") {
-          await fetchDataPaginated();
-        } else {
-          await fetchData();
-        }
+        await fetchDataPaginated();
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
-        setIsLoading(false); // Pastikan loading dihentikan
+        setIsLoading(false);
       }
     };
 
-    if (role) {
-      loadData();
-    }
-  }, [itemsPerPage, currentPage, role]);
-
-  //function mengambil data category
-  const fetchData = async () => {
-    try {
-      // Mengambil data transaksi menggunakan axios dengan query params
-      const response = await axios.get(
-        ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/showcafename/${outletName}`
-      );
-
-      const data = response.data;
-
-      setCategory(data);
-    } catch (error) {
-      console.error("Error fetching transaction data:", error);
-    }
-  };
+    loadData();
+  }, [itemsPerPage, currentPage]);
 
   //handle untuk menghapus data
-  const handleRemove = async (dataRemove) => {
+  const handleRemove = async () => {
     const savedToken = localStorage.getItem("token");
-
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleRemove(dataRemove); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting contact:", error);
-      }
-    };
 
     try {
       setIsLoading(true);
       const response = await axios.delete(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/delete/${dataRemove}`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/delete/${dataToRemove}`,
         { headers: { Authorization: `Bearer ${savedToken}` } }
       );
 
       if (response.status === 200) {
-        if (role === "admin") {
-          await fetchDataPaginated();
-        } else {
-          await fetchData();
-        }
+        await fetchDataPaginated();
+        setShowConfirmModal(false);
         setIsLoading(false);
       }
     } catch (error) {
-      await handleError(error);
+      await handleApiError(error, handleRemove, router);
     }
+  };
+
+  const confirmRemove = (dataRemove) => {
+    setDataToRemove(dataRemove);
+    setShowConfirmModal(true);
   };
 
   //stabilo pencarian
@@ -218,127 +166,133 @@ export default function Category() {
     );
   };
 
+  //open descriptions
+  const handleToggle = (id) => {
+    setOpenRows((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  //isi table
+  const columns = [
+    {
+      id: "No",
+      header: "No",
+      cell: ({ row }) => indexOfFirstItem + row.index + 1,
+    },
+    {
+      header: "Outlet Name",
+      accessorKey: "Outlet.outlet_name",
+      cell: ({ row, getValue }) => highlightText(getValue(), query),
+    },
+    {
+      header: "Type",
+      accessorKey: "type",
+    },
+    {
+      header: "Descriptions",
+      accessor: "descriptions",
+      cell: ({ row }) => {
+        const isOpen = openRows[row.id] || false;
+
+        return (
+          <div>
+            <Collapse isOpened={isOpen}>
+              <p>{row.original.descriptions}</p>
+            </Collapse>
+            {!isOpen && (
+              <p className="line-clamp-2">{row.original.descriptions}</p>
+            )}
+
+            {row.original.descriptions.length > 30 && (
+              <button
+                className={isOpen ? "text-red-500" : "text-primary-500"}
+                onClick={() => handleToggle(row.id)}
+              >
+                {isOpen ? "closed" : "see more"}
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      header: "Action",
+      id: "Action",
+      cell: ({ row }) => (
+        <div className="flex justify-center gap-2">
+          <a
+            href={`/admin/category/edit?id=${row.original.id}`}
+            onClick={() => localStorage.setItem("id_category", row.original.id)}
+            className="text-sm text-white p-1 rounded-sm bg-blue-500"
+          >
+            <AiFillEdit />
+          </a>
+          <button
+            className="text-sm text-white p-1 rounded-sm bg-red-500"
+            onClick={() => confirmRemove(row.original.id)}
+          >
+            <IoTrash />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div
       ref={targetRef}
-      className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
+      className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto lg:border-l-2"
     >
-      {isLoading ? (
-        <AdminSkeleton />
-      ) : (
-        <>
-          <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
-            Outlet Data Settings
-          </h1>
-          <div
-            className={`flex flex-wrap justify-between items-center lg:w-full gap-4 md:gap-6 w-full mb-6`}
-          >
-            <div
-              className={`${
-                role == "admin" ? "flex" : "hidden"
-              }  gap-3 items-center`}
-            >
-              <input
-                type="text"
-                placeholder="outlet Name. . ."
-                id="search"
-                className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[200px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-              <button
-                onClick={searchData}
-                className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] text-white bg-yellow-700 text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
-              >
-                <IoSearch />
-              </button>
-            </div>
+      <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
+        <Toaster position="top-center" reverseOrder={false} />
+        <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
+          Category Data Settings
+        </h1>
+        <div>
+          <InputSearch
+            role={dataOutlet.role}
+            type="text"
+            placeholder="Outlet Name. . ."
+            id="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onRightButtonCLick={() => fetchDataPaginated(true)}
+            rightButton={<IoSearch />}
+            createData={<IoMedkit />}
+            linkCreate={"/admin/category/create"}
+            isLoading={isLoading}
+          />
+        </div>
 
-            <a
-              className={` bg-yellow-700 text-white body-text-sm-bold font-nunitoSans px-4 py-2 md:px-5 md:py-3 rounded-md shadow-md hover:bg-yellow-700 transition-all duration-300`}
-              href="/admin/category/create"
-            >
-              <IoMedkit />
-            </a>
-          </div>
-
-          <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
-            <table className="min-w-full border-collapse border border-gray-200">
-              <thead className="bg-yellow-700 body-text-sm-bold font-nunitoSans">
-                <tr>
-                  <th className="px-4 py-3 ">No</th>
-                  <th className="px-4 py-3">outlet Name</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Deskription</th>
-                  <th className="px-4 py-3 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="text-gray-700 font-nunitoSans">
-                {searchQuery &&
-                  searchQuery.map((item, index) => {
-                    const number = index + 1;
-                    const numberPaginate = indexOfFirstItem + index + 1;
-
-                    return (
-                      <tr
-                        key={item.id}
-                        className="hover:bg-gray-100 transition-all duration-300 border-b-2"
-                      >
-                        <td className="px-4 py-3 text-center">
-                          {role !== "admin" ? number : numberPaginate}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {highlightText(item.outlet.outlet_name, query)}
-                        </td>
-                        <td className="px-4 py-3 text-center">{item.type}</td>
-                        <td className="px-4 py-3 text-center">
-                          {item.descriptions}
-                        </td>
-
-                        <td className="px-4 py-3 flex justify-center gap-2 text-center">
-                          <a
-                            href={`/admin/category/edit?id=${item.id}`}
-                            onClick={() =>
-                              localStorage.setItem("id_category", item.id)
-                            }
-                            className="text-sm text-white p-1 rounded-sm bg-blue-500"
-                          >
-                            <AiFillEdit />
-                          </a>
-                          <button
-                            className="text-sm text-white p-1 rounded-sm bg-red-500"
-                            onClick={() => handleRemove(item.id)}
-                          >
-                            <IoTrash />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Tampilkan navigasi pagination */}
-          {searchQuery && searchQuery.length > 0 && (
-            <Pagination
-              itemsPerPage={itemsPerPage}
-              rows={rows}
-              paginate={paginate}
-              currentPage={currentPage}
-            />
+        <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
+          {isLoading ? (
+            <TableSkeleton />
+          ) : (
+            <Table data={searchQuery} columns={columns} />
           )}
+        </div>
 
-          {/* Tampilkan pesan data kosong jika tidak ada data */}
-          {searchQuery && searchQuery.length === 0 && (
-            <div className="flex justify-center mt-6">
-              <p className="italic text-red-500 border-b border-red-500">
-                Data tidak ditemukan!
-              </p>
-            </div>
-          )}
-        </>
-      )}
+        {/* Tampilkan navigasi pagination */}
+        {searchQuery && searchQuery.length > 0 && (
+          <Pagination
+            itemsPerPage={itemsPerPage}
+            rows={rows}
+            paginate={paginate}
+            currentPage={currentPage}
+            isLoading={isLoading}
+          />
+        )}
+
+        {/* modal konfirmasi delete */}
+        {showConfirmModal && (
+          <HanldeRemove
+            handleRemove={handleRemove}
+            setShowConfirmModal={() => setShowConfirmModal(false)}
+          />
+        )}
+      </div>
     </div>
   );
 }

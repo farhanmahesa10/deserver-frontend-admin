@@ -3,72 +3,118 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import { useRouter } from "next/navigation";
-import EditDataSkeleton from "../../adminSkeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../refreshToken";
+import { useRouter } from "nextjs-toploader/app";
+import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
+import ButtonCreateUpdate from "@/app/component/button/button";
+import { useFormik } from "formik";
+import * as yup from "yup";
+import Input from "@/app/component/form/input";
+import Select from "@/app/component/form/select";
+import { handleApiError } from "@/app/component/handleError/handleError";
+import { useSelector } from "react-redux";
 
 export default function AddsubCategory({ params }) {
-  const [subCategory, setSubCategory] = useState({
-    id_category: "",
-    title: "",
-  });
   const [category, setCategory] = useState([]);
   const [outlet, setOutlet] = useState([]);
-  const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
-  const [outletName, setoutletName] = useState("");
   const router = useRouter();
+  const dataOutlet = useSelector((state) => state.counter.outlet);
   const { slug } = React.use(params);
+
+  //handle edit dan create
+  const onSubmit = async (e) => {
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+
+      if (formik.values.id) {
+        setLoadingButton(true);
+        await axios.put(
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/update/${formik.values.id}`,
+          formik.values,
+          { headers }
+        );
+        router.push("/admin/subCategory");
+        localStorage.removeItem("id_subCategory");
+        localStorage.removeItem("outlet_name");
+        localStorage.setItem("newData", "update successfully!");
+      } else {
+        setLoadingButton(true);
+        await axios.post(
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/create`,
+          formik.values,
+          { headers }
+        );
+        router.push("/admin/subCategory");
+        localStorage.setItem("newData", "create successfully!");
+      }
+    } catch (error) {
+      await handleApiError(error, onSubmit, router);
+    }
+  };
+
+  const formik = useFormik({
+    initialValues: {
+      outlet_name: "",
+      id_category: "",
+      title: "",
+    },
+    onSubmit,
+    validationSchema: yup.object({
+      outlet_name: yup.string().required(),
+      id_category: yup.number().required(),
+      title: yup.string().required(),
+    }),
+  });
 
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
-    const outletName = localStorage.getItem("outlet_name");
-
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const decoded = jwtDecode(refreshToken);
       const expirationTime = new Date(decoded.exp * 1000);
       const currentTime = new Date();
 
       if (currentTime > expirationTime) {
         localStorage.clear();
         router.push(`/login`);
-      } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data;
-            if (data.role === "admin") {
-              if (slug == "edit") {
-                setoutletName(outletName);
-              }
-            } else {
-              setoutletName(data.outlet_name);
-            }
-            setRole(data.role);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
       }
     } else {
       router.push(`/login`);
     }
-  }, [router]);
+  }, []);
+
+  // cek token
+  useEffect(() => {
+    const outletName = localStorage.getItem("outlet_name");
+
+    if (dataOutlet.role === "admin") {
+      if (slug == "edit") {
+        formik.setFieldValue("outlet_name", outletName);
+      }
+    } else {
+      formik.setFieldValue("outlet_name", dataOutlet.outlet_name);
+    }
+  }, [dataOutlet]);
 
   //menampilkan semua DATA OUTLET
   useEffect(() => {
+    const token = localStorage.getItem("token");
     setIsLoading(true);
     const fetchData = async () => {
       try {
         // Mengambil data transaksi menggunakan axios dengan query params
         const response = await axios.get(
-          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`
+          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
-        const data = response.data;
+        const data = response.data.data;
 
         setOutlet(data);
       } catch (error) {
@@ -83,16 +129,21 @@ export default function AddsubCategory({ params }) {
 
   //menampilkan data category
   useEffect(() => {
-    setIsLoading(true);
+    const token = localStorage.getItem("token");
     const fetchData = async () => {
-      if (outletName) {
+      if (formik.values.outlet_name) {
         try {
           // Mengambil data transaksi menggunakan axios dengan query params
           const response = await axios.get(
-            ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/showcafename/${outletName}`
+            ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/category/showcafename/${formik.values.outlet_name}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           );
 
-          const data = response.data;
+          const data = response.data.data;
 
           setCategory(data);
         } catch (error) {
@@ -104,21 +155,26 @@ export default function AddsubCategory({ params }) {
     setIsLoading(false);
 
     fetchData();
-  }, [outletName]);
+  }, [formik.values.outlet_name]);
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
     const fetchData = async () => {
       try {
         if (slug === "edit") {
-          const savedToken = localStorage.getItem("token");
           const idsubCategory = localStorage.getItem("id_subCategory");
 
           const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showbyid/${idsubCategory}`
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showbyid/${idsubCategory}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           );
 
-          const data = response.data;
-          setSubCategory(data[0]);
+          const data = response.data.data;
+          formik.setValues(data);
 
           setIsLoading(false);
         } else {
@@ -130,69 +186,7 @@ export default function AddsubCategory({ params }) {
     };
 
     fetchData();
-  }, []);
-
-  //handle edit dan create
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!subCategory.title || !subCategory.id_category) {
-      alert("Harap isi semua field!");
-      return;
-    }
-
-    const formData = {
-      id_category: subCategory.id_category,
-      title: subCategory.title,
-    };
-
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleSubmit(e); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting contact:", error);
-      }
-    };
-
-    try {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
-
-      if (subCategory.id) {
-        setLoadingButton(true);
-        await axios.put(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/update/${subCategory.id}`,
-          formData,
-          { headers }
-        );
-        localStorage.removeItem("id_subCategory");
-        localStorage.removeItem("outlet_name");
-        alert("Data berhasil diperbarui!");
-      } else {
-        setLoadingButton(true);
-        await axios.post(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/create`,
-          formData,
-          { headers }
-        );
-        alert("Data berhasil ditambahkan!");
-      }
-
-      router.push("/admin/subCategory");
-      setLoadingButton(false);
-    } catch (error) {
-      await handleError(error);
-    }
-  };
+  }, [slug]);
 
   const handleCancel = () => {
     router.push("/admin/subCategory");
@@ -202,104 +196,87 @@ export default function AddsubCategory({ params }) {
 
   // Handler untuk perubahan nilai input
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setSubCategory((subCategory) => ({
-      ...subCategory,
-      [name]: value,
-    }));
+    const { target } = e;
+    formik.setFieldValue(target.name, target.value);
   };
-
-  console.log(subCategory);
 
   return (
     <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage subCategory</h2>
-      {isLoading ? (
-        <EditDataSkeleton />
-      ) : (
-        <form className="mt-4 border p-8 grid gap-4" onSubmit={handleSubmit}>
-          <div
-            className={`${role !== "admin" ? "hidden" : "flex"} ${
-              slug === "edit" ? "hidden" : "flex"
-            } gap-4 mb-2`}
+      <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
+        <h2 className="text-xl font-nunito">Manage Subcategory</h2>
+        {isLoading ? (
+          <EditDataSkeleton />
+        ) : (
+          <form
+            className="mt-4 border p-8 grid gap-4"
+            onSubmit={formik.handleSubmit}
           >
-            <label
-              htmlFor="id_outlet"
-              className="body-text-sm-normal md:body-text-base-normal font-nunitoSans min-w-28 lg:w-52"
+            <div
+              className={`${
+                dataOutlet.role !== "admin" ? "hidden" : "flex"
+              } gap-4 mb-2`}
             >
-              Outlate Name:
-            </label>
-            <select
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="id_outlet"
-              name="id_outlet"
-              value={outletName}
-              onChange={(e) => setoutletName(e.target.value)}
-            >
-              <option value="" className="bg-primary50 " disabled>{`${
-                slug == "create" ? "Select outlet name" : outletName
-              }`}</option>
-              {outlet.map((value) => (
-                <option key={value.id} value={value.outlet_name}>
-                  {value.outlet_name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className={` flex gap-4 mb-2`}>
-            <label htmlFor="id_category" className=" min-w-28 lg:w-52">
-              Category:
-            </label>
-            <select
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
+              <Select
+                label="Outlet Name:"
+                id="outlet_name"
+                name="outlet_name"
+                value={formik.values.outlet_name}
+                options={outlet.map((value) => (
+                  <option key={value.id} value={value.outlet_name}>
+                    {value.outlet_name}
+                  </option>
+                ))}
+                placeholder={"Select outlet name"}
+                onChange={handleChange}
+                errorMessage={formik.errors.outlet_name}
+                isError={
+                  formik.touched.outlet_name && formik.errors.outlet_name
+                    ? true
+                    : false
+                }
+              />
+            </div>
+
+            <Select
+              label="Category :"
               id="id_category"
               name="id_category"
-              value={subCategory.id_category}
-              onChange={handleChange}
-            >
-              <option value="" className="bg-primary50 " disabled>{`${
-                slug == "create" ? "Select category Name" : subCategory.type
-              }`}</option>
-              {category.map((value) => (
+              value={formik.values.id_category}
+              options={category.map((value) => (
                 <option key={value.id} value={value.id}>
                   {value.type}
                 </option>
               ))}
-            </select>
-          </div>
-          <div className="flex gap-4 mb-2">
-            <label htmlFor="title" className="min-w-28 lg:w-52">
-              Title:
-            </label>
-            <input
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="title"
-              placeholder="title"
-              type="text"
-              name="title"
-              value={subCategory.title}
+              placeholder={"Select category name"}
               onChange={handleChange}
-              required
+              errorMessage={formik.errors.id_category}
+              isError={
+                formik.touched.id_category && formik.errors.id_category
+                  ? true
+                  : false
+              }
             />
-          </div>
 
-          <div className="flex gap-8 text-white justify-end">
-            <button
-              type={loadingButton ? "button" : "submit"}
-              className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-            >
-              {loadingButton ? "Loading..." : "Submit"}
-            </button>
-            <button
-              type="button"
-              className="bg-red-500 border-red-5bg-red-500 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-              onClick={handleCancel}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+            <Input
+              label="Title :"
+              id="title"
+              placeholder="Title"
+              name="title"
+              type="text"
+              value={formik.values.title}
+              onChange={handleChange}
+              errorMessage={formik.errors.title}
+              isError={
+                formik.touched.title && formik.errors.title ? true : false
+              }
+            />
+            <ButtonCreateUpdate
+              loadingButton={loadingButton}
+              handleCancel={handleCancel}
+            />
+          </form>
+        )}
+      </div>
     </div>
   );
 }

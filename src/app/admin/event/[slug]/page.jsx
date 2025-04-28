@@ -3,70 +3,134 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import { useRouter } from "next/navigation";
-import EditDataSkeleton from "../../adminSkeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../refreshToken";
+import { useRouter } from "nextjs-toploader/app";
+import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
+import ButtonCreateUpdate from "@/app/component/button/button";
+import { useFormik } from "formik";
+import * as yup from "yup";
+import Input from "@/app/component/form/input";
+import Select from "@/app/component/form/select";
+import { handleApiError } from "@/app/component/handleError/handleError";
+import { useSelector } from "react-redux";
 
 export default function AddEvent({ params }) {
-  const [event, setEvent] = useState({
-    id_outlet: "",
-    title: "",
-    descriptions: "",
-  });
   const [outlet, setOutlet] = useState([]);
-  const [role, setRole] = useState("");
-  const [selectedFile, setSelectedFile] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
   const router = useRouter();
   const { slug } = React.use(params);
+  const dataOutlet = useSelector((state) => state.counter.outlet);
+
+  //handle edit dan create
+  const onSubmit = async (e) => {
+    const formData = new FormData();
+    formData.append("id_outlet", formik.values.id_outlet);
+    formData.append("title", formik.values.title);
+    formData.append("descriptions", formik.values.descriptions);
+    formData.append("image", formik.values.image);
+
+    try {
+      const token = localStorage.getItem("token");
+      const headers = { Authorization: `Bearer ${token}` };
+
+      if (formik.values.id) {
+        setLoadingButton(true);
+        await axios.put(
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/event/update/${formik.values.id}`,
+          formData,
+          { headers }
+        );
+        router.push("/admin/event");
+        localStorage.removeItem("id_event");
+        localStorage.setItem("newData", "update successfully!");
+      } else {
+        setLoadingButton(true);
+        await axios.post(
+          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/event/create`,
+          formData,
+          { headers }
+        );
+        router.push("/admin/event");
+        localStorage.setItem("newData", "create successfully!");
+      }
+    } catch (error) {
+      await handleApiError(error, onSubmit, router);
+    }
+  };
+
+  const formik = useFormik({
+    initialValues: {
+      id_outlet: "",
+      title: "",
+      descriptions: "",
+      image: "",
+    },
+    onSubmit,
+    validationSchema: yup.object({
+      id_outlet: yup.number().required(),
+      title: yup.string().required(),
+      descriptions: yup.string().required(),
+      image: yup.mixed().when("id", {
+        is: (id) => !id,
+        then: (schema) =>
+          schema
+            .required()
+            .test(
+              "fileType",
+              "Invalid image format (jpg, jpeg, png only)",
+              (value) =>
+                ["image/jpeg", "image/png", "image/jpg"].includes(value?.type)
+            )
+            .test(
+              "fileSize",
+              "Maximum image size 2MB",
+              (value) => value && value.size <= 2 * 1024 * 1024
+            ),
+        otherwise: (schema) => schema.notRequired(),
+      }),
+    }),
+  });
 
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
-
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const decoded = jwtDecode(refreshToken);
       const expirationTime = new Date(decoded.exp * 1000);
       const currentTime = new Date();
 
       if (currentTime > expirationTime) {
         localStorage.clear();
         router.push(`/login`);
-      } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
-          .then((response) => {
-            const data = response.data;
-            setRole(data.role);
-            if (data.role !== "admin") {
-              setEvent((event) => ({
-                ...event,
-                id_outlet: data.id,
-              }));
-            }
-          })
-          .catch((error) => console.error("Error fetching data:", error));
       }
     } else {
       router.push(`/login`);
     }
-  }, [router]);
+  }, []);
+
+  useEffect(() => {
+    if (dataOutlet.role !== "admin") {
+      formik.setFieldValue("id_outlet", dataOutlet.id);
+    }
+  }, [dataOutlet]);
 
   //menampilkan semua DATA OUTLET
   useEffect(() => {
     setIsLoading(true);
+    const token = localStorage.getItem("token");
     const fetchData = async () => {
       try {
         // Mengambil data transaksi menggunakan axios dengan query params
         const response = await axios.get(
-          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`
+          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
         );
 
-        const data = response.data;
+        const data = response.data.data;
 
         setOutlet(data);
       } catch (error) {
@@ -81,19 +145,24 @@ export default function AddEvent({ params }) {
 
   //mengambildata event ketika edit
   useEffect(() => {
+    const token = localStorage.getItem("token");
     const fetchData = async () => {
       try {
         if (slug === "edit") {
           const idEvent = localStorage.getItem("id_event");
 
           const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/event/show/${idEvent}`
+            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/event/show/${idEvent}`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
           );
 
-          const data = response.data;
-          setEvent(data);
+          const data = response.data.data;
+          formik.setValues(data);
 
-          setSelectedFile(data.image);
           setIsLoading(false);
         } else {
           setIsLoading(false);
@@ -106,72 +175,6 @@ export default function AddEvent({ params }) {
     fetchData();
   }, []);
 
-  //handle edit dan create
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!event.title || !event.descriptions) {
-      alert("Harap isi semua field!");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("id_outlet", event.id_outlet);
-    formData.append("title", event.title);
-    formData.append("descriptions", event.descriptions);
-
-    if (selectedFile) {
-      formData.append("image", selectedFile);
-    } else if (event.image) {
-      formData.append("image", event.image);
-    }
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleSubmit(e); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting event:", error);
-      }
-    };
-
-    try {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
-
-      if (event.id) {
-        setLoadingButton(true);
-        await axios.put(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/event/update/${event.id}`,
-          formData,
-          { headers }
-        );
-        localStorage.removeItem("id_event");
-        alert("Data berhasil diperbarui!");
-      } else {
-        setLoadingButton(true);
-        await axios.post(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/event/create`,
-          formData,
-          { headers }
-        );
-        alert("Data berhasil ditambahkan!");
-      }
-
-      router.push("/admin/event");
-      setLoadingButton(false);
-    } catch (error) {
-      await handleError(error);
-    }
-  };
-
   const handleCancel = () => {
     router.push("/admin/event");
     localStorage.removeItem("id_event");
@@ -179,11 +182,8 @@ export default function AddEvent({ params }) {
 
   // Handler untuk perubahan nilai input
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setEvent((event) => ({
-      ...event,
-      [name]: value,
-    }));
+    const { target } = e;
+    formik.setFieldValue(target.name, target.value);
   };
 
   // Handle pilihan gambar dari folder
@@ -193,118 +193,112 @@ export default function AddEvent({ params }) {
       alert("Ukuran file terlalu besar (maksimal 2MB)!");
       return;
     }
-    setSelectedFile(file);
+    formik.setFieldValue("image", file);
   };
 
   return (
     <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage event</h2>
-      {isLoading ? (
-        <EditDataSkeleton />
-      ) : (
-        <form className="mt-4 border p-8 grid gap-4" onSubmit={handleSubmit}>
-          <div className={`${role !== "admin" ? "hidden" : "flex"} gap-4 mb-2`}>
-            <label htmlFor="id_outlet" className="min-w-28 lg:w-52">
-              Outlate Name:
-            </label>
-            <select
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="id_outlet"
-              name="id_outlet"
-              value={event.id_outlet}
-              onChange={handleChange}
+      <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
+        <h2 className="text-xl font-nunito">Manage Event</h2>
+        {isLoading ? (
+          <EditDataSkeleton />
+        ) : (
+          <form
+            className="mt-4 border p-8 grid gap-4"
+            onSubmit={formik.handleSubmit}
+          >
+            <div
+              className={`${
+                dataOutlet.role !== "admin" ? "hidden" : "flex"
+              } gap-4 mb-2`}
             >
-              <option
-                value=""
-                className="bg-primary50 font-semibold text-black"
-                disabled
-              >{`${
-                slug == "create" ? "Select Outlet Name" : "Select Outlet Name"
-              }`}</option>
-              {outlet.map((value) => (
-                <option key={value.id} value={value.id}>
-                  {value.outlet_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex gap-4 mb-2">
-            <label htmlFor="title" className="min-w-28 lg:w-52">
-              title:
-            </label>
-            <input
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="title"
-              placeholder="title"
-              type="text"
-              name="title"
-              value={event.title}
-              onChange={handleChange}
-              required
-            />
-          </div>
-          <div className="flex gap-4 mb-2">
-            <label htmlFor="descriptions" className="min-w-28 lg:w-52">
-              descriptions:
-            </label>
-            <input
-              className="border p-1 rounded-lg border-primary50 w-full h-8"
-              id="descriptions"
-              placeholder="descriptions"
-              type="text"
-              name="descriptions"
-              value={event.descriptions}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className="flex gap-4 mb-2">
-            <label htmlFor="image" className="min-w-28 lg:w-52">
-              image:
-            </label>
-            <input
-              className="border rounded-lg border-primary50 w-full h-8"
-              id="image"
-              type="file"
-              name="image"
-              onChange={handleFileChange}
-            />
-          </div>
-          {(selectedFile || event.image) && (
-            <div className="flex gap-4 mb-2">
-              <label className="min-w-28 lg:w-52">Preview:</label>
-              <img
-                src={
-                  slug === "create"
-                    ? URL.createObjectURL(selectedFile)
-                    : event.image !== selectedFile
-                    ? URL.createObjectURL(selectedFile)
-                    : `${process.env.NEXT_PUBLIC_BASE_API_URL}/${event.image}`
+              <Select
+                label="Outlate Name:"
+                id="id_outlet"
+                name="id_outlet"
+                value={formik.values.id_outlet}
+                options={outlet.map((value) => (
+                  <option key={value.id} value={value.id}>
+                    {value.outlet_name}
+                  </option>
+                ))}
+                placeholder={"Select outlet name"}
+                onChange={handleChange}
+                errorMessage={formik.errors.id_outlet}
+                isError={
+                  formik.touched.id_outlet && formik.errors.id_outlet
+                    ? true
+                    : false
                 }
-                alt="event Preview"
-                className="mx-auto w-40 h-40 object-cover"
               />
             </div>
-          )}
-          <div className="flex gap-8 text-white justify-end">
-            <button
-              type={loadingButton ? "button" : "submit"}
-              className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-            >
-              {loadingButton ? "Loading..." : "Submit"}
-            </button>
-            <button
-              type="button"
-              className="bg-red-500 border-red-5bg-red-500 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
-              onClick={handleCancel}
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      )}
+
+            <Input
+              label="Title :"
+              id="title"
+              placeholder="Title"
+              name="title"
+              type="text"
+              value={formik.values.title}
+              onChange={handleChange}
+              errorMessage={formik.errors.title}
+              isError={
+                formik.touched.title && formik.errors.title ? true : false
+              }
+            />
+
+            <Input
+              label="Descriptions :"
+              id="descriptions"
+              placeholder="Descriptions"
+              name="descriptions"
+              type="text"
+              value={formik.values.descriptions}
+              onChange={handleChange}
+              errorMessage={formik.errors.descriptions}
+              isError={
+                formik.touched.descriptions && formik.errors.descriptions
+                  ? true
+                  : false
+              }
+            />
+
+            <div className="flex gap-4 mb-2">
+              <Input
+                label="Image :"
+                id="image"
+                placeholder="image"
+                name="image"
+                type="file"
+                inputBorder="w-52"
+                onChange={handleFileChange}
+                errorMessage={formik.errors.image}
+                isError={
+                  formik.touched.image && formik.errors.image ? true : false
+                }
+              />
+            </div>
+            {formik.values.image && (
+              <div className="flex gap-4 mb-2">
+                <label className="min-w-28 lg:w-52">Preview:</label>
+                <img
+                  src={
+                    typeof formik.values.image === "object"
+                      ? URL.createObjectURL(formik.values.image)
+                      : `${process.env.NEXT_PUBLIC_IMAGE_URL}/${formik.values.image}`
+                  }
+                  alt="event Preview"
+                  className="mx-auto w-40 h-40 object-cover"
+                />
+              </div>
+            )}
+            <ButtonCreateUpdate
+              loadingButton={loadingButton}
+              handleCancel={handleCancel}
+            />
+          </form>
+        )}
+      </div>
     </div>
   );
 }
