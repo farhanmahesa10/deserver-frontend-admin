@@ -4,27 +4,32 @@ import axios from "axios";
 import Pagination from "../../component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import { Toaster, toast } from "react-hot-toast";
 import "react-loading-skeleton/dist/skeleton.css";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 import { TableSkeleton } from "../../component/skeleton/adminSkeleton";
-import { NotData } from "@/app/component/notData/notData";
 import { handleApiError } from "@/app/component/handleError/handleError";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
 import Table from "@/app/component/table/table";
+import { Collapse } from "react-collapse";
+import Modal from "@/app/component/modal/modal";
+import { useSelector } from "react-redux";
 
 export default function AdminOutlet() {
   const [outlet, setOutlet] = useState([]);
-  const [role, setRole] = useState("");
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [openRows, setOpenRows] = useState({});
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [dataToRemove, setDataToRemove] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [currentImage, setCurrentImage] = useState("");
+  const dataOutlet = useSelector((state) => state.counter.outlet);
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
@@ -40,46 +45,19 @@ export default function AdminOutlet() {
 
   // cek token
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      const refreshToken = localStorage.getItem("refreshToken");
-      const token = localStorage.getItem("token");
-      if (refreshToken) {
-        const decoded = jwtDecode(refreshToken);
-        const outlet_id = decoded.id;
-        const expirationTime = new Date(decoded.exp * 1000);
-        const currentTime = new Date();
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const decoded = jwtDecode(refreshToken);
+      const expirationTime = new Date(decoded.exp * 1000);
+      const currentTime = new Date();
 
-        if (currentTime > expirationTime) {
-          localStorage.clear();
-          router.push(`/login`);
-        }
-
-        try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-          const data = response.data.data;
-
-          if (data.role !== "admin") {
-            router.push("/admin");
-          }
-          setRole(data.role);
-          setIsLoading(false);
-        } catch (error) {
-          await handleApiError(error, loadData, router);
-        }
-      } else {
+      if (currentTime > expirationTime) {
+        localStorage.clear();
         router.push(`/login`);
       }
-    };
-
-    loadData();
+    } else {
+      router.push(`/login`);
+    }
   }, []);
 
   //toast data baru
@@ -134,7 +112,7 @@ export default function AdminOutlet() {
     try {
       // Mengambil data transaksi menggunakan axios dengan query params
       const response = await axios.get(
-        `  ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/showpaginated`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/showpaginated`,
         {
           params: params,
           headers: {
@@ -160,7 +138,7 @@ export default function AdminOutlet() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        if (role === "admin") {
+        if (dataOutlet.role === "admin") {
           await fetchDataPaginated();
         }
       } catch (error) {
@@ -170,10 +148,10 @@ export default function AdminOutlet() {
       }
     };
 
-    if (role) {
+    if (dataOutlet.role) {
       loadData();
     }
-  }, [itemsPerPage, currentPage, role]);
+  }, [itemsPerPage, currentPage, dataOutlet.role]);
 
   //handle untuk menghapus data
   const handleRemove = async () => {
@@ -187,8 +165,6 @@ export default function AdminOutlet() {
       );
 
       if (response.status === 200) {
-        console.log("pppppp");
-
         await fetchDataPaginated();
         setShowConfirmModal(false);
         setIsLoading(false);
@@ -201,6 +177,19 @@ export default function AdminOutlet() {
   const confirmRemove = (dataRemove) => {
     setDataToRemove(dataRemove);
     setShowConfirmModal(true);
+  };
+
+  // haldle untuk memperbesar gambar
+  const handleImageClick = (imageUrl) => {
+    setCurrentImage(imageUrl); // Menyimpan URL gambar yang diklik
+    setIsModalOpen(true); // Membuka modal
+  };
+
+  const handleToggle = (id) => {
+    setOpenRows((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
   };
 
   const columns = [
@@ -224,7 +213,28 @@ export default function AdminOutlet() {
     },
     {
       header: "History",
-      accessorKey: "history",
+      accessor: "history",
+      cell: ({ row }) => {
+        const isOpen = openRows[row.id] || false;
+
+        return (
+          <div>
+            <Collapse isOpened={isOpen}>
+              <p>{row.original.history}</p>
+            </Collapse>
+            {!isOpen && <p className="line-clamp-2">{row.original.history}</p>}
+
+            {row.original.history.length > 30 && (
+              <button
+                className={isOpen ? "text-red-500" : "text-primary-500"}
+                onClick={() => handleToggle(row.id)}
+              >
+                {isOpen ? "closed" : "see more"}
+              </button>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: "Address",
@@ -239,7 +249,7 @@ export default function AdminOutlet() {
           <img
             src={row.original.logo ? imageUrl : "-"}
             alt="Logo"
-            className="w-12 h-12 rounded-md shadow-md cursor-pointer mx-auto"
+            className="w-16 cursor-pointer mx-auto"
             onClick={() => handleImageClick(imageUrl)}
           />
         );
@@ -271,16 +281,16 @@ export default function AdminOutlet() {
   return (
     <div
       ref={targetRef}
-      className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
+      className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto lg:border-l-2"
     >
       <Toaster position="top-center" reverseOrder={false} />
-      <>
+      <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
         <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
           Outlet Data Settings
         </h1>
         <div>
           <InputSearch
-            role={role}
+            role={dataOutlet.role}
             type="text"
             placeholder="Outlet Name. . ."
             id="search"
@@ -299,6 +309,14 @@ export default function AdminOutlet() {
             <TableSkeleton />
           ) : (
             <Table data={searchQuery} columns={columns} />
+          )}
+          {/* Modal */}
+          {isModalOpen && (
+            <Modal
+              currentImage={currentImage}
+              setIsModalOpen={setIsModalOpen}
+              setCurrentImage={setCurrentImage}
+            />
           )}
         </div>
 
@@ -320,7 +338,7 @@ export default function AdminOutlet() {
             setShowConfirmModal={() => setShowConfirmModal(false)}
           />
         )}
-      </>
+      </div>
     </div>
   );
 }

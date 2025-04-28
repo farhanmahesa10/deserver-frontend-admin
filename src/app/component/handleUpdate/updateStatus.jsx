@@ -1,5 +1,5 @@
-const HanldeRemove = (props) => {
-  const { handleRemove, setShowConfirmModal, text, confirmation } = props;
+const HanldeUpdateStatus = (props) => {
+  const { handleUpdate, setShowConfirmModalUpdate, text, confirmation } = props;
 
   return (
     <>
@@ -9,20 +9,20 @@ const HanldeRemove = (props) => {
           <p className="mb-4">
             {confirmation
               ? confirmation
-              : "Are you sure you want to delete this data?"}{" "}
+              : `Are you sure you want to ${text} this data?`}
           </p>
           <div className="flex justify-end space-x-4">
             <button
-              onClick={setShowConfirmModal}
-              className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              onClick={setShowConfirmModalUpdate}
+              className="px-4 py-2 bg-red-400 rounded hover:bg-red-500"
             >
-              Cancel
+              No
             </button>
             <button
-              onClick={handleRemove}
-              className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+              onClick={handleUpdate}
+              className="px-4 py-2 bg-blue-300 rounded hover:bg-blue-400"
             >
-              {text ? text : "Delete"}
+              Yes
             </button>
           </div>
         </div>
@@ -31,4 +31,4 @@ const HanldeRemove = (props) => {
   );
 };
 
-export default HanldeRemove;
+export default HanldeUpdateStatus;

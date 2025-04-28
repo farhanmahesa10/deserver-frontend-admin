@@ -4,22 +4,22 @@ import axios from "axios";
 import Pagination from "../../component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import Modal from "../../component/modal/modal";
 import { getNewAccessToken } from "../../component/token/refreshToken";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
-import { NotData } from "@/app/component/notData/notData";
 import { handleApiError } from "@/app/component/handleError/handleError";
 import { Toaster, toast } from "react-hot-toast";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
 import Table from "@/app/component/table/table";
+import { Collapse } from "react-collapse";
+import { useSelector } from "react-redux";
 
 export default function Menu() {
   const [menu, setMenu] = useState([]);
-  const [role, setRole] = useState("");
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [queryMenu, setQueryMenu] = useState("");
@@ -29,6 +29,8 @@ export default function Menu() {
   const [currentImage, setCurrentImage] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [dataToRemove, setDataToRemove] = useState(null);
+  const [openRows, setOpenRows] = useState({});
+  const dataOutlet = useSelector((state) => state.counter.outlet);
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
@@ -53,43 +55,19 @@ export default function Menu() {
 
   // cek token
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      const refreshToken = localStorage.getItem("refreshToken");
-      const token = localStorage.getItem("token");
-      if (refreshToken) {
-        const decoded = jwtDecode(refreshToken);
-        const outlet_id = decoded.id;
-        const expirationTime = new Date(decoded.exp * 1000);
-        const currentTime = new Date();
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const decoded = jwtDecode(refreshToken);
+      const expirationTime = new Date(decoded.exp * 1000);
+      const currentTime = new Date();
 
-        if (currentTime > expirationTime) {
-          localStorage.clear();
-          router.push(`/login`);
-        }
-
-        try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
-          const data = response.data.data;
-
-          setRole(data.role);
-          setIsLoading(false);
-        } catch (error) {
-          await handleApiError(error, loadData, router);
-        }
-      } else {
+      if (currentTime > expirationTime) {
+        localStorage.clear();
         router.push(`/login`);
       }
-    };
-
-    loadData();
+    } else {
+      router.push(`/login`);
+    }
   }, []);
 
   //setiap kali ada perubahan di current page maka scroll ke atas
@@ -112,7 +90,7 @@ export default function Menu() {
     const params = {
       page: isSearchMode ? 1 : currentPage,
       limit: itemsPerPage,
-      search: query,
+      search: dataOutlet.role == "user" ? dataOutlet.outlet_name : query,
       search_title: queryMenu,
     };
     try {
@@ -145,7 +123,7 @@ export default function Menu() {
     const loadData = async () => {
       setIsLoading(true); // Tampilkan loading
       try {
-        if (role) {
+        if (dataOutlet.role) {
           await fetchDataPaginated();
         }
       } catch (error) {
@@ -155,10 +133,10 @@ export default function Menu() {
       }
     };
 
-    if (role) {
+    if (dataOutlet.role) {
       loadData();
     }
-  }, [itemsPerPage, currentPage, role]);
+  }, [itemsPerPage, currentPage, dataOutlet.role]);
 
   //handle untuk menghapus data
   const handleRemove = async () => {
@@ -218,7 +196,7 @@ export default function Menu() {
       );
 
       if (response.status === 200) {
-        if (role) {
+        if (dataOutlet.role) {
           await fetchDataPaginated();
         }
         setIsLoading(false);
@@ -259,7 +237,7 @@ export default function Menu() {
       );
 
       if (response.status === 200) {
-        if (role) {
+        if (dataOutlet.role) {
           await fetchDataPaginated();
         }
         setIsLoading(false);
@@ -292,6 +270,14 @@ export default function Menu() {
     );
   };
 
+  //open details
+  const handleToggle = (id) => {
+    setOpenRows((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
   const columns = [
     {
       id: "No",
@@ -318,7 +304,28 @@ export default function Menu() {
     },
     {
       header: "Detail",
-      accessorKey: "details",
+      accessor: "details",
+      cell: ({ row }) => {
+        const isOpen = openRows[row.id] || false;
+
+        return (
+          <div>
+            <Collapse isOpened={isOpen}>
+              <p>{row.original.details}</p>
+            </Collapse>
+            {!isOpen && <p className="line-clamp-2">{row.original.details}</p>}
+
+            {row.original.details.length > 30 && (
+              <button
+                className={isOpen ? "text-red-500" : "text-primary-500"}
+                onClick={() => handleToggle(row.id)}
+              >
+                {isOpen ? "closed" : "see more"}
+              </button>
+            )}
+          </div>
+        );
+      },
     },
     {
       header: "Photo",
@@ -344,7 +351,7 @@ export default function Menu() {
           <button
             className="bg-yellow-700 text-white rounded-lg p-2"
             onClick={() =>
-              handleUpdateStok(id, status === "ready" ? "soldOut" : "Ready")
+              handleUpdateStok(id, status === "Ready" ? "SoldOut" : "Ready")
             }
           >
             {status}
@@ -360,7 +367,9 @@ export default function Menu() {
         return (
           <button
             className="bg-yellow-700 text-white rounded-lg p-2"
-            onClick={() => handleUpdate(id, !best_seller)}
+            onClick={() =>
+              handleUpdate(id, best_seller === true ? "false" : "true")
+            }
           >
             {best_seller ? "true" : "false"}
           </button>
@@ -402,68 +411,70 @@ export default function Menu() {
   return (
     <div
       ref={targetRef}
-      className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto border-l-2"
+      className=" pl-5 pt-20 pb-8 w-full bg-white overflow-auto lg:border-l-2"
     >
       <Toaster position="top-center" reverseOrder={false} />
-      <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
-        Menu Data Settings
-      </h1>
-      <div>
-        <InputSearch
-          role={role}
-          type="text"
-          placeholder="Outlet Name. . ."
-          id="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onRightButtonCLick={() => fetchDataPaginated(true)}
-          rightButton={<IoSearch />}
-          createData={<IoMedkit />}
-          linkCreate={"/admin/menu/create"}
-          isLoading={isLoading}
-          inputLeft={true}
-          typeLeft={"text"}
-          placeholderLeft={"Menu Name. . ."}
-          idLeft={"search_menu"}
-          valueLeft={queryMenu}
-          onchangeLeft={(e) => setQueryMenu(e.target.value)}
-        />
-      </div>
+      <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
+        <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
+          Menu Data Settings
+        </h1>
+        <div>
+          <InputSearch
+            role={dataOutlet.role}
+            type="text"
+            placeholder="Outlet Name. . ."
+            id="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onRightButtonCLick={() => fetchDataPaginated(true)}
+            rightButton={<IoSearch />}
+            createData={<IoMedkit />}
+            linkCreate={"/admin/menu/create"}
+            isLoading={isLoading}
+            inputLeft={true}
+            typeLeft={"text"}
+            placeholderLeft={"Menu Name. . ."}
+            idLeft={"search_menu"}
+            valueLeft={queryMenu}
+            onchangeLeft={(e) => setQueryMenu(e.target.value)}
+          />
+        </div>
 
-      <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
-        {isLoading ? (
-          <TableSkeleton />
-        ) : (
-          <Table data={searchQuery} columns={columns} />
+        <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
+          {isLoading ? (
+            <TableSkeleton />
+          ) : (
+            <Table data={searchQuery} columns={columns} />
+          )}
+          {/* Modal */}
+          {isModalOpen && (
+            <Modal
+              currentImage={currentImage}
+              setIsModalOpen={setIsModalOpen}
+              setCurrentImage={setCurrentImage}
+            />
+          )}
+        </div>
+
+        {/* Tampilkan navigasi pagination */}
+        {searchQuery.length > 0 && (
+          <Pagination
+            itemsPerPage={itemsPerPage}
+            rows={rows}
+            paginate={paginate}
+            currentPage={currentPage}
+            isLoading={isLoading}
+          />
         )}
-        {/* Modal */}
-        {isModalOpen && (
-          <Modal
-            currentImage={currentImage}
-            setIsModalOpen={setIsModalOpen}
-            setCurrentImage={setCurrentImage}
+
+        {/* modal konfirmasi delete */}
+        {showConfirmModal && (
+          <HanldeRemove
+            handleRemove={handleRemove}
+            setShowConfirmModal={() => setShowConfirmModal(false)}
           />
         )}
       </div>
-
-      {/* Tampilkan navigasi pagination */}
-      {searchQuery.length > 0 && (
-        <Pagination
-          itemsPerPage={itemsPerPage}
-          rows={rows}
-          paginate={paginate}
-          currentPage={currentPage}
-          isLoading={isLoading}
-        />
-      )}
-
-      {/* modal konfirmasi delete */}
-      {showConfirmModal && (
-        <HanldeRemove
-          handleRemove={handleRemove}
-          setShowConfirmModal={() => setShowConfirmModal(false)}
-        />
-      )}
     </div>
   );
 }

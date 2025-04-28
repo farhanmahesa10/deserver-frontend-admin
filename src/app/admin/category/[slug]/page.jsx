@@ -3,23 +3,23 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../../component/token/refreshToken";
 import Input from "@/app/component/form/input";
 import { useFormik } from "formik";
 import * as yup from "yup";
 import Select from "@/app/component/form/select";
 import ButtonCreateUpdate from "@/app/component/button/button";
 import { handleApiError } from "@/app/component/handleError/handleError";
+import { useSelector } from "react-redux";
 
 export default function AddCategory({ params }) {
   const [outlet, setOutlet] = useState([]);
-  const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
   const router = useRouter();
   const { slug } = React.use(params);
+  const dataOutlet = useSelector((state) => state.counter.outlet);
 
   //handle edit dan create
   const onSubmit = async () => {
@@ -40,9 +40,9 @@ export default function AddCategory({ params }) {
           formData,
           { headers }
         );
+        router.push("/admin/category");
         localStorage.removeItem("id_category");
         localStorage.setItem("newData", "updated successfully!");
-        router.push("/admin/category");
       } else {
         setLoadingButton(true);
 
@@ -51,8 +51,8 @@ export default function AddCategory({ params }) {
           formData,
           { headers }
         );
-        localStorage.setItem("newData", "create successfully!");
         router.push("/admin/category");
+        localStorage.setItem("newData", "create successfully!");
       }
     } catch (error) {
       await handleApiError(error, onSubmit, router);
@@ -81,41 +81,27 @@ export default function AddCategory({ params }) {
 
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
-    const token = localStorage.getItem("token");
-
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const decoded = jwtDecode(refreshToken);
       const expirationTime = new Date(decoded.exp * 1000);
       const currentTime = new Date();
 
       if (currentTime > expirationTime) {
         localStorage.clear();
         router.push(`/login`);
-      } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          )
-          .then((response) => {
-            const data = response.data.data;
-            setRole(data.role);
-            if (data.role !== "admin") {
-              formik.setFieldValue("id_outlet", data.id);
-            }
-          })
-          .catch((error) => console.error("Error fetching data:", error));
       }
     } else {
       router.push(`/login`);
     }
-  }, [router]);
+  }, []);
+
+  // cek token
+  useEffect(() => {
+    if (dataOutlet.role !== "admin") {
+      formik.setFieldValue("id_outlet", dataOutlet.id);
+    }
+  }, [dataOutlet]);
 
   // menampilkan data categori ketika edit
   useEffect(() => {
@@ -185,68 +171,74 @@ export default function AddCategory({ params }) {
 
   return (
     <div className="p-8 pt-20 w-full">
-      <h2 className="text-xl font-nunito">Manage Category</h2>
-      {isLoading ? (
-        <EditDataSkeleton />
-      ) : (
-        <form
-          className="mt-4 border p-8 grid gap-4"
-          onSubmit={formik.handleSubmit}
-        >
-          <div className={`${role !== "admin" ? "hidden" : "flex"} gap-4 mb-2`}>
-            <Select
-              label="Outlate Name:"
-              id="id_outlet"
-              name="id_outlet"
-              value={formik.values.id_outlet}
-              options={outlet.map((value) => (
-                <option key={value.id} value={value.id}>
-                  {value.outlet_name}
-                </option>
-              ))}
-              placeholder={"Select Outlet Name"}
+      <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
+        <h2 className="text-xl font-nunito">Manage Category</h2>
+        {isLoading ? (
+          <EditDataSkeleton />
+        ) : (
+          <form
+            className="mt-4 border p-8 grid gap-4"
+            onSubmit={formik.handleSubmit}
+          >
+            <div
+              className={`${
+                dataOutlet.role !== "admin" ? "hidden" : "flex"
+              } gap-4 mb-2`}
+            >
+              <Select
+                label="Outlate Name:"
+                id="id_outlet"
+                name="id_outlet"
+                value={formik.values.id_outlet}
+                options={outlet.map((value) => (
+                  <option key={value.id} value={value.id}>
+                    {value.outlet_name}
+                  </option>
+                ))}
+                placeholder={"Select Outlet Name"}
+                onChange={handleChange}
+                errorMessage={formik.errors.id_outlet}
+                isError={
+                  formik.touched.id_outlet && formik.errors.id_outlet
+                    ? true
+                    : false
+                }
+              />
+            </div>
+
+            <Input
+              label="Type :"
+              id="type"
+              placeholder="Type"
+              name="type"
+              type="text"
+              value={formik.values.type}
               onChange={handleChange}
-              errorMessage={formik.errors.id_outlet}
+              errorMessage={formik.errors.type}
+              isError={formik.touched.type && formik.errors.type ? true : false}
+            />
+            <Input
+              label="Descriptions :"
+              id="descriptions"
+              placeholder="Descriptions"
+              name="descriptions"
+              type="text"
+              value={formik.values.descriptions}
+              onChange={handleChange}
+              errorMessage={formik.errors.descriptions}
               isError={
-                formik.touched.id_outlet && formik.errors.id_outlet
+                formik.touched.descriptions && formik.errors.descriptions
                   ? true
                   : false
               }
             />
-          </div>
-
-          <Input
-            label="Type :"
-            id="type"
-            placeholder="Type"
-            name="type"
-            type="text"
-            value={formik.values.type}
-            onChange={handleChange}
-            errorMessage={formik.errors.type}
-            isError={formik.touched.type && formik.errors.type ? true : false}
-          />
-          <Input
-            label="Descriptions :"
-            id="descriptions"
-            placeholder="Descriptions"
-            name="descriptions"
-            type="text"
-            value={formik.values.descriptions}
-            onChange={handleChange}
-            errorMessage={formik.errors.descriptions}
-            isError={
-              formik.touched.descriptions && formik.errors.descriptions
-                ? true
-                : false
-            }
-          />
-          <ButtonCreateUpdate
-            loadingButton={loadingButton}
-            handleCancel={handleCancel}
-          />
-        </form>
-      )}
+            <ButtonCreateUpdate
+              loadingButton={loadingButton}
+              handleCancel={handleCancel}
+            />
+          </form>
+        )}
+      </div>
     </div>
   );
 }

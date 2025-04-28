@@ -1,6 +1,8 @@
 import { IconSkeleton, SearchSkeleton } from "../skeleton/adminSkeleton";
+import { useRouter } from "nextjs-toploader/app";
 
 const InputSearch = (props) => {
+  const router = useRouter();
   const {
     inputClassName,
     rightButton,
@@ -74,12 +76,12 @@ const InputSearch = (props) => {
         (isLoading ? (
           <IconSkeleton />
         ) : (
-          <a
+          <button
             className={` bg-yellow-700 text-white body-text-sm-bold font-nunitoSans px-4 py-2 md:px-5 md:py-3 rounded-md shadow-md hover:bg-yellow-700 transition-all duration-300`}
-            href={linkCreate}
+            onClick={() => router.push(linkCreate)}
           >
             {createData}
-          </a>
+          </button>
         ))}
     </div>
   );

@@ -1,29 +1,27 @@
 "use client";
 
 import axios from "axios";
+import Pagination from "../../component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
-import Modal from "../../component/modal/modal";
-import Pagination from "../../component/paginate/paginate";
-import { AiFillEdit } from "react-icons/ai";
-import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
-import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
-import { handleApiError } from "@/app/component/handleError/handleError";
 import { Toaster, toast } from "react-hot-toast";
+import "react-loading-skeleton/dist/skeleton.css";
+import { IoSearch, IoMedkit } from "react-icons/io5";
+import { TableSkeleton } from "../../component/skeleton/adminSkeleton";
+import { handleApiError } from "@/app/component/handleError/handleError";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
 import Table from "@/app/component/table/table";
 import { useSelector } from "react-redux";
 
-export default function subCategory() {
-  const [subCategory, setSubCategory] = useState([]);
+export default function AdminOutlet() {
+  const [transaction, setTransaction] = useState([]);
   const router = useRouter();
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentImage, setCurrentImage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState([]);
   const [query, setQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [by_name, setQueryByName] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [dataToRemove, setDataToRemove] = useState(null);
   const dataOutlet = useSelector((state) => state.counter.outlet);
@@ -39,15 +37,6 @@ export default function subCategory() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage; // Data yang disimpan dalam state
   //set untuk page yg di tampilkan
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
-  //toast data baru
-  useEffect(() => {
-    const newData = localStorage.getItem("newData");
-    if (newData) {
-      toast.success(newData);
-      localStorage.removeItem("newData");
-    }
-  }, []);
 
   // cek token
   useEffect(() => {
@@ -66,67 +55,6 @@ export default function subCategory() {
     }
   }, []);
 
-  // useEffect untuk search
-  useEffect(() => {
-    setSearchQuery(subCategory);
-  }, [subCategory]);
-
-  // function mengambil data lapangan by limit
-  const fetchDataPaginated = async (isSearchMode = false) => {
-    setIsLoading(true);
-    if (isSearchMode) {
-      setCurrentPage(1); // Reset ke page 1 jika pencarian
-    }
-    const token = localStorage.getItem("token");
-
-    const params = {
-      page: isSearchMode ? 1 : currentPage,
-      limit: itemsPerPage,
-      search: query,
-    };
-    try {
-      // Mengambil data transaksi menggunakan axios dengan query params
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showpaginated`,
-        {
-          params: params,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = response.data.data;
-      setSubCategory(data);
-      setRows(response.data.pagination.totalItems);
-      setIsLoading(false);
-    } catch (error) {
-      await handleApiError(
-        error,
-        () => fetchDataPaginated(isSearchMode),
-        router
-      );
-    }
-  };
-
-  //useEffect mengambil data Category
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true); // Tampilkan loading
-      try {
-        await fetchDataPaginated();
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setIsLoading(false); // Pastikan loading dihentikan
-      }
-    };
-
-    if (dataOutlet.role) {
-      loadData();
-    }
-  }, [itemsPerPage, currentPage, dataOutlet.role]);
-
   //stabilo pencarian
   const highlightText = (text, query) => {
     if (!query) return text;
@@ -144,6 +72,79 @@ export default function subCategory() {
     );
   };
 
+  // useEffect untuk search
+  useEffect(() => {
+    setSearchQuery(transaction);
+  }, [transaction]);
+
+  // function mengambil data transaksi by limit
+  const fetchDataPaginated = async (isSearchMode = false) => {
+    setIsLoading(true);
+    if (isSearchMode) {
+      setCurrentPage(1); // Reset ke page 1 jika pencarian
+    }
+    const token = localStorage.getItem("token");
+
+    const params = {
+      page: isSearchMode ? 1 : currentPage,
+      limit: itemsPerPage,
+      search: dataOutlet.role == "user" ? dataOutlet.outlet_name : query,
+      by_name: by_name,
+    };
+    try {
+      // Mengambil data transaksi menggunakan axios dengan query params
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/transaction/showpaginated`,
+        {
+          params: params,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = response.data.data;
+      setTransaction(data);
+
+      setRows(response.data.pagination.totalItems);
+      setIsLoading(false);
+    } catch (error) {
+      await handleApiError(
+        error,
+        () => fetchDataPaginated(isSearchMode),
+        router
+      );
+    }
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        if (dataOutlet) {
+          await fetchDataPaginated();
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (dataOutlet.role) {
+      loadData();
+    }
+  }, [itemsPerPage, currentPage, dataOutlet.role]);
+
+  //function mengubah angka menjadi IDR
+  const formatIDR = (number) => {
+    return new Intl.NumberFormat("id-ID", {
+      style: "currency",
+      currency: "IDR",
+      minimumFractionDigits: 0,
+    }).format(number);
+  };
+
   //handle untuk menghapus data
   const handleRemove = async () => {
     const savedToken = localStorage.getItem("token");
@@ -151,7 +152,7 @@ export default function subCategory() {
     try {
       setIsLoading(true);
       const response = await axios.delete(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/delete/${dataToRemove}`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/delete/${dataToRemove}`,
         { headers: { Authorization: `Bearer ${savedToken}` } }
       );
 
@@ -174,53 +175,47 @@ export default function subCategory() {
     {
       id: "No",
       header: "No",
-      cell: ({ row }) =>
-        dataOutlet.role !== "admin"
-          ? row.index + 1
-          : indexOfFirstItem + row.index + 1,
+      cell: ({ row }) => indexOfFirstItem + row.index + 1,
     },
     {
       header: "Outlet Name",
-      accessorFn: (row) => row.Category.Outlet.outlet_name,
+      accessorKey: "Outlet.outlet_name",
       cell: ({ getValue }) => highlightText(getValue(), query),
     },
     {
-      header: "Category Name",
-      accessorFn: (row) => row.Category.type,
+      header: "Customer",
+      accessorKey: "by_name",
     },
     {
-      header: "Title",
-      accessorKey: "title",
+      header: "No Table",
+      accessorKey: "id_table",
     },
     {
-      header: "Action",
-      id: "Action",
+      header: "Order",
+      id: "orderList",
       cell: ({ row }) => {
-        const { id, Category } = row.original;
+        const orders = row.original.Orders; // Ambil data langsung dari row
         return (
-          <div className="flex justify-center gap-2">
-            <a
-              href={`/admin/subCategory/edit?id=${id}`}
-              onClick={() => {
-                localStorage.setItem("id_subCategory", id);
-                localStorage.setItem(
-                  "outlet_name",
-                  Category.Outlet.outlet_name
-                );
-              }}
-              className="text-sm text-white p-1 rounded-sm bg-blue-500"
-            >
-              <AiFillEdit />
-            </a>
-            <button
-              className="text-sm text-white p-1 rounded-sm bg-red-500"
-              onClick={() => confirmRemove(id)}
-            >
-              <IoTrash />
-            </button>
+          <div className="space-y-1">
+            {orders.map((order) => (
+              <div key={order.id}>
+                <div className="flex justify-between text-sm">
+                  <p>{order.Menu.title}</p>
+                  <p>{formatIDR(order.total_price)}</p>
+                </div>
+                <p className="text-sm text-gray-500">
+                  {order.qty} x {formatIDR(order.Menu.price)}
+                </p>
+              </div>
+            ))}
           </div>
         );
       },
+    },
+    {
+      header: "Total",
+      accessorKey: "total_pay",
+      cell: ({ getValue }) => formatIDR(getValue()),
     },
   ];
 
@@ -232,7 +227,7 @@ export default function subCategory() {
       <Toaster position="top-center" reverseOrder={false} />
       <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
         <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
-          Sub Category Data Setting
+          History Data
         </h1>
         <div>
           <InputSearch
@@ -244,29 +239,20 @@ export default function subCategory() {
             onChange={(e) => setQuery(e.target.value)}
             onRightButtonCLick={() => fetchDataPaginated(true)}
             rightButton={<IoSearch />}
-            createData={<IoMedkit />}
-            linkCreate={"/admin/subCategory/create"}
             isLoading={isLoading}
           />
         </div>
+
         <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
           {isLoading ? (
             <TableSkeleton />
           ) : (
             <Table data={searchQuery} columns={columns} />
           )}
-          {/* Modal */}
-          {isModalOpen && (
-            <Modal
-              currentImage={currentImage}
-              setIsModalOpen={setIsModalOpen}
-              setCurrentImage={setCurrentImage}
-            />
-          )}
         </div>
 
         {/* Tampilkan navigasi pagination */}
-        {searchQuery && searchQuery.length > 0 && (
+        {searchQuery.length > 0 && (
           <Pagination
             itemsPerPage={itemsPerPage}
             rows={rows}

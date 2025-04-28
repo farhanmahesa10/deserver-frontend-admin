@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { jwtDecode } from "jwt-decode";
-import { useRouter } from "next/navigation";
+import { useRouter } from "nextjs-toploader/app";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
 import { getNewAccessToken } from "../../../component/token/refreshToken";
 import ButtonCreateUpdate from "@/app/component/button/button";
@@ -34,42 +34,31 @@ export default function AddProfile({ params }) {
   const onClickPassword = () => {
     setIsOpen(!isOpen);
   };
+  //toast data baru
+  useEffect(() => {
+    const newData = localStorage.getItem("newData");
+    if (newData) {
+      toast.success(newData);
+      localStorage.removeItem("newData");
+    }
+  }, []);
 
   // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
-    const token = localStorage.getItem("token");
-
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
+    const refreshToken = localStorage.getItem("refreshToken");
+    if (refreshToken) {
+      const decoded = jwtDecode(refreshToken);
       const expirationTime = new Date(decoded.exp * 1000);
       const currentTime = new Date();
 
       if (currentTime > expirationTime) {
         localStorage.clear();
         router.push(`/login`);
-      } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          )
-          .then((response) => {
-            const data = response.data;
-            setOutletId(data.id);
-            setRole(data.role);
-          })
-          .catch((error) => console.error("Error fetching data:", error));
       }
     } else {
       router.push(`/login`);
     }
-  }, [router]);
+  }, []);
 
   //CARI DATA OUTLET BERDASARKAN ID KETIKA EDIT
   useEffect(() => {
@@ -143,9 +132,8 @@ export default function AddProfile({ params }) {
         formData,
         { headers }
       );
-      alert("Data berhasil diperbarui!");
-      localStorage.removeItem("id_profile");
       router.push("/admin");
+      localStorage.setItem("newData", "updated successfully!");
       setLoadingButton(false);
     } catch (error) {
       if (error.response.status === 401) {

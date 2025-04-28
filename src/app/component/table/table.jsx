@@ -26,13 +26,13 @@ const Table = ({ data, columns }) => {
                   key={header.id}
                   className={`px-2 py-2 border text-left font-medium ${
                     header.id === "No"
-                      ? "min-w-[40px] w-[50px] text-center"
+                      ? "min-w-[10px] w-[15px] text-center"
                       : ""
                   } ${
-                    header.id === "Action"
-                      ? "min-w-[40px] w-[60px] text-center"
+                    header.id === "Action" || "Logo" || "Photo" || "Image"
+                      ? "min-w-[40px]  text-center"
                       : ""
-                  }`}
+                  } `}
                 >
                   {flexRender(
                     header.column.columnDef.header,
@@ -55,7 +55,7 @@ const Table = ({ data, columns }) => {
             table.getRowModel().rows.map((row) => (
               <tr key={row.id} className="hover:bg-gray-50">
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-4 py-2 border text-gray-800">
+                  <td key={cell.id} className="px-2 py-2 border text-gray-800">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
