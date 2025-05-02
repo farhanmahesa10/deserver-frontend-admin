@@ -2,6 +2,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import NextTopLoader from "nextjs-toploader";
 import { StoreProvider } from "@/store/StoreProvider";
+import { ToastContainer } from "react-toastify";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,6 +30,7 @@ export default function RootLayout({ children }) {
           <div className=" min-w-[277px] min-h-screen">
             <NextTopLoader color="#a16207" showSpinner={false} height={3} />
             {children}
+            <ToastContainer position="top-center" autoClose={4000} />
           </div>
         </StoreProvider>
       </body>

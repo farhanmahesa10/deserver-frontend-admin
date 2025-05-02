@@ -7,20 +7,11 @@ import { useRouter } from "nextjs-toploader/app";
 import { useDispatch, useSelector } from "react-redux";
 import { setCollapse } from "@/store/slice";
 import { Collapse } from "react-collapse";
-import {
-  IoBagHandle,
-  IoCallSharp,
-  IoImages,
-  IoStorefront,
-  IoCaretForward,
-} from "react-icons/io5";
+import { IoBagHandle, IoCallSharp, IoImages, IoStorefront, IoCaretForward } from "react-icons/io5";
 import { BiSolidFoodMenu } from "react-icons/bi";
-import {
-  MdFastfood,
-  MdOutlineFoodBank,
-  MdTableRestaurant,
-} from "react-icons/md";
+import { MdFastfood, MdOutlineFoodBank, MdTableRestaurant } from "react-icons/md";
 import { TfiGallery } from "react-icons/tfi";
+import { MdDashboard } from "react-icons/md";
 import SidebarComp from "./sidebarComponent";
 
 function Sidebar({ isOpen, setIsOpen }) {
@@ -66,104 +57,33 @@ function Sidebar({ isOpen, setIsOpen }) {
       <div className="flex flex-col w-full gap-6 overflow-y-auto overflow-x-hidden p-5 lg:p-0 custom-scrollbar ">
         {/* TRANSAKSI */}
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs text-gray-500 font-semibold uppercase tracking-widest px-1">
-            Transaksi
-          </h3>
+          <h3 className="text-xs text-gray-500 font-semibold uppercase tracking-widest px-1">Transaksi</h3>
 
-          <SidebarComp
-            handleRoute={() => handleRoute("/")}
-            url={url}
-            route={"/"}
-            icon={<IoBagHandle />}
-            menuName={"Transaction"}
-          />
+          <SidebarComp handleRoute={() => handleRoute("/")} url={url} route={"/"} icon={<IoBagHandle />} menuName={"Transaction"} />
 
-          <SidebarComp
-            handleRoute={() => handleRoute("/admin/history")}
-            url={url}
-            route={"/admin/history"}
-            icon={<IoBagHandle />}
-            menuName={"History"}
-          />
+          <SidebarComp handleRoute={() => handleRoute("/admin/history")} url={url} route={"/admin/history"} icon={<IoBagHandle />} menuName={"History"} />
+          <SidebarComp handleRoute={() => handleRoute("/admin/dashboard")} url={url} route={"/admin/dashboard"} icon={<MdDashboard />} menuName={"Dashboard"} />
         </div>
 
         <hr className="border-gray-200" />
 
         {/* DATA MASTER */}
         <div className="flex flex-col gap-1">
-          <div
-            className="flex items-center justify-between px-1 cursor-pointer"
-            onClick={() => dispatch(setCollapse(!collapse))}
-          >
-            <h3 className="text-xs text-gray-500 font-semibold uppercase tracking-widest">
-              Data Master
-            </h3>
-            <IoCaretForward
-              className={`text-black transition-transform duration-300 ${
-                collapse ? "rotate-90" : ""
-              }`}
-            />
+          <div className="flex items-center justify-between px-1 cursor-pointer" onClick={() => dispatch(setCollapse(!collapse))}>
+            <h3 className="text-xs text-gray-500 font-semibold uppercase tracking-widest">Data Master</h3>
+            <IoCaretForward className={`text-black transition-transform duration-300 ${collapse ? "rotate-90" : ""}`} />
           </div>
 
           <Collapse isOpened={collapse}>
             <div className="mt-2 flex flex-col gap-2">
-              <SidebarComp
-                handleRoute={() => handleRoute("/admin/outlet")}
-                url={url}
-                route={"/admin/outlet"}
-                roleAdmin={`${dataOutlet.role !== "admin" ? "hidden" : ""}`}
-                icon={<IoStorefront />}
-                menuName={"Outlet"}
-              />
-              <SidebarComp
-                handleRoute={() => handleRoute("/admin/table")}
-                url={url}
-                route={"/admin/table"}
-                icon={<MdTableRestaurant />}
-                menuName={"Room"}
-              />
-              <SidebarComp
-                handleRoute={() => handleRoute("/admin/category")}
-                url={url}
-                route={"/admin/category"}
-                icon={<BiSolidFoodMenu />}
-                menuName={"Category"}
-              />
-              <SidebarComp
-                handleRoute={() => handleRoute("/admin/subCategory")}
-                url={url}
-                route={"/admin/subCategory"}
-                icon={<MdOutlineFoodBank />}
-                menuName={"Sub Category"}
-              />
-              <SidebarComp
-                handleRoute={() => handleRoute("/admin/menu")}
-                url={url}
-                route={"/admin/menu"}
-                icon={<MdFastfood />}
-                menuName={"Menu"}
-              />
-              <SidebarComp
-                handleRoute={() => handleRoute("/admin/gallery")}
-                url={url}
-                route={"/admin/gallery"}
-                icon={<IoImages />}
-                menuName={"Gallery"}
-              />
-              <SidebarComp
-                handleRoute={() => handleRoute("/admin/event")}
-                url={url}
-                route={"/admin/event"}
-                icon={<TfiGallery />}
-                menuName={"Event"}
-              />
-              <SidebarComp
-                handleRoute={() => handleRoute("/admin/contact")}
-                url={url}
-                route={"/admin/contact"}
-                icon={<IoCallSharp />}
-                menuName={"Contact"}
-              />
+              <SidebarComp handleRoute={() => handleRoute("/admin/outlet")} url={url} route={"/admin/outlet"} roleAdmin={`${dataOutlet.role !== "admin" ? "hidden" : ""}`} icon={<IoStorefront />} menuName={"Outlet"} />
+              <SidebarComp handleRoute={() => handleRoute("/admin/table")} url={url} route={"/admin/table"} icon={<MdTableRestaurant />} menuName={"Room"} />
+              <SidebarComp handleRoute={() => handleRoute("/admin/category")} url={url} route={"/admin/category"} icon={<BiSolidFoodMenu />} menuName={"Category"} />
+              <SidebarComp handleRoute={() => handleRoute("/admin/subCategory")} url={url} route={"/admin/subCategory"} icon={<MdOutlineFoodBank />} menuName={"Sub Category"} />
+              <SidebarComp handleRoute={() => handleRoute("/admin/menu")} url={url} route={"/admin/menu"} icon={<MdFastfood />} menuName={"Menu"} />
+              <SidebarComp handleRoute={() => handleRoute("/admin/gallery")} url={url} route={"/admin/gallery"} icon={<IoImages />} menuName={"Gallery"} />
+              <SidebarComp handleRoute={() => handleRoute("/admin/event")} url={url} route={"/admin/event"} icon={<TfiGallery />} menuName={"Event"} />
+              <SidebarComp handleRoute={() => handleRoute("/admin/contact")} url={url} route={"/admin/contact"} icon={<IoCallSharp />} menuName={"Contact"} />
             </div>
           </Collapse>
         </div>
