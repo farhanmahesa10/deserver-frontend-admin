@@ -16,6 +16,10 @@ import InputSearch from "./component/form/inputSearch";
 import { useSelector } from "react-redux";
 import HanldeRemove from "./component/handleRemove/handleRemove";
 import HanldeUpdateStatus from "./component/handleUpdate/updateStatus";
+import CardRevenue from "./component/card/cardRevenue";
+import { HighlightText } from "./component/utils/highlightText";
+import { FormatIDR } from "./component/utils/formatIDR";
+import { FormatDate } from "./component/utils/formatDate";
 
 export default function Transaction() {
   const [transaction, setTransaction] = useState([]);
@@ -93,23 +97,6 @@ export default function Transaction() {
     return () => clearInterval(timer); // Cleanup ketika komponen di-unmount
   }, [orders]);
 
-  //stabilo pencarian
-  const highlightText = (text, query) => {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi"); // Cari query (case-insensitive)
-    const parts = text.split(regex); // Pisah teks berdasarkan query
-
-    return parts.map((part, index) =>
-      part.toLowerCase() === query.toLowerCase() ? (
-        <span key={index} className="bg-green-500">
-          {part}
-        </span>
-      ) : (
-        part
-      )
-    );
-  };
-
   //integrasi socket.io
   useEffect(() => {
     if (dataOutlet.id) {
@@ -171,7 +158,6 @@ export default function Transaction() {
 
       const data = response.data.data;
       setTransaction(data);
-
       setRows(response.data.pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
@@ -198,7 +184,7 @@ export default function Transaction() {
         );
 
         const data = response.data;
-        setOrderActive(data.notPay + data.onProses);
+        setOrderActive(data.active + data.onprocess);
         setIsLoading(false);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -267,7 +253,7 @@ export default function Transaction() {
         setIsLoading(false);
         if (dataToUpdate == "rejected") {
           toast.success("Order successfully rejected");
-        } else if (dataToUpdate == "onproses") {
+        } else if (dataToUpdate == "onprocess") {
           toast.success("Order is being processed");
         } else if (dataToUpdate == "cancel") {
           toast.success("Order successfully cancel");
@@ -279,29 +265,6 @@ export default function Transaction() {
       await handleApiError(error, handleUpdate, router);
     }
   };
-
-  //function mengubah angka menjadi IDR
-  const formatIDR = (number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(number);
-  };
-
-  //function format tanggal
-  function formatTanggal(isoString) {
-    const date = new Date(isoString);
-
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0"); // getMonth() dimulai dari 0
-    const year = date.getFullYear();
-
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-
-    return `${day}-${month}-${year} ${hours}:${minutes}`;
-  }
 
   //handle close modal
   const closeModal = () => {
@@ -336,33 +299,32 @@ export default function Transaction() {
               Transaction Data Settings
             </h1>
 
-            <div className="flex mb-1">
-              <InputSearch
-                role={dataOutlet.role}
-                type="text"
-                placeholder="Outlet Name. . ."
-                id="search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onRightButtonCLick={() => fetchDataPaginated(true)}
-                rightButton={<IoSearch />}
-                isLoading={isLoading}
-                inputLeft={true}
-                typeLeft={"text"}
-                placeholderLeft={"Name Transaction. . ."}
-                idLeft={"by_name"}
-                valueLeft={by_name}
-                onchangeLeft={(e) => setQueryByName(e.target.value)}
-              />
-
-              <div className="bg-white shadow-lg rounded-xl p-2 border border-gray-200 w-60 h-[65px] text-center ">
-                <p className="text-2xl font-extrabold text-green-600">
-                  {orderActive}
-                </p>
-                <h3 className="text-md font-bold text-gray-700 ">
-                  Active Orders
-                </h3>
+            <div className="flex justify-between mb-4 ">
+              <div className="flex items-center ">
+                <InputSearch
+                  role={dataOutlet.role}
+                  type="text"
+                  placeholder="Outlet Name. . ."
+                  id="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onRightButtonCLick={() => fetchDataPaginated(true)}
+                  rightButton={<IoSearch />}
+                  isLoading={isLoading}
+                  inputLeft={true}
+                  typeLeft="text"
+                  placeholderLeft="Name Transaction. . ."
+                  idLeft="by_name"
+                  valueLeft={by_name}
+                  onchangeLeft={(e) => setQueryByName(e.target.value)}
+                />
               </div>
+
+              <CardRevenue
+                value={orderActive}
+                desc="Active Orders"
+                classRevenue=" max-w-[150px]"
+              />
             </div>
 
             <div className="rounded-lg  bg-white overflow-x-auto ">
@@ -387,14 +349,13 @@ export default function Transaction() {
                             <div
                               className={`absolute top-0 right-0 px-2 py-1  w-16 h-8 text-xs rounded-tr-md rounded-bl-md bg-gray-100 font-semibold capitalize flex items-center justify-center
                             ${
-                              item.status === "not pay"
+                              item.status === "active"
                                 ? "text-yellow-600"
-                                : item.status === "onproses"
+                                : item.status === "onprocess"
                                 ? "text-green-600"
                                 : item.status === "success"
                                 ? "text-blue-600"
-                                : item.status === "cancel" ||
-                                  item.status === "rejected"
+                                : item.status === "failed"
                                 ? "text-red-600"
                                 : ""
                             }`}
@@ -405,7 +366,7 @@ export default function Transaction() {
                             {/* Outlet & Customer */}
                             <div className="mt-10">
                               <p className="text-sm text-gray-500">
-                                {highlightText(item.by_name, by_name)}
+                                {HighlightText(item.by_name, by_name)}
                               </p>
                             </div>
 
@@ -418,31 +379,31 @@ export default function Transaction() {
                                 <div key={order.id} className="mb-1 text-sm">
                                   <div className="flex justify-between">
                                     <p>{order.Menu.title}</p>
-                                    <p>{formatIDR(order.total_price)}</p>
+                                    <p>{FormatIDR(order.total_price)}</p>
                                   </div>
                                   <p className="text-xs text-gray-500">
-                                    {order.qty} x {formatIDR(order.Menu.price)}
+                                    {order.qty} x {FormatIDR(order.Menu.price)}
                                   </p>
                                 </div>
                               ))}
                             </div>
                             <div className="flex justify-end font-bold text-sm mt-1 p-2">
-                              <p>{formatIDR(item.total_pay)}</p>
+                              <p>{FormatIDR(item.total_pay)}</p>
                             </div>
 
                             {/* Tombol */}
                             <div className="mt-4 flex gap-2">
-                              {item.status === "not pay" && (
+                              {item.status === "active" && (
                                 <button
                                   className="bg-blue-100 w-1/2 text-blue-700 text-sm py-1 rounded hover:bg-blue-200"
                                   onClick={() =>
-                                    confirmUpdate(item.id, "onproses")
+                                    confirmUpdate(item.id, "onprocess")
                                   }
                                 >
                                   Paid
                                 </button>
                               )}
-                              {item.status === "onproses" && (
+                              {item.status === "onprocess" && (
                                 <button
                                   className="w-1/2 bg-green-100 text-green-700 text-sm py-1 rounded hover:bg-green-200"
                                   onClick={() =>
@@ -461,13 +422,11 @@ export default function Transaction() {
                                   Print
                                 </button>
                               )}
-                              {!["rejected", "success", "cancel"].includes(
-                                item.status
-                              ) && (
+                              {!["success", "failed"].includes(item.status) && (
                                 <button
                                   className="w-1/2 bg-red-100 text-red-600 text-sm py-1 rounded hover:bg-red-200"
                                   onClick={() =>
-                                    confirmUpdate(item.id, "cancel")
+                                    confirmUpdate(item.id, "failed")
                                   }
                                 >
                                   Cancel
@@ -523,17 +482,17 @@ export default function Transaction() {
                                     <div key={order.title} className="mb-1">
                                       <div className="flex justify-between text-sm">
                                         <p>{order.title}</p>
-                                        <p>{formatIDR(order.total_price)}</p>
+                                        <p>{FormatIDR(order.total_price)}</p>
                                       </div>
                                       <p className="text-sm">
-                                        {order.qty} x {formatIDR(order.price)}
+                                        {order.qty} x {FormatIDR(order.price)}
                                       </p>
                                     </div>
                                   ))}
                                 </div>
                                 <div className="flex justify-between font-bold text-sm">
                                   <p>Total</p>
-                                  <p>{formatIDR(item.total_pay)}</p>
+                                  <p>{FormatIDR(item.total_pay)}</p>
                                 </div>
                               </div>
                               <button
@@ -547,7 +506,7 @@ export default function Transaction() {
                               </button>
                               <button
                                 onClick={() =>
-                                  confirmUpdate(item.id_transaction, "rejected")
+                                  confirmUpdate(item.id_transaction, "failed")
                                 }
                                 className="bg-red-500 text-white text-sm rounded-lg py-2 w-full hover:bg-red-600 transition-colors duration-300 mt-2"
                               >
@@ -604,7 +563,7 @@ export default function Transaction() {
                     <div className="border-t border-dashed my-2"></div>
 
                     <div className="flex justify-between">
-                      <p className="w-32">{formatTanggal(item.updatedAt)}</p>
+                      <p className="w-32">{FormatDate(item.updatedAt)}</p>
                       <p className="w-24 text-end">{item.by_name}</p>
                     </div>
                     <div className="flex justify-between">
@@ -617,10 +576,10 @@ export default function Transaction() {
                       <div key={order.id} className="mb-1">
                         <div className="flex justify-between text-sm">
                           <p>{order.Menu.title}</p>
-                          <p>{formatIDR(order.total_price)}</p>
+                          <p>{FormatIDR(order.total_price)}</p>
                         </div>
                         <p className="text-sm">
-                          {order.qty} x {formatIDR(order.Menu.price)}
+                          {order.qty} x {FormatIDR(order.Menu.price)}
                         </p>
                       </div>
                     ))}
@@ -629,11 +588,11 @@ export default function Transaction() {
 
                     <div className="flex justify-between font-bold">
                       <p>Total</p>
-                      <p>{formatIDR(item.total_pay)}</p>
+                      <p>{FormatIDR(item.total_pay)}</p>
                     </div>
                     <div className="flex justify-between">
                       <p>Payed ({item.pays_method})</p>
-                      <p>{formatIDR(item.total_pay)}</p>
+                      <p>{FormatIDR(item.total_pay)}</p>
                     </div>
 
                     <div className="border-t border-dashed my-2"></div>
