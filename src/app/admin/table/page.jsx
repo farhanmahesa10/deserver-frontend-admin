@@ -15,6 +15,7 @@ import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
 import Table from "@/app/component/table/table";
 import { useSelector } from "react-redux";
+import { HighlightText } from "@/app/component/utils/highlightText";
 
 export default function Table2() {
   const [table, setTable] = useState([]);
@@ -150,23 +151,6 @@ export default function Table2() {
     setShowConfirmModal(true);
   };
 
-  //stabilo pencarian
-  const highlightText = (text, query) => {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi"); // Cari query (case-insensitive)
-    const parts = text.split(regex); // Pisah teks berdasarkan query
-
-    return parts.map((part, index) =>
-      part.toLowerCase() === query.toLowerCase() ? (
-        <span key={index} className="bg-green-500">
-          {part}
-        </span>
-      ) : (
-        part
-      )
-    );
-  };
-
   const columns = [
     {
       id: "No",
@@ -179,7 +163,7 @@ export default function Table2() {
     {
       header: "Outlet Name",
       accessorKey: "Outlet.outlet_name",
-      cell: ({ getValue }) => highlightText(getValue(), query),
+      cell: ({ getValue }) => HighlightText(getValue(), query),
     },
     {
       header: "Number Room",
