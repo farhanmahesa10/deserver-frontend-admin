@@ -15,6 +15,7 @@ import InputSearch from "@/app/component/form/inputSearch";
 import Table from "@/app/component/table/table";
 import { Collapse } from "react-collapse";
 import { useSelector } from "react-redux";
+import { HighlightText } from "@/app/component/utils/highlightText";
 
 export default function Category() {
   const [category, setCategory] = useState([]);
@@ -149,23 +150,6 @@ export default function Category() {
     setShowConfirmModal(true);
   };
 
-  //stabilo pencarian
-  const highlightText = (text, query) => {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi"); // Cari query (case-insensitive)
-    const parts = text.split(regex); // Pisah teks berdasarkan query
-
-    return parts.map((part, index) =>
-      part.toLowerCase() === query.toLowerCase() ? (
-        <span key={index} className="bg-green-500">
-          {part}
-        </span>
-      ) : (
-        part
-      )
-    );
-  };
-
   //open descriptions
   const handleToggle = (id) => {
     setOpenRows((prev) => ({
@@ -184,7 +168,7 @@ export default function Category() {
     {
       header: "Outlet Name",
       accessorKey: "Outlet.outlet_name",
-      cell: ({ row, getValue }) => highlightText(getValue(), query),
+      cell: ({ row, getValue }) => HighlightText(getValue(), query),
     },
     {
       header: "Type",

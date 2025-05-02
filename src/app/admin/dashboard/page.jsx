@@ -58,6 +58,7 @@ export default function Dashboard() {
     try {
       setLoading(true);
       const params = new URLSearchParams(query).toString();
+      console.log(params, "params");
 
       const res = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/grafik/sales?${params}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
@@ -158,6 +159,8 @@ export default function Dashboard() {
 
   const handleApplyFilter = () => {
     const [startDate, endDate] = dateRange;
+    const toLocalDate = (date) => date.toLocaleDateString("sv-SE");
+
     const query = {};
 
     if (!startDate && !endDate) {
@@ -166,8 +169,8 @@ export default function Dashboard() {
       toast.error("Select start date and end date.");
       return;
     } else {
-      query.startDate = startDate.toISOString().split("T")[0];
-      query.endDate = endDate.toISOString().split("T")[0];
+      query.startDate = toLocalDate(startDate);
+      query.endDate = toLocalDate(endDate);
     }
 
     if (filterSuccess) query.status = "success";
