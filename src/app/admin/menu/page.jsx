@@ -5,7 +5,7 @@ import Pagination from "../../component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
 import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
-import Modal from "../../component/modal/modal";
+import Modal from "../../component/modal/cardImage";
 import { getNewAccessToken } from "../../component/token/refreshToken";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
@@ -17,6 +17,7 @@ import InputSearch from "@/app/component/form/inputSearch";
 import Table from "@/app/component/table/table";
 import { Collapse } from "react-collapse";
 import { useSelector } from "react-redux";
+import { HighlightText } from "@/app/component/utils/highlightText";
 
 export default function Menu() {
   const [menu, setMenu] = useState([]);
@@ -253,23 +254,6 @@ export default function Menu() {
     setIsModalOpen(true); // Membuka modal
   };
 
-  //stabilo pencarian
-  const highlightText = (text, query) => {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi"); // Cari query (case-insensitive)
-    const parts = text.split(regex); // Pisah teks berdasarkan query
-
-    return parts.map((part, index) =>
-      part.toLowerCase() === query.toLowerCase() ? (
-        <span key={index} className="bg-green-500">
-          {part}
-        </span>
-      ) : (
-        part
-      )
-    );
-  };
-
   //open details
   const handleToggle = (id) => {
     setOpenRows((prev) => ({
@@ -287,7 +271,7 @@ export default function Menu() {
     {
       header: "Outlet Name",
       accessorFn: (row) => row.SubCategory.Category.Outlet.outlet_name,
-      cell: ({ getValue }) => highlightText(getValue(), query),
+      cell: ({ getValue }) => HighlightText(getValue(), query),
     },
     {
       header: "Sub Category Name",
@@ -296,7 +280,7 @@ export default function Menu() {
     {
       header: "Title",
       accessorKey: "title",
-      cell: ({ getValue }) => highlightText(getValue(), queryMenu),
+      cell: ({ getValue }) => HighlightText(getValue(), queryMenu),
     },
     {
       header: "Price",

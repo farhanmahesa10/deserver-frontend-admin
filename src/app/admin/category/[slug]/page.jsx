@@ -155,7 +155,7 @@ export default function AddCategory({ params }) {
 
         setOutlet(data);
       } catch (error) {
-        console.error("Error fetching transaction data:", error);
+        await handleApiError(error, () => fetchData(), router);
       }
     };
 

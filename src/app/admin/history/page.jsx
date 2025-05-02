@@ -7,29 +7,54 @@ import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
 import { Toaster, toast } from "react-hot-toast";
 import "react-loading-skeleton/dist/skeleton.css";
-import { IoSearch, IoMedkit } from "react-icons/io5";
+import { IoFilterOutline, IoCloudDownload } from "react-icons/io5";
 import { TableSkeleton } from "../../component/skeleton/adminSkeleton";
 import { handleApiError } from "@/app/component/handleError/handleError";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
 import Table from "@/app/component/table/table";
 import { useSelector } from "react-redux";
+import CardOrder from "@/app/component/modal/cardOrder";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
+import { format } from "date-fns";
+import RadioButton from "@/app/component/form/radioButton";
+import ExcelJS from "exceljs";
+import CardRevenue from "@/app/component/card/cardRevenue";
+import Select from "@/app/component/form/select";
+import { FormatIDR } from "@/app/component/utils/formatIDR";
+import { FormatDate } from "@/app/component/utils/formatDate";
+import { HighlightText } from "@/app/component/utils/highlightText";
 
 export default function AdminOutlet() {
   const [transaction, setTransaction] = useState([]);
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState([]);
+  const [outlet, setOutlet] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [by_name, setQueryByName] = useState("");
+  const [by_name, setByName] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [dataToRemove, setDataToRemove] = useState(null);
   const dataOutlet = useSelector((state) => state.counter.outlet);
+  const [selectedChecked, setSelectedChecked] = useState("");
+  const [cardOrderOpen, setCardOrderOpen] = useState(false);
+  const [dataPesanan, setDataPesanan] = useState([]);
+  const [isOpen, setIsOpen] = useState(false);
+  // const [startDate, setStartDate] = useState(new Date());
+  const [dateRange, setDateRange] = useState([null, null]);
+  const [startDate, endDate] = dateRange;
+  const [totalRevenue, setTotalRevenue] = useState(false);
+  const [totalRevenueSuccess, setTotalRevenueSuccess] = useState(0);
+  const [totalRevenueFailed, setTotalRevenueFailed] = useState(0);
+  const [countSuccess, setCountSuccess] = useState(0);
+  const [countFailed, setCountFailed] = useState(0);
+  const [countAll, setCountAll] = useState(0);
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5); // 5 item per halaman
+  const [itemsPerPage] = useState(9); // 5 item per halaman
   const targetRef = useRef(null);
 
   // Menghitung indeks awal dan akhir untuk menampilkan nomber
@@ -55,23 +80,6 @@ export default function AdminOutlet() {
     }
   }, []);
 
-  //stabilo pencarian
-  const highlightText = (text, query) => {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi"); // Cari query (case-insensitive)
-    const parts = text.split(regex); // Pisah teks berdasarkan query
-
-    return parts.map((part, index) =>
-      part.toLowerCase() === query.toLowerCase() ? (
-        <span key={index} className="bg-green-500">
-          {part}
-        </span>
-      ) : (
-        part
-      )
-    );
-  };
-
   // useEffect untuk search
   useEffect(() => {
     setSearchQuery(transaction);
@@ -88,13 +96,16 @@ export default function AdminOutlet() {
     const params = {
       page: isSearchMode ? 1 : currentPage,
       limit: itemsPerPage,
-      search: dataOutlet.role == "user" ? dataOutlet.outlet_name : query,
-      by_name: by_name,
+      outlet_name: dataOutlet.role == "admin" ? query : dataOutlet.outlet_name,
+      status: selectedChecked,
+      startDate: startDate ? format(startDate, "yyyy-MM-dd") : "",
+      endDate: endDate ? format(endDate, "yyyy-MM-dd") : "",
     };
+
     try {
       // Mengambil data transaksi menggunakan axios dengan query params
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/transaction/showpaginated`,
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/transaction/showpaginatedhistory`,
         {
           params: params,
           headers: {
@@ -103,11 +114,19 @@ export default function AdminOutlet() {
         }
       );
 
-      const data = response.data.data;
-      setTransaction(data);
-
-      setRows(response.data.pagination.totalItems);
+      const data = response.data;
+      setTransaction(data.data);
+      if (data.data?.[0]?.Outlet?.outlet_name) {
+        setByName(data.data[0].Outlet.outlet_name);
+      }
+      setRows(data.pagination.totalItems);
       setIsLoading(false);
+      setTotalRevenue(data.totalRevenue);
+      setTotalRevenueSuccess(data.totalRevenueSuccess);
+      setTotalRevenueFailed(data.totalRevenueFailed);
+      setCountAll(data.countFailed + data.countSuccess);
+      setCountFailed(data.countFailed);
+      setCountSuccess(data.countSuccess);
     } catch (error) {
       await handleApiError(
         error,
@@ -136,15 +155,6 @@ export default function AdminOutlet() {
     }
   }, [itemsPerPage, currentPage, dataOutlet.role]);
 
-  //function mengubah angka menjadi IDR
-  const formatIDR = (number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(number);
-  };
-
   //handle untuk menghapus data
   const handleRemove = async () => {
     const savedToken = localStorage.getItem("token");
@@ -171,6 +181,43 @@ export default function AdminOutlet() {
     setShowConfirmModal(true);
   };
 
+  //mengambil data outlet
+  useEffect(() => {
+    setIsLoading(true);
+    const token = localStorage.getItem("token");
+    if (dataOutlet.role == "admin") {
+      const fetchData = async () => {
+        try {
+          // Mengambil data transaksi menggunakan axios dengan query params
+          const response = await axios.get(
+            ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          const data = response.data.data;
+
+          setOutlet(data);
+        } catch (error) {
+          await handleApiError(error, () => fetchData(), router);
+        }
+      };
+
+      setIsLoading(false);
+
+      fetchData();
+    }
+  }, []);
+
+  // haldle untuk memperbesar gambar
+  const handleModalOrder = (item) => {
+    setDataPesanan([item]);
+    setCardOrderOpen(true);
+  };
+
   const columns = [
     {
       id: "No",
@@ -178,9 +225,14 @@ export default function AdminOutlet() {
       cell: ({ row }) => indexOfFirstItem + row.index + 1,
     },
     {
+      header: "Date",
+      accessorKey: "updatedAt",
+      cell: ({ getValue }) => FormatDate(getValue()),
+    },
+    {
       header: "Outlet Name",
       accessorKey: "Outlet.outlet_name",
-      cell: ({ getValue }) => highlightText(getValue(), query),
+      cell: ({ getValue }) => HighlightText(getValue(), query),
     },
     {
       header: "Customer",
@@ -191,33 +243,250 @@ export default function AdminOutlet() {
       accessorKey: "id_table",
     },
     {
+      header: "Total",
+      accessorKey: "total_pay",
+      cell: ({ getValue }) => FormatIDR(getValue()),
+    },
+    {
       header: "Order",
       id: "orderList",
       cell: ({ row }) => {
-        const orders = row.original.Orders; // Ambil data langsung dari row
         return (
-          <div className="space-y-1">
-            {orders.map((order) => (
-              <div key={order.id}>
-                <div className="flex justify-between text-sm">
-                  <p>{order.Menu.title}</p>
-                  <p>{formatIDR(order.total_price)}</p>
-                </div>
-                <p className="text-sm text-gray-500">
-                  {order.qty} x {formatIDR(order.Menu.price)}
-                </p>
-              </div>
-            ))}
+          <div>
+            <button
+              onClick={() => handleModalOrder(row.original)}
+              className="px-4 py-1 rounded-md text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 transition duration-200"
+            >
+              detail
+            </button>
           </div>
         );
       },
     },
-    {
-      header: "Total",
-      accessorKey: "total_pay",
-      cell: ({ getValue }) => formatIDR(getValue()),
-    },
   ];
+
+  const handleChange = (e) => {
+    setSelectedChecked(e.target.value);
+  };
+
+  const downloadData = async () => {
+    const token = localStorage.getItem("token");
+
+    const params = {
+      search: dataOutlet.role == "user" ? dataOutlet.outlet_name : by_name,
+      status: selectedChecked,
+      startDate: startDate ? format(startDate, "yyyy-MM-dd") : "",
+      endDate: endDate ? format(endDate, "yyyy-MM-dd") : "",
+    };
+    try {
+      // Mengambil data transaksi menggunakan axios dengan query params
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/report/download`,
+        {
+          params: params,
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return response.data.data;
+    } catch (error) {
+      await handleApiError(error, () => downloadData(), router);
+    }
+  };
+
+  // Mengonversi data ke Excel
+  const exportToExcel = async () => {
+    const transaksiData = await downloadData();
+
+    if (transaksiData.length === 0) {
+      toast.error("No data can be downloaded!");
+      return;
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Data Transaction");
+
+    let currentRow = 1;
+
+    const outletName =
+      transaksiData[0]?.Outlet?.outlet_name || "Unknown Outlet";
+    const updatedAt = transaksiData[0]?.updatedAt || new Date();
+
+    // Judul Laporan
+    worksheet.mergeCells(`A${currentRow}:E${currentRow}`);
+    worksheet.getCell(`A${currentRow}`).value = "Financial statements";
+    worksheet.getCell(`A${currentRow}`).alignment = { horizontal: "center" };
+    worksheet.getCell(`A${currentRow}`).font = { size: 14, bold: true };
+    currentRow++;
+
+    // Nama Outlet
+    worksheet.mergeCells(`A${currentRow}:E${currentRow}`);
+    worksheet.getCell(`A${currentRow}`).value = outletName;
+    worksheet.getCell(`A${currentRow}`).alignment = { horizontal: "center" };
+    worksheet.getCell(`A${currentRow}`).font = { size: 12, bold: true };
+    currentRow++;
+
+    // Baris kosong
+    currentRow++;
+
+    // Tanggal
+    let tanggalLabel = "-";
+    if (startDate && endDate) {
+      tanggalLabel = `${FormatDate(startDate)} - ${FormatDate(endDate)}`;
+    } else if (startDate) {
+      tanggalLabel = `${FormatDate(startDate)}`;
+    }
+
+    // Tampilkan tanggal ke worksheet
+    worksheet.mergeCells(`A${currentRow}:E${currentRow}`);
+    worksheet.getCell(`A${currentRow}`).value = `Date : ${tanggalLabel}`;
+    worksheet.getCell(`A${currentRow}`).alignment = { horizontal: "left" };
+    currentRow++;
+
+    // Header tabel
+    worksheet.getRow(currentRow).values = [
+      "No",
+      "Title",
+      "Amount",
+      "Unit Price",
+      "Total",
+    ];
+    worksheet.columns = [
+      { key: "no", width: 5 },
+      { key: "title", width: 20 },
+      { key: "amount", width: 10 },
+      { key: "unit_price", width: 15 },
+      { key: "total", width: 15 },
+    ];
+    worksheet.getRow(currentRow).font = { bold: true };
+    worksheet.getRow(currentRow).alignment = { horizontal: "center" };
+
+    const startBorderRow = currentRow;
+    currentRow++;
+
+    // Data Transaksi
+    const itemMap = {};
+    transaksiData.forEach((transaksi) => {
+      transaksi.Orders.forEach((order) => {
+        const title = order.Menu.title;
+        const price = order.Menu.price;
+
+        if (itemMap[title]) {
+          itemMap[title].amount += 1;
+          itemMap[title].total += price;
+        } else {
+          itemMap[title] = {
+            title,
+            amount: 1,
+            unit_price: price,
+            total: price,
+          };
+        }
+      });
+    });
+
+    const rows = Object.values(itemMap);
+    let grandTotal = 0;
+
+    rows.forEach((row, index) => {
+      worksheet.getRow(currentRow).values = [
+        index + 1,
+        row.title,
+        row.amount,
+        row.unit_price,
+        row.total,
+      ];
+      grandTotal += row.total;
+      currentRow++;
+    });
+
+    // Baris kosong setelah data
+    worksheet.getRow(currentRow).values = ["", "", "", "", ""];
+    currentRow++;
+
+    // Grand Total
+    worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+    worksheet.getCell(`A${currentRow}`).value = "Grand Total";
+    worksheet.getCell(`A${currentRow}`).alignment = { horizontal: "center" };
+    worksheet.getCell(`A${currentRow}`).font = { bold: true };
+    worksheet.getCell(`E${currentRow}`).value = grandTotal;
+    worksheet.getCell(`E${currentRow}`).alignment = { horizontal: "right" };
+    worksheet.getCell(`E${currentRow}`).font = { bold: true };
+
+    const endBorderRow = currentRow;
+
+    // Format angka
+    worksheet.getColumn("D").numFmt = "#,##0";
+    worksheet.getColumn("E").numFmt = "#,##0";
+
+    // Tambahkan border
+    for (let row = startBorderRow; row <= endBorderRow; row++) {
+      worksheet.getRow(row).eachCell({ includeEmpty: true }, (cell) => {
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+    }
+
+    // Border tebal untuk Grand Total
+    ["A", "B", "C", "D", "E"].forEach((col) => {
+      const cell = worksheet.getCell(`${col}${endBorderRow}`);
+      cell.border = {
+        top: { style: "medium" },
+        bottom: { style: "medium" },
+        left: { style: "medium" },
+        right: { style: "medium" },
+      };
+    });
+
+    // === Tambahkan Data Ringkasan (SETELAH TABEL) ===
+    currentRow++;
+
+    if (!selectedChecked) {
+      currentRow++;
+
+      const summaryData = [
+        { label: "Successful Transaction", value: countSuccess },
+        { label: "Failed Transaction", value: countFailed },
+        {
+          label: "Overall transaction",
+          value: countSuccess + countFailed,
+        },
+        { label: "Total Revenue Success", value: totalRevenueSuccess },
+        { label: "Total Revenue Failed", value: totalRevenueFailed },
+        { label: "Total Revenue", value: totalRevenue },
+      ];
+
+      summaryData.forEach((item) => {
+        worksheet.mergeCells(`A${currentRow}:D${currentRow}`);
+        worksheet.getCell(`A${currentRow}`).value = item.label;
+        worksheet.getCell(`A${currentRow}`).alignment = { horizontal: "left" };
+        worksheet.getCell(`A${currentRow}`).font = { bold: false };
+
+        worksheet.getCell(`E${currentRow}`).value = item.value;
+        worksheet.getCell(`E${currentRow}`).alignment = { horizontal: "right" };
+        currentRow++;
+      });
+    }
+
+    // Download file
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Financial_statements.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
 
   return (
     <div
@@ -229,17 +498,165 @@ export default function AdminOutlet() {
         <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
           History Data
         </h1>
-        <div>
-          <InputSearch
-            role={dataOutlet.role}
-            type="text"
-            placeholder="Outlet Name. . ."
-            id="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onRightButtonCLick={() => fetchDataPaginated(true)}
-            rightButton={<IoSearch />}
-            isLoading={isLoading}
+
+        <div className="flex items-center justify-between mb-2 ">
+          <button
+            className="flex items-center justify-center bg-yellow-700 text-white h-10 w-10 rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
+            onClick={exportToExcel}
+          >
+            <IoCloudDownload size={20} />
+          </button>
+
+          <>
+            {/* Tombol Buka */}
+
+            <button
+              onClick={() => setIsOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-yellow-700 text-white rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
+            >
+              <IoFilterOutline className="text-xl" />
+              <h2 className="text-lg font-semibold ">Filter</h2>
+            </button>
+
+            {/* Overlay */}
+            {isOpen && (
+              <div
+                onClick={() => setIsOpen(false)}
+                className="fixed inset-0 bg-black bg-opacity-50 z-40"
+              />
+            )}
+
+            {/* Off-canvas Panel */}
+            <div
+              className={`fixed top-0 right-0 h-full w-64 bg-white shadow-lg z-50 transform transition-transform duration-300 flex flex-col justify-between ${
+                isOpen ? "translate-x-0" : "translate-x-full"
+              }`}
+            >
+              {/* Konten Atas */}
+              <div className="p-4 overflow-y-auto flex-grow">
+                <div className="flex items-center gap-2  px-4 py-2">
+                  <IoFilterOutline className="text-xl" />
+                  <h2 className="text-lg font-semibold ">Filter</h2>
+                </div>
+
+                <div className="flex flex-wrap ">
+                  <div
+                    className={`${
+                      dataOutlet.role !== "admin" ? "hidden" : "flex"
+                    } w-full  gap-4 mb-2`}
+                  >
+                    <Select
+                      label="Outlate Name:"
+                      id="id_outlet"
+                      name="id_outlet"
+                      value={query}
+                      options={outlet.map((value) => (
+                        <option key={value.id} value={value.outlet_name}>
+                          {value.outlet_name}
+                        </option>
+                      ))}
+                      placeholder={"Select outlet name"}
+                      onChange={(e) => setQuery(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center my-2 ">
+                    <h1 className="">Date</h1>
+                    <DatePicker
+                      className=" py-1 px-1 h-[40px] w-[225px] border border-gray-300 rounded-md shadow-sm focus:outline-yellow-700 text-gray-700 body-text-xs font-poppins"
+                      selected={startDate}
+                      // onChange={(date) => setStartDate(date)}
+                      dateFormat="dd/MM/yyyy"
+                      selectsRange={true}
+                      startDate={startDate}
+                      endDate={endDate}
+                      onChange={(update) => {
+                        setDateRange(update);
+                      }}
+                      isClearable={true}
+                      showYearDropdown
+                      scrollableMonthYearDropdown
+                      clearButtonClassName="absolute right-2 top-2 text-gray-600 hover:text-gray-900 cursor-pointer" // Custom class for the clear button
+                    />
+                  </div>
+
+                  <h1 className="my-2">Status</h1>
+                  <div className="flex w-full justify-between gap-2 mb-1">
+                    <RadioButton
+                      name="status"
+                      value=""
+                      selected={selectedChecked}
+                      handleChange={handleChange}
+                      item=""
+                      description="All"
+                    />
+                    <RadioButton
+                      name="status"
+                      value="success"
+                      selected={selectedChecked}
+                      handleChange={handleChange}
+                      item="success"
+                      description="Success"
+                    />
+                    <RadioButton
+                      name="status"
+                      value="failed"
+                      selected={selectedChecked}
+                      handleChange={handleChange}
+                      item="failed"
+                      description="Failed"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Tombol Close di Bawah */}
+              <div className="p-4 gap-2 flex justify-between border-t">
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    fetchDataPaginated(true);
+                    setIsOpen(false);
+                  }}
+                  className="w-full px-4 py-2 bg-yellow-700 text-white rounded-md hover:bg-yellow-600"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+          </>
+        </div>
+
+        <div className="flex gap-2 mb-2 flex-wrap lg:flex-nowrap">
+          <CardRevenue value={countSuccess} desc="Count Success" />
+          <CardRevenue
+            value={countFailed}
+            desc="Count Failed"
+            classRevenue="bg-red-100 text-red-700"
+          />
+          <CardRevenue
+            value={countAll}
+            desc="All"
+            classRevenue="bg-primary-50 text-primary-700"
+          />
+          <CardRevenue
+            value={FormatIDR(totalRevenueSuccess)}
+            desc="Revenue Success"
+          />
+          <CardRevenue
+            value={FormatIDR(totalRevenueFailed)}
+            desc="Revenue Failed"
+            classRevenue="bg-red-100 text-red-700"
+          />
+          <CardRevenue
+            value={FormatIDR(totalRevenue)}
+            desc="Revenue All"
+            classRevenue="bg-primary-50 text-primary-700"
           />
         </div>
 
@@ -250,7 +667,6 @@ export default function AdminOutlet() {
             <Table data={searchQuery} columns={columns} />
           )}
         </div>
-
         {/* Tampilkan navigasi pagination */}
         {searchQuery.length > 0 && (
           <Pagination
@@ -261,7 +677,13 @@ export default function AdminOutlet() {
             isLoading={isLoading}
           />
         )}
-
+        {cardOrderOpen && (
+          <CardOrder
+            searchQuery={dataPesanan}
+            setDataPesanan={setDataPesanan}
+            setCardOrderOpen={setCardOrderOpen}
+          />
+        )}
         {/* modal konfirmasi delete */}
         {showConfirmModal && (
           <HanldeRemove

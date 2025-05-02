@@ -15,8 +15,9 @@ import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
 import Table from "@/app/component/table/table";
 import { Collapse } from "react-collapse";
-import Modal from "@/app/component/modal/modal";
+import Modal from "@/app/component/modal/cardImage";
 import { useSelector } from "react-redux";
+import { HighlightText } from "@/app/component/utils/highlightText";
 
 export default function AdminOutlet() {
   const [outlet, setOutlet] = useState([]);
@@ -73,23 +74,6 @@ export default function AdminOutlet() {
   useEffect(() => {
     targetRef.current.scrollIntoView({ behavior: "smooth" });
   }, [currentPage]);
-
-  //stabilo pencarian
-  const highlightText = (text, query) => {
-    if (!query) return text;
-    const regex = new RegExp(`(${query})`, "gi"); // Cari query (case-insensitive)
-    const parts = text.split(regex); // Pisah teks berdasarkan query
-
-    return parts.map((part, index) =>
-      part.toLowerCase() === query.toLowerCase() ? (
-        <span key={index} className="bg-green-500">
-          {part}
-        </span>
-      ) : (
-        part
-      )
-    );
-  };
 
   // useEffect untuk search
   useEffect(() => {
@@ -201,7 +185,7 @@ export default function AdminOutlet() {
     {
       header: "Outlet Name",
       accessorKey: "outlet_name",
-      cell: ({ getValue }) => highlightText(getValue(), query),
+      cell: ({ getValue }) => HighlightText(getValue(), query),
     },
     {
       header: "Email",
