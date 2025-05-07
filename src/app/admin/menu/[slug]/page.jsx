@@ -124,7 +124,7 @@ export default function AddMenu({ params }) {
   useEffect(() => {
     const outletName = localStorage.getItem("outlet_name");
 
-    if (dataOutlet.role === "admin") {
+    if (dataOutlet.role === "admin pusat") {
       if (slug == "edit") {
         formik.setFieldValue("outlet_name", outletName);
       }
@@ -135,9 +135,9 @@ export default function AddMenu({ params }) {
 
   //menampilkan semua DATA OUTLET
   useEffect(() => {
-    const token = localStorage.getItem("token");
     setIsLoading(true);
     const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
         // Mengambil data transaksi menggunakan axios dengan query params
         const response = await axios.get(
@@ -153,7 +153,7 @@ export default function AddMenu({ params }) {
 
         setOutlet(data);
       } catch (error) {
-        console.error("Error fetching transaction data:", error);
+        await handleApiError(error, () => fetchData(), router);
       }
     };
 
@@ -195,8 +195,8 @@ export default function AddMenu({ params }) {
 
   //MENAMPILKAN DATA MENU KETIKA EDIT
   useEffect(() => {
-    const token = localStorage.getItem("token");
     const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
         if (slug === "edit") {
           const idMenu = localStorage.getItem("id_menu");
@@ -218,7 +218,7 @@ export default function AddMenu({ params }) {
           setIsLoading(false);
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        await handleApiError(error, () => fetchData(), router);
       }
     };
 
@@ -255,8 +255,8 @@ export default function AddMenu({ params }) {
           >
             <div
               className={`${
-                dataOutlet.role !== "admin" ? "hidden" : "flex"
-              } gap-4 mb-2`}
+                dataOutlet.role !== "admin pusat" ? "hidden" : "flex"
+              } ${slug == "edit" ? "hidden" : "flex"} gap-4 mb-2`}
             >
               <Select
                 label="Outlate Name:"

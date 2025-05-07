@@ -39,7 +39,7 @@ export default function AddTable({ params }) {
   }, []);
 
   useEffect(() => {
-    if (dataOutlet.role !== "admin") {
+    if (dataOutlet.role !== "admin pusat") {
       formik.setFieldValue("id_outlet", dataOutlet.id);
     }
   }, [dataOutlet]);
@@ -93,8 +93,8 @@ export default function AddTable({ params }) {
   //menampilkan semua DATA OUTLET
   useEffect(() => {
     setIsLoading(true);
-    const token = localStorage.getItem("token");
     const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
         // Mengambil data transaksi menggunakan axios dengan query params
         const response = await axios.get(
@@ -110,7 +110,7 @@ export default function AddTable({ params }) {
 
         setOutlet(data);
       } catch (error) {
-        console.error("Error fetching transaction data:", error);
+        await handleApiError(error, () => fetchData(), router);
       }
     };
 
@@ -121,8 +121,8 @@ export default function AddTable({ params }) {
 
   //mengambildata table ketika edit
   useEffect(() => {
-    const token = localStorage.getItem("token");
     const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
         if (slug === "edit") {
           const tableCode = localStorage.getItem("table_code");
@@ -143,7 +143,7 @@ export default function AddTable({ params }) {
           setIsLoading(false);
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        await handleApiError(error, () => fetchData(), router);
       }
     };
 
@@ -174,7 +174,7 @@ export default function AddTable({ params }) {
           >
             <div
               className={`${
-                dataOutlet.role !== "admin" ? "hidden" : "flex"
+                dataOutlet.role !== "admin pusat" ? "hidden" : "flex"
               } gap-4 mb-2`}
             >
               <Select

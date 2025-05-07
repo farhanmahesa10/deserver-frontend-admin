@@ -12,6 +12,7 @@ import * as yup from "yup";
 import Input from "@/app/component/form/input";
 import Select from "@/app/component/form/select";
 import { handleApiError } from "@/app/component/handleError/handleError";
+import instance from "@/app/component/api/api";
 
 export default function AddProfile({ params }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -37,25 +38,17 @@ export default function AddProfile({ params }) {
     formData.append("password", formik.values.password);
     formData.append("verify_password", formik.values.varifyPassword);
     formData.append("address", formik.values.address);
+    formData.append("linkMap", formik.values.linkMap);
     formData.append("history", formik.values.history);
     formData.append("logo", formik.values.logo);
 
     try {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
-
       if (formik.values.id) {
         setLoadingButton(true);
 
-        await axios.put(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/update/${formik.values.id}`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "multipart/form-data",
-            },
-          }
+        await instance.put(
+          `/api/v1/outlet/update/${formik.values.id}`,
+          formData
         );
 
         router.push(`/admin/outlet`);
@@ -63,16 +56,12 @@ export default function AddProfile({ params }) {
         localStorage.setItem("newData", "updated successfully!");
       } else {
         setLoadingButton(true);
-        const response = await axios.post(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/create`,
-          formData,
-          { headers }
-        );
+        const response = await instance.post(`/api/v1/outlet/create`, formData);
         localStorage.setItem("newData", "created successfully!");
         router.push(`/admin/outlet`);
       }
     } catch (error) {
-      await handleApiError(error, onSubmit, router);
+      console.error(error);
     }
   };
 
@@ -86,6 +75,7 @@ export default function AddProfile({ params }) {
       varifyPassword: "",
       role: "",
       address: "",
+      linkMap: "",
       history: "",
       logo: "",
     },
@@ -116,6 +106,7 @@ export default function AddProfile({ params }) {
         otherwise: (schema) => schema.notRequired(),
       }),
       role: yup.string().required(),
+      address: yup.string().required(),
       address: yup.string().required(),
       history: yup.string().required(),
       logo: yup.mixed().when("id", {
@@ -159,18 +150,13 @@ export default function AddProfile({ params }) {
   useEffect(() => {
     if (slug === "edit") {
       setIsLoading(true);
-      const token = localStorage.getItem("token");
       const fetchData = async () => {
+        const token = localStorage.getItem("token");
         try {
           const idOutlet = localStorage.getItem("id_outlet");
 
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${idOutlet}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+          const response = await instance.get(
+            `/api/v1/outlet/show/${idOutlet}`
           );
 
           const data = response.data.data;
@@ -180,6 +166,7 @@ export default function AddProfile({ params }) {
             email: data.email,
             role: data.role,
             address: data.address,
+            linkMap: data.linkMap,
             history: data.history,
             logo: data.logo,
             password: "",
@@ -188,7 +175,7 @@ export default function AddProfile({ params }) {
           });
           setIsLoading(false);
         } catch (error) {
-          await handleApiError(error, fetchData, router);
+          console.error(error);
         }
       };
       fetchData();
@@ -211,6 +198,14 @@ export default function AddProfile({ params }) {
     const file = e.target.files[0];
     formik.setFieldValue("logo", file);
   };
+
+  useEffect(() => {
+    if (formik.values.address) {
+      const encodedAddress = encodeURIComponent(formik.values.address);
+      const mapUrl = `https://www.google.com/maps?q=${encodedAddress}`;
+      formik.setFieldValue("linkMap", mapUrl);
+    }
+  }, [formik.values.address]);
 
   return (
     <div className="p-8 pt-20 w-full">
@@ -259,7 +254,7 @@ export default function AddProfile({ params }) {
               id="role"
               name="role"
               value={formik.values.role}
-              options={["admin", "user"].map((value) => (
+              options={["admin pusat", "admin"].map((value) => (
                 <option key={value} value={value}>
                   {value}
                 </option>
@@ -343,7 +338,7 @@ export default function AddProfile({ params }) {
               placeholder="address"
               name="address"
               type="text"
-              value={formik.values.address}
+              value={formik.values.address || ""}
               onChange={handleChange}
               errorMessage={formik.errors.address}
               isError={
@@ -357,7 +352,7 @@ export default function AddProfile({ params }) {
               placeholder="history"
               name="history"
               type="text"
-              value={formik.values.history}
+              value={formik.values.history || ""}
               onChange={handleChange}
               errorMessage={formik.errors.history}
               isError={

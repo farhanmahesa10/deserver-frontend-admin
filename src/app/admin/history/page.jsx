@@ -20,6 +20,8 @@ import "react-datepicker/dist/react-datepicker.css";
 import { format } from "date-fns";
 import RadioButton from "@/app/component/form/radioButton";
 import ExcelJS from "exceljs";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import CardRevenue from "@/app/component/card/cardRevenue";
 import Select from "@/app/component/form/select";
 import { FormatIDR } from "@/app/component/utils/formatIDR";
@@ -96,7 +98,8 @@ export default function AdminOutlet() {
     const params = {
       page: isSearchMode ? 1 : currentPage,
       limit: itemsPerPage,
-      outlet_name: dataOutlet.role == "admin" ? query : dataOutlet.outlet_name,
+      outlet_name:
+        dataOutlet.role == "admin pusat" ? query : dataOutlet.outlet_name,
       status: selectedChecked,
       startDate: startDate ? format(startDate, "yyyy-MM-dd") : "",
       endDate: endDate ? format(endDate, "yyyy-MM-dd") : "",
@@ -184,9 +187,9 @@ export default function AdminOutlet() {
   //mengambil data outlet
   useEffect(() => {
     setIsLoading(true);
-    const token = localStorage.getItem("token");
-    if (dataOutlet.role == "admin") {
+    if (dataOutlet.role == "admin pusat") {
       const fetchData = async () => {
+        const token = localStorage.getItem("token");
         try {
           // Mengambil data transaksi menggunakan axios dengan query params
           const response = await axios.get(
@@ -273,7 +276,7 @@ export default function AdminOutlet() {
     const token = localStorage.getItem("token");
 
     const params = {
-      search: dataOutlet.role == "user" ? dataOutlet.outlet_name : by_name,
+      search: dataOutlet.role == "admin" ? dataOutlet.outlet_name : by_name,
       status: selectedChecked,
       startDate: startDate ? format(startDate, "yyyy-MM-dd") : "",
       endDate: endDate ? format(endDate, "yyyy-MM-dd") : "",
@@ -379,9 +382,9 @@ export default function AdminOutlet() {
         } else {
           itemMap[title] = {
             title,
-            amount: 1,
+            amount: order.qty,
             unit_price: price,
-            total: price,
+            total: order.qty * price,
           };
         }
       });
@@ -488,6 +491,119 @@ export default function AdminOutlet() {
     document.body.removeChild(a);
   };
 
+  const exportToPDF = async () => {
+    const transaksiData = await downloadData();
+
+    if (transaksiData.length === 0) {
+      toast.error("No data can be downloaded!");
+      return;
+    }
+
+    const doc = new jsPDF();
+    let y = 10;
+
+    const outletName =
+      transaksiData[0]?.Outlet?.outlet_name || "Unknown Outlet";
+    const updatedAt = transaksiData[0]?.updatedAt || new Date();
+
+    // Format tanggal
+    let tanggalLabel = "-";
+    if (startDate && endDate) {
+      tanggalLabel = `${FormatDate(startDate)} - ${FormatDate(endDate)}`;
+    } else if (startDate) {
+      tanggalLabel = `${FormatDate(startDate)}`;
+    }
+
+    // Judul
+    doc.setFontSize(16);
+    doc.text("Financial Statements", 105, y, { align: "center" });
+    y += 10;
+    doc.setFontSize(12);
+    doc.text(outletName, 105, y, { align: "center" });
+    y += 10;
+    doc.text(`Date: ${tanggalLabel}`, 14, y);
+    y += 10;
+
+    // Proses data transaksi
+    const itemMap = {};
+    transaksiData.forEach((transaksi) => {
+      transaksi.Orders.forEach((order) => {
+        const title = order.Menu.title;
+        const price = order.Menu.price;
+
+        if (itemMap[title]) {
+          itemMap[title].amount += 1;
+          itemMap[title].total += price;
+        } else {
+          itemMap[title] = {
+            title,
+            amount: order.qty,
+            unit_price: price,
+            total: order.qty * price,
+          };
+        }
+      });
+    });
+
+    const rows = Object.values(itemMap);
+    let grandTotal = 0;
+
+    const tableData = rows.map((row, index) => {
+      grandTotal += row.total;
+      return [
+        index + 1,
+        row.title,
+        row.amount,
+        row.unit_price.toLocaleString(),
+        row.total.toLocaleString(),
+      ];
+    });
+
+    // Tabel utama
+    autoTable(doc, {
+      startY: y,
+      head: [["No", "Title", "Amount", "Unit Price", "Total"]],
+      body: tableData,
+      styles: { halign: "left" },
+    });
+
+    //GRAND TOTAL
+    const finalY = doc.lastAutoTable.finalY + 10;
+    const totalColX = 160;
+    const labelX = totalColX - 30;
+    const valueX = totalColX + 13;
+
+    doc.setFontSize(12);
+    doc.text("Grand Total:", labelX, finalY);
+    doc.text(grandTotal.toLocaleString(), valueX, finalY, { align: "right" });
+
+    // Tambah Data Ringkasan jika tidak selectedChecked
+    if (!selectedChecked) {
+      const summaryY = finalY + 10;
+
+      const summaryData = [
+        { label: "Successful Transaction", value: countSuccess },
+        { label: "Failed Transaction", value: countFailed },
+        {
+          label: "Overall Transaction",
+          value: countSuccess + countFailed,
+        },
+        { label: "Total Revenue Success", value: totalRevenueSuccess },
+        { label: "Total Revenue Failed", value: totalRevenueFailed },
+        { label: "Total Revenue", value: totalRevenue },
+      ];
+
+      summaryData.forEach((item, idx) => {
+        const y = summaryY + idx * 7;
+        doc.text(`${item.label}:`, 14, y);
+        doc.text(`${item.value.toLocaleString()}`, 200, y, { align: "right" });
+      });
+    }
+
+    // Simpan sebagai PDF
+    doc.save("Financial_Statements.pdf");
+  };
+
   return (
     <div
       ref={targetRef}
@@ -500,12 +616,24 @@ export default function AdminOutlet() {
         </h1>
 
         <div className="flex items-center justify-between mb-2 ">
-          <button
-            className="flex items-center justify-center bg-yellow-700 text-white h-10 w-10 rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
-            onClick={exportToExcel}
-          >
-            <IoCloudDownload size={20} />
-          </button>
+          <div className="flex gap-4">
+            <div className="flex flex-wrap gap-3">
+              <button
+                className="flex items-center gap-2 bg-yellow-700 text-white px-4 py-2 rounded-md shadow-md hover:bg-yellow-600 transition duration-300"
+                onClick={exportToExcel}
+              >
+                <IoCloudDownload size={20} />
+                <span>Download as Excel</span>
+              </button>
+              <button
+                className="flex items-center gap-2 bg-yellow-700 text-white px-4 py-2 rounded-md shadow-md hover:bg-yellow-600 transition duration-300"
+                onClick={exportToPDF}
+              >
+                <IoCloudDownload size={20} />
+                <span>Download as PDF</span>
+              </button>
+            </div>
+          </div>
 
           <>
             {/* Tombol Buka */}
@@ -542,7 +670,7 @@ export default function AdminOutlet() {
                 <div className="flex flex-wrap ">
                   <div
                     className={`${
-                      dataOutlet.role !== "admin" ? "hidden" : "flex"
+                      dataOutlet.role !== "admin pusat" ? "hidden" : "flex"
                     } w-full  gap-4 mb-2`}
                   >
                     <Select

@@ -111,7 +111,9 @@ function Sidebar({ isOpen, setIsOpen }) {
                 handleRoute={() => handleRoute("/admin/outlet")}
                 url={url}
                 route={"/admin/outlet"}
-                roleAdmin={`${dataOutlet.role !== "admin" ? "hidden" : ""}`}
+                roleAdmin={`${
+                  dataOutlet.role !== "admin pusat" ? "hidden" : ""
+                }`}
                 icon={<IoStorefront />}
                 menuName={"Outlet"}
               />

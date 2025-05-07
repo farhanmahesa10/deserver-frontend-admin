@@ -96,17 +96,17 @@ export default function AddCategory({ params }) {
     }
   }, []);
 
-  // cek token
+  // cek set id outlet
   useEffect(() => {
-    if (dataOutlet.role !== "admin") {
+    if (dataOutlet.role !== "admin pusat") {
       formik.setFieldValue("id_outlet", dataOutlet.id);
     }
   }, [dataOutlet]);
 
   // menampilkan data categori ketika edit
   useEffect(() => {
-    const token = localStorage.getItem("token");
     const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
         if (slug === "edit") {
           const idCategory = localStorage.getItem("id_category");
@@ -137,9 +137,9 @@ export default function AddCategory({ params }) {
 
   //menampilkan semua DATA OUTLET
   useEffect(() => {
-    const token = localStorage.getItem("token");
     setIsLoading(true);
     const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
         // Mengambil data transaksi menggunakan axios dengan query params
         const response = await axios.get(
@@ -182,7 +182,7 @@ export default function AddCategory({ params }) {
           >
             <div
               className={`${
-                dataOutlet.role !== "admin" ? "hidden" : "flex"
+                dataOutlet.role !== "admin pusat" ? "hidden" : "flex"
               } gap-4 mb-2`}
             >
               <Select

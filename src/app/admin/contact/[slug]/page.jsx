@@ -15,12 +15,19 @@ import { useSelector } from "react-redux";
 
 export default function AddContact({ params }) {
   const [outlet, setOutlet] = useState([]);
-  const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
   const router = useRouter();
   const { slug } = React.use(params);
   const dataOutlet = useSelector((state) => state.counter.outlet);
+  const contactLogoMap = {
+    Instagram: "instagram.png",
+    Whatsapp: "whatsapp.png",
+    Facebook: "facebook.png",
+    Twiter: "twitter.png",
+    "Tik Tok": "tiktok.png",
+    Youtube: "youtube.png",
+  };
 
   const valueContact = [
     {
@@ -116,6 +123,13 @@ export default function AddContact({ params }) {
     }),
   });
 
+  useEffect(() => {
+    const selected = formik.values.contact_name;
+    if (selected && contactLogoMap[selected]) {
+      handleSelectImage(contactLogoMap[selected]);
+    }
+  }, [formik.values.contact_name]);
+
   // cek token
   useEffect(() => {
     const refreshToken = localStorage.getItem("refreshToken");
@@ -134,7 +148,7 @@ export default function AddContact({ params }) {
   }, []);
 
   useEffect(() => {
-    if (dataOutlet.role !== "admin") {
+    if (dataOutlet.role !== "admin pusat") {
       formik.setFieldValue("id_outlet", dataOutlet.id);
     }
   }, [dataOutlet]);
@@ -147,9 +161,9 @@ export default function AddContact({ params }) {
 
   //menampilkan semua DATA OUTLET
   useEffect(() => {
-    const token = localStorage.getItem("token");
     setIsLoading(true);
     const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
         // Mengambil data transaksi menggunakan axios dengan query params
         const response = await axios.get(
@@ -165,7 +179,7 @@ export default function AddContact({ params }) {
 
         setOutlet(data);
       } catch (error) {
-        console.error("Error fetching transaction data:", error);
+        await handleApiError(error, () => fetchData(), router);
       }
     };
 
@@ -176,8 +190,8 @@ export default function AddContact({ params }) {
 
   //mengambildata contact ketika edit
   useEffect(() => {
-    const token = localStorage.getItem("token");
     const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
         if (slug === "edit") {
           const idContact = localStorage.getItem("id_contact");
@@ -199,7 +213,7 @@ export default function AddContact({ params }) {
           setIsLoading(false);
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        await handleApiError(error, () => fetchData(), router);
       }
     };
 
@@ -233,7 +247,9 @@ export default function AddContact({ params }) {
             onSubmit={formik.handleSubmit}
           >
             <div
-              className={`${role !== "admin" ? "hidden" : "flex"} gap-4 mb-2`}
+              className={`${
+                dataOutlet.role !== "admin pusat" ? "hidden" : "flex"
+              } gap-4 mb-2`}
             >
               <Select
                 label="Outlate Name:"
@@ -305,41 +321,6 @@ export default function AddContact({ params }) {
               isError={formik.touched.link && formik.errors.link ? true : false}
             />
 
-            <div className="flex gap-4 mb-2 ">
-              <label htmlFor="photo" className="min-w-28 lg:w-40 ">
-                Pilih Logo:
-              </label>
-              <div className="flex gap-2 flex-wrap ">
-                {[
-                  "instagram.png",
-                  "tiktok.png",
-                  "facebook.png",
-                  "whatsapp.png",
-                  "twitter.png",
-                  "youtube.png",
-                ].map((image) => (
-                  <button
-                    key={image}
-                    type="button"
-                    className="border p-2 rounded-lg hover:bg-yellow-700"
-                    onClick={() => handleSelectImage(image)}
-                  >
-                    <img
-                      src={`/img/${image}`}
-                      alt={image}
-                      className="w-10 h-10 object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
-            {formik.touched.logo && formik.errors.logo && (
-              <div className="h-6 ">
-                <span className="text-sm text-red-400 ">
-                  {formik.errors.logo}
-                </span>
-              </div>
-            )}
             {formik.values.logo && (
               <div className="flex gap-4 mb-2">
                 <label className="min-w-28 lg:w-52">Preview:</label>

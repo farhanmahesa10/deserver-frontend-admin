@@ -109,7 +109,7 @@ export default function AddEvent({ params }) {
   }, []);
 
   useEffect(() => {
-    if (dataOutlet.role !== "admin") {
+    if (dataOutlet.role !== "admin pusat") {
       formik.setFieldValue("id_outlet", dataOutlet.id);
     }
   }, [dataOutlet]);
@@ -117,8 +117,8 @@ export default function AddEvent({ params }) {
   //menampilkan semua DATA OUTLET
   useEffect(() => {
     setIsLoading(true);
-    const token = localStorage.getItem("token");
     const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
         // Mengambil data transaksi menggunakan axios dengan query params
         const response = await axios.get(
@@ -134,7 +134,7 @@ export default function AddEvent({ params }) {
 
         setOutlet(data);
       } catch (error) {
-        console.error("Error fetching transaction data:", error);
+        await handleApiError(error, () => fetchData(), router);
       }
     };
 
@@ -145,8 +145,8 @@ export default function AddEvent({ params }) {
 
   //mengambildata event ketika edit
   useEffect(() => {
-    const token = localStorage.getItem("token");
     const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
         if (slug === "edit") {
           const idEvent = localStorage.getItem("id_event");
@@ -168,7 +168,7 @@ export default function AddEvent({ params }) {
           setIsLoading(false);
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        await handleApiError(error, () => fetchData(), router);
       }
     };
 
@@ -209,7 +209,7 @@ export default function AddEvent({ params }) {
           >
             <div
               className={`${
-                dataOutlet.role !== "admin" ? "hidden" : "flex"
+                dataOutlet.role !== "admin pusat" ? "hidden" : "flex"
               } gap-4 mb-2`}
             >
               <Select

@@ -91,7 +91,7 @@ export default function Menu() {
     const params = {
       page: isSearchMode ? 1 : currentPage,
       limit: itemsPerPage,
-      search: dataOutlet.role == "user" ? dataOutlet.outlet_name : query,
+      search: dataOutlet.role == "admin" ? dataOutlet.outlet_name : query,
       search_title: queryMenu,
     };
     try {

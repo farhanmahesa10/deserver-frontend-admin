@@ -62,7 +62,7 @@ export default function AddsubCategory({ params }) {
     },
     onSubmit,
     validationSchema: yup.object({
-      outlet_name: yup.string().required(),
+      outlet_name: yup.string().notRequired(),
       id_category: yup.number().required(),
       title: yup.string().required(),
     }),
@@ -85,11 +85,11 @@ export default function AddsubCategory({ params }) {
     }
   }, []);
 
-  // cek token
+  // masukan outletname
   useEffect(() => {
     const outletName = localStorage.getItem("outlet_name");
 
-    if (dataOutlet.role === "admin") {
+    if (dataOutlet.role === "admin pusat") {
       if (slug == "edit") {
         formik.setFieldValue("outlet_name", outletName);
       }
@@ -100,9 +100,9 @@ export default function AddsubCategory({ params }) {
 
   //menampilkan semua DATA OUTLET
   useEffect(() => {
-    const token = localStorage.getItem("token");
     setIsLoading(true);
     const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
         // Mengambil data transaksi menggunakan axios dengan query params
         const response = await axios.get(
@@ -118,7 +118,7 @@ export default function AddsubCategory({ params }) {
 
         setOutlet(data);
       } catch (error) {
-        console.error("Error fetching transaction data:", error);
+        await handleApiError(error, () => fetchData(), router);
       }
     };
 
@@ -157,9 +157,10 @@ export default function AddsubCategory({ params }) {
     fetchData();
   }, [formik.values.outlet_name]);
 
+  //mengambil data subcategori by id
   useEffect(() => {
-    const token = localStorage.getItem("token");
     const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
         if (slug === "edit") {
           const idsubCategory = localStorage.getItem("id_subCategory");
@@ -181,7 +182,7 @@ export default function AddsubCategory({ params }) {
           setIsLoading(false);
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        await handleApiError(error, () => fetchData(), router);
       }
     };
 
@@ -213,8 +214,8 @@ export default function AddsubCategory({ params }) {
           >
             <div
               className={`${
-                dataOutlet.role !== "admin" ? "hidden" : "flex"
-              } gap-4 mb-2`}
+                dataOutlet.role !== "admin pusat" ? "hidden" : "flex"
+              } ${slug == "edit" ? "hidden" : "flex"} gap-4 mb-2`}
             >
               <Select
                 label="Outlet Name:"

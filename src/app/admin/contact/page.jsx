@@ -165,7 +165,7 @@ export default function Lapangan() {
       id: "No",
       header: "No",
       cell: ({ row }) =>
-        dataOutlet.role !== "admin"
+        dataOutlet.role !== "admin pusat"
           ? row.index + 1
           : indexOfFirstItem + row.index + 1,
     },

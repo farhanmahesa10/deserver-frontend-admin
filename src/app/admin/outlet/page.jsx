@@ -18,6 +18,7 @@ import { Collapse } from "react-collapse";
 import Modal from "@/app/component/modal/cardImage";
 import { useSelector } from "react-redux";
 import { HighlightText } from "@/app/component/utils/highlightText";
+import instance from "@/app/component/api/api";
 
 export default function AdminOutlet() {
   const [outlet, setOutlet] = useState([]);
@@ -86,7 +87,6 @@ export default function AdminOutlet() {
     if (isSearchMode) {
       setCurrentPage(1);
     }
-    const token = localStorage.getItem("token");
 
     const params = {
       page: isSearchMode ? 1 : currentPage,
@@ -95,26 +95,16 @@ export default function AdminOutlet() {
     };
     try {
       // Mengambil data transaksi menggunakan axios dengan query params
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/showpaginated`,
-        {
-          params: params,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const response = await instance.get(`/api/v1/outlet/showpaginated`, {
+        params: params,
+      });
 
       const data = response.data.data;
       setOutlet(data);
       setRows(response.data.pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
-      await handleApiError(
-        error,
-        () => fetchDataPaginated(isSearchMode),
-        router
-      );
+      console.error(err);
     }
   };
 
@@ -122,7 +112,7 @@ export default function AdminOutlet() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        if (dataOutlet.role === "admin") {
+        if (dataOutlet.role === "admin pusat") {
           await fetchDataPaginated();
         }
       } catch (error) {
@@ -139,13 +129,10 @@ export default function AdminOutlet() {
 
   //handle untuk menghapus data
   const handleRemove = async () => {
-    const savedToken = localStorage.getItem("token");
-
     try {
       setIsLoading(true);
-      const response = await axios.delete(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/delete/${dataToRemove}`,
-        { headers: { Authorization: `Bearer ${savedToken}` } }
+      const response = await instance.delete(
+        `/api/v1/outlet/delete/${dataToRemove}`
       );
 
       if (response.status === 200) {
@@ -154,7 +141,7 @@ export default function AdminOutlet() {
         setIsLoading(false);
       }
     } catch (error) {
-      await handleApiError(error, handleRemove, router);
+      console.error(error);
     }
   };
 
@@ -208,7 +195,7 @@ export default function AdminOutlet() {
             </Collapse>
             {!isOpen && <p className="line-clamp-2">{row.original.history}</p>}
 
-            {row.original.history.length > 30 && (
+            {row.original.history && row.original.history.length > 30 && (
               <button
                 className={isOpen ? "text-red-500" : "text-primary-500"}
                 onClick={() => handleToggle(row.id)}
