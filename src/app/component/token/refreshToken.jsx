@@ -1,4 +1,4 @@
-import axios from "axios";
+import instance from "../api/api";
 
 export const getNewAccessToken = async () => {
   const refreshToken = localStorage.getItem("refreshToken");
@@ -8,8 +8,8 @@ export const getNewAccessToken = async () => {
   }
 
   try {
-    const response = await axios.post(
-      `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/refresh-token/${refreshToken}`
+    const response = await instance.post(
+      `/api/v1/refresh-token/${refreshToken}`
     );
 
     const token = response.data.data.accessToken;

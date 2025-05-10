@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
 import { getNewAccessToken } from "../../../component/token/refreshToken";
 import { Toaster, toast } from "react-hot-toast";
+import instance from "@/app/component/api/api";
 export default function AddOrder({ params }) {
   const [transaction, setTransaction] = useState({
     id_table: "",
@@ -43,10 +44,8 @@ export default function AddOrder({ params }) {
         localStorage.clear();
         router.push(`/login`);
       } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`
-          )
+        instance
+          .get(`/api/v1/outlet/show/${outlet_id}`)
           .then((response) => {
             const data = response.data;
             if (data.role === "admin") {

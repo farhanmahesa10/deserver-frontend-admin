@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import axios from "axios";
 import { useRouter } from "nextjs-toploader/app";
 import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
 import { useFormik } from "formik";
@@ -9,6 +8,7 @@ import * as yup from "yup";
 import Input from "../component/form/input";
 import { useDispatch } from "react-redux";
 import { setOutlet } from "@/store/slice";
+import instance from "../component/api/api";
 
 export default function Login() {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,29 +26,21 @@ export default function Login() {
   const onSubmit = async () => {
     setLoadingButton(true);
     try {
-      const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/login`,
-        formik.values
-      );
+      const response = await instance.post(`/api/v1/login`, formik.values);
 
       if (response.status === 200) {
         const token = response.data.AccessToken;
         const refreshToken = response.data.refreshToken;
         const outlet_id = response.data.curroutlet;
+        localStorage.setItem("token", token);
+        localStorage.setItem("refreshToken", refreshToken);
 
         try {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+          const response = await instance.get(
+            `/api/v1/outlet/show/${outlet_id}`
           );
           const data = response.data.data;
           dispatch(setOutlet(data));
-          localStorage.setItem("token", token);
-          localStorage.setItem("refreshToken", refreshToken);
 
           router.push("/");
         } catch (error) {

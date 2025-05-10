@@ -1,16 +1,13 @@
 "use client";
 
-import axios from "axios";
 import Pagination from "../../component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
-import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
 import { Toaster, toast } from "react-hot-toast";
 import "react-loading-skeleton/dist/skeleton.css";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 import { TableSkeleton } from "../../component/skeleton/adminSkeleton";
-import { handleApiError } from "@/app/component/handleError/handleError";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
 import Table from "@/app/component/table/table";
@@ -46,21 +43,21 @@ export default function AdminOutlet() {
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   // cek token
-  useEffect(() => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
-      const decoded = jwtDecode(refreshToken);
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+  // useEffect(() => {
+  //   const refreshToken = localStorage.getItem("refreshToken");
+  //   if (refreshToken) {
+  //     const decoded = jwtDecode(refreshToken);
+  //     const expirationTime = new Date(decoded.exp * 1000);
+  //     const currentTime = new Date();
 
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      }
-    } else {
-      router.push(`/login`);
-    }
-  }, []);
+  //     if (currentTime > expirationTime) {
+  //       localStorage.clear();
+  //       router.push(`/login`);
+  //     }
+  //   } else {
+  //     router.push(`/login`);
+  //   }
+  // }, []);
 
   //toast data baru
   useEffect(() => {
@@ -94,7 +91,7 @@ export default function AdminOutlet() {
       search: query,
     };
     try {
-      // Mengambil data transaksi menggunakan axios dengan query params
+      // Mengambil data transaksi menggunakan instance dengan query params
       const response = await instance.get(`/api/v1/outlet/showpaginated`, {
         params: params,
       });
@@ -104,7 +101,7 @@ export default function AdminOutlet() {
       setRows(response.data.pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
-      console.error(err);
+      console.error(error);
     }
   };
 

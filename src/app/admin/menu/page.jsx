@@ -1,16 +1,12 @@
 "use client";
 
-import axios from "axios";
 import Pagination from "../../component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
-import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
 import Modal from "../../component/modal/cardImage";
-import { getNewAccessToken } from "../../component/token/refreshToken";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
-import { handleApiError } from "@/app/component/handleError/handleError";
 import { Toaster, toast } from "react-hot-toast";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
@@ -18,6 +14,7 @@ import Table from "@/app/component/table/table";
 import { Collapse } from "react-collapse";
 import { useSelector } from "react-redux";
 import { HighlightText } from "@/app/component/utils/highlightText";
+import instance from "@/app/component/api/api";
 
 export default function Menu() {
   const [menu, setMenu] = useState([]);
@@ -54,23 +51,6 @@ export default function Menu() {
     }
   }, []);
 
-  // cek token
-  useEffect(() => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
-      const decoded = jwtDecode(refreshToken);
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
-
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      }
-    } else {
-      router.push(`/login`);
-    }
-  }, []);
-
   //setiap kali ada perubahan di current page maka scroll ke atas
   useEffect(() => {
     targetRef.current.scrollIntoView({ behavior: "smooth" });
@@ -86,7 +66,6 @@ export default function Menu() {
     if (isSearchMode) {
       setCurrentPage(1); // Reset ke page 1 jika pencarian
     }
-    const token = localStorage.getItem("token");
 
     const params = {
       page: isSearchMode ? 1 : currentPage,
@@ -95,27 +74,17 @@ export default function Menu() {
       search_title: queryMenu,
     };
     try {
-      // Mengambil data transaksi menggunakan axios dengan query params
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/showpaginated`,
-        {
-          params: params,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // Mengambil data transaksi menggunakan instance dengan query params
+      const response = await instance.get(`/api/v1/menu/showpaginated`, {
+        params: params,
+      });
 
       const data = response.data.data;
       setMenu(data);
       setRows(response.data.pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
-      await handleApiError(
-        error,
-        () => fetchDataPaginated(isSearchMode),
-        router
-      );
+      console.error(error);
     }
   };
 
@@ -141,13 +110,10 @@ export default function Menu() {
 
   //handle untuk menghapus data
   const handleRemove = async () => {
-    const savedToken = localStorage.getItem("token");
-
     try {
       setIsLoading(true);
-      const response = await axios.delete(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/delete/${dataToRemove}`,
-        { headers: { Authorization: `Bearer ${savedToken}` } }
+      const response = await instance.delete(
+        `/api/v1/menu/delete/${dataToRemove}`
       );
 
       if (response.status === 200) {
@@ -156,7 +122,7 @@ export default function Menu() {
         setIsLoading(false);
       }
     } catch (error) {
-      await handleApiError(error, handleRemove, router);
+      console.error(error);
     }
   };
 
@@ -166,34 +132,15 @@ export default function Menu() {
   };
 
   const handleUpdate = async (dataUdate, boolean) => {
-    const savedToken = localStorage.getItem("token");
     const best = {
       best_seller: boolean,
     };
 
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleUpdate(dataUdate, boolean); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting contact:", error);
-      }
-    };
-
     try {
       setIsLoading(true);
-      const response = await axios.put(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/update/${dataUdate}`,
-        best,
-        { headers: { Authorization: `Bearer ${savedToken}` } }
+      const response = await instance.put(
+        `/api/v1/menu/update/${dataUdate}`,
+        best
       );
 
       if (response.status === 200) {
@@ -203,38 +150,19 @@ export default function Menu() {
         setIsLoading(false);
       }
     } catch (error) {
-      await handleError(error);
+      console.error(error);
     }
   };
   const handleUpdateStok = async (idUpdate, stok) => {
-    const savedToken = localStorage.getItem("token");
     const data = {
       status: stok,
     };
 
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken); // Simpan token baru
-          await handleUpdateStok(idUpdate, stok); // Ulangi proses dengan token baru
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        console.error("Error deleting contact:", error);
-      }
-    };
-
     try {
       setIsLoading(true);
-      const response = await axios.put(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/update/${idUpdate}`,
-        data,
-        { headers: { Authorization: `Bearer ${savedToken}` } }
+      const response = await instance.put(
+        `/api/v1/menu/update/${idUpdate}`,
+        data
       );
 
       if (response.status === 200) {
@@ -244,7 +172,7 @@ export default function Menu() {
         setIsLoading(false);
       }
     } catch (error) {
-      await handleError(error);
+      console.error(error);
     }
   };
 

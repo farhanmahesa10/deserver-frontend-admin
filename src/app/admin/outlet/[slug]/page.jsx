@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
 import { IoEyeOutline, IoEyeOffOutline } from "react-icons/io5";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
@@ -11,7 +9,6 @@ import { useFormik } from "formik";
 import * as yup from "yup";
 import Input from "@/app/component/form/input";
 import Select from "@/app/component/form/select";
-import { handleApiError } from "@/app/component/handleError/handleError";
 import instance from "@/app/component/api/api";
 
 export default function AddProfile({ params }) {
@@ -130,22 +127,6 @@ export default function AddProfile({ params }) {
     }),
   });
 
-  // cek token
-  useEffect(() => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
-      const decoded = jwtDecode(refreshToken);
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
-
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      }
-    } else {
-      router.push(`/login`);
-    }
-  }, []);
   //CARI DATA BERDASARKAN ID KETIKA EDIT
   useEffect(() => {
     if (slug === "edit") {

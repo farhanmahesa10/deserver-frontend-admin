@@ -1,17 +1,14 @@
 "use client";
 
-import axios from "axios";
 import Pagination from "./component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
-import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import { Toaster, toast } from "react-hot-toast";
 import { io } from "socket.io-client";
-import { IoSearch, IoTrash, IoPrint } from "react-icons/io5";
+import { IoSearch } from "react-icons/io5";
 import Layout2 from "./component/layout/layout2";
 import { NotData } from "./component/notData/notData";
 import { TableSkeleton } from "./component/skeleton/adminSkeleton";
-import { handleApiError } from "./component/handleError/handleError";
 import InputSearch from "./component/form/inputSearch";
 import { useSelector } from "react-redux";
 import HanldeRemove from "./component/handleRemove/handleRemove";
@@ -20,6 +17,8 @@ import CardRevenue from "./component/card/cardRevenue";
 import { HighlightText } from "./component/utils/highlightText";
 import { FormatIDR } from "./component/utils/formatIDR";
 import { FormatDate } from "./component/utils/formatDate";
+import instance from "./component/api/api";
+import socket from "./component/socket/socketIo";
 
 export default function Transaction() {
   const [transaction, setTransaction] = useState([]);
@@ -32,6 +31,7 @@ export default function Transaction() {
   const [searchQuery, setSearchQuery] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dataToRemove, setDataToRemove] = useState(null);
+  const [dataTable, setdataTable] = useState([]);
   const [idUpdate, setIdUpdate] = useState(null);
   const [dataToUpdate, setDataToUpdate] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -50,23 +50,6 @@ export default function Transaction() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage; // Data yang disimpan dalam state
   //set untuk page yg di tampilkan
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
-  // cek token
-  useEffect(() => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
-      const decoded = jwtDecode(refreshToken);
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
-
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      }
-    } else {
-      router.push(`/login`);
-    }
-  }, []);
 
   //setiap kali ada perubahan di current page maka scroll ke atas
   useEffect(() => {
@@ -99,31 +82,26 @@ export default function Transaction() {
 
   //integrasi socket.io
   useEffect(() => {
-    if (dataOutlet.id) {
-      const socket = io("http://localhost:3000", {
-        transports: ["websocket", "polling"],
-        withCredentials: true,
-      });
-      // Bergabung ke outlet tertentu
+    if (!dataOutlet?.id) return;
 
-      socket.emit("joinCafe", dataOutlet.id);
+    // Bergabung ke outlet tertentu
+    socket.emit("joinCafe", dataOutlet.id);
 
-      // Menerima pesan pesanan baru
-      socket.on("newOrder", (orderData) => {
-        if (orderData) {
-          toast.success("New Order!");
-        }
+    // Menerima pesan pesanan baru
+    socket.on("newOrder", (orderData) => {
+      if (orderData) {
+        toast.success("New Order!");
+      }
 
-        setOrders((prevOrders) => [...prevOrders, orderData.data.payload]);
-      });
+      setOrders((prevOrders) => [...prevOrders, orderData.data.payload]);
+    });
 
-      // Membersihkan listener saat komponen unmount
-      return () => {
-        socket.off("newOrder");
-        socket.disconnect();
-      };
-    }
-  }, []);
+    // Membersihkan listener saat komponen unmount
+    return () => {
+      socket.off("newOrder");
+      // socket.disconnect();
+    };
+  }, [dataOutlet?.id]);
 
   // useEffect untuk search
   useEffect(() => {
@@ -136,7 +114,6 @@ export default function Transaction() {
     if (isSearchMode) {
       setCurrentPage(1); // Reset ke page 1 jika pencarian
     }
-    const token = localStorage.getItem("token");
 
     const params = {
       page: isSearchMode ? 1 : currentPage,
@@ -145,43 +122,25 @@ export default function Transaction() {
       by_name: by_name,
     };
     try {
-      // Mengambil data transaksi menggunakan axios dengan query params
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/transaction/showpaginated`,
-        {
-          params: params,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // Mengambil data transaksi menggunakan instance dengan query params
+      const response = await instance.get(`/api/v1/transaction/showpaginated`, {
+        params: params,
+      });
 
       const data = response.data.data;
       setTransaction(data);
       setRows(response.data.pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
-      await handleApiError(
-        error,
-        () => fetchDataPaginated(isSearchMode),
-        router
-      );
+      console.error(error);
     }
   };
 
   //mengambil data active
   useEffect(() => {
-    const token = localStorage.getItem("token");
     const fetchData = async () => {
       try {
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/grafik/info/`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const response = await instance.get(`/api/v1/grafik/info/`);
 
         const data = response.data;
         setOrderActive(data.active + data.onprocess);
@@ -212,13 +171,10 @@ export default function Transaction() {
 
   //handle untuk menghapus data
   const handleRemove = async () => {
-    const savedToken = localStorage.getItem("token");
-
     try {
       setIsLoading(true);
-      const response = await axios.delete(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/transaction/delete/${dataToRemove}`,
-        { headers: { Authorization: `Bearer ${savedToken}` } }
+      const response = await instance.delete(
+        `/api/v1/transaction/delete/${dataToRemove}`
       );
 
       if (response.status === 200) {
@@ -229,41 +185,56 @@ export default function Transaction() {
         toast.success("Order successfully deleted");
       }
     } catch (error) {
-      await handleApiError(error, handleRemove, router);
+      console.error(error);
     }
   };
   const handleUpdate = async () => {
-    const savedToken = localStorage.getItem("token");
     const data = {
       status: dataToUpdate,
     };
 
-    try {
-      const response = await axios.put(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/transaction/update/${idUpdate}`,
-        data,
-        { headers: { Authorization: `Bearer ${savedToken}` } }
-      );
+    socket.emit(
+      "cancelOrderByAdmin",
+      {
+        roomCode: dataTable.table_code,
+        outletCode: dataTable.id_outlet,
+        status: data.status,
+        date: new Date(),
+        room: dataTable.number_table,
+      },
+      async (socketResponse) => {
+        if (socketResponse.status === "success") {
+          try {
+            setIsLoading(true);
+            const apiResponse = await instance.put(
+              `/api/v1/transaction/update/${idUpdate}`,
+              data
+            );
 
-      if (response.status === 200) {
-        closeModalOrder(idUpdate);
-        await fetchDataPaginated();
-        setShowConfirmModalUpdate(false);
-        setIsLoading(false);
-        setIsLoading(false);
-        if (dataToUpdate == "rejected") {
-          toast.success("Order successfully rejected");
-        } else if (dataToUpdate == "onprocess") {
-          toast.success("Order is being processed");
-        } else if (dataToUpdate == "cancel") {
-          toast.success("Order successfully cancel");
-        } else if (dataToUpdate == "success") {
-          toast.success("Order successfully success");
+            if (apiResponse.status === 200) {
+              closeModalOrder(idUpdate);
+              await fetchDataPaginated();
+              setShowConfirmModalUpdate(false);
+
+              if (dataToUpdate === "rejected") {
+                toast.success("Order successfully rejected");
+              } else if (dataToUpdate === "onprocess") {
+                toast.success("Order is being processed");
+              } else if (dataToUpdate === "cancel") {
+                toast.success("Order successfully canceled");
+              } else if (dataToUpdate === "success") {
+                toast.success("Order completed successfully");
+              }
+            }
+          } catch (error) {
+            console.error(error);
+            toast.error("Failed to update order");
+          } finally {
+            setIsLoading(false);
+          }
         }
       }
-    } catch (error) {
-      await handleApiError(error, handleUpdate, router);
-    }
+    );
   };
 
   //handle close modal
@@ -275,7 +246,8 @@ export default function Transaction() {
     setDataToRemove(dataRemove);
     setShowConfirmModal(true);
   };
-  const confirmUpdate = (id, data) => {
+  const confirmUpdate = (id, data, dataTable) => {
+    setdataTable(dataTable);
     setIdUpdate(id);
     setDataToUpdate(data);
     setShowConfirmModalUpdate(true);
@@ -397,7 +369,11 @@ export default function Transaction() {
                                 <button
                                   className="bg-blue-100 w-1/2 text-blue-700 text-sm py-1 rounded hover:bg-blue-200"
                                   onClick={() =>
-                                    confirmUpdate(item.id, "onprocess")
+                                    confirmUpdate(
+                                      item.id,
+                                      "onprocess",
+                                      item.Table
+                                    )
                                   }
                                 >
                                   Paid
@@ -407,7 +383,11 @@ export default function Transaction() {
                                 <button
                                   className="w-1/2 bg-green-100 text-green-700 text-sm py-1 rounded hover:bg-green-200"
                                   onClick={() =>
-                                    confirmUpdate(item.id, "success")
+                                    confirmUpdate(
+                                      item.id,
+                                      "success",
+                                      item.Table
+                                    )
                                   }
                                 >
                                   Finish Order
@@ -426,7 +406,7 @@ export default function Transaction() {
                                 <button
                                   className="w-1/2 bg-red-100 text-red-600 text-sm py-1 rounded hover:bg-red-200"
                                   onClick={() =>
-                                    confirmUpdate(item.id, "failed")
+                                    confirmUpdate(item.id, "failed", item.Table)
                                   }
                                 >
                                   Cancel
@@ -444,8 +424,6 @@ export default function Transaction() {
                       .slice()
                       .reverse()
                       .map((item, index) => {
-                        const number = index + 1;
-
                         return (
                           <div
                             key={item.id_transaction}
@@ -506,7 +484,11 @@ export default function Transaction() {
                               </button>
                               <button
                                 onClick={() =>
-                                  confirmUpdate(item.id_transaction, "failed")
+                                  confirmUpdate(
+                                    item.id_transaction,
+                                    "failed",
+                                    item.Table
+                                  )
                                 }
                                 className="bg-red-500 text-white text-sm rounded-lg py-2 w-full hover:bg-red-600 transition-colors duration-300 mt-2"
                               >

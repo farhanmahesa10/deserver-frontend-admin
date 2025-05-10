@@ -1,12 +1,10 @@
-// utils/instance.js
 import axios from "axios";
-import Router from "next/router";
+import { jwtDecode } from "jwt-decode";
 
 const instance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_BASE_API_URL,
 });
 
-// REQUEST INTERCEPTOR
 instance.interceptors.request.use(
   (config) => {
     const token =
@@ -19,38 +17,62 @@ instance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// RESPONSE INTERCEPTOR
 instance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const token = localStorage.getItem("token");
 
-    // Jika token expired dan belum pernah dicoba ulang
-    if (
-      error.response &&
-      error.response.status === 401 &&
-      !originalRequest._retry
-    ) {
-      originalRequest._retry = true;
-      try {
-        const refreshToken = localStorage.getItem("refreshToken");
-        const res = await instance.post(
-          `/api/v1/refresh-token/${refreshToken}`
-        );
+    if (!token) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      window.location.href = "/login";
+      return Promise.reject(error);
+    }
 
-        const newAccessToken = res.data.data.accessToken;
-        localStorage.setItem("token", newAccessToken);
+    const isUnauthorized = error.response?.status === 401;
 
-        // Set ulang header Authorization dan ulangi request
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        return instance(originalRequest);
-      } catch (err) {
-        // Refresh token invalid/expired
+    try {
+      const decoded = jwtDecode(token);
+      const now = Date.now() / 1000;
+      const isExpired = decoded.exp && decoded.exp < now;
+
+      // ✅ Token expired → refresh token (jika belum dicoba)
+      if (isUnauthorized && isExpired && !originalRequest._retry) {
+        originalRequest._retry = true;
+        try {
+          const refreshToken = localStorage.getItem("refreshToken");
+          const res = await instance.post(
+            `/api/v1/refresh-token/${refreshToken}`
+          );
+          const newAccessToken = res.data.data.accessToken;
+
+          localStorage.setItem("token", newAccessToken);
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          return instance(originalRequest);
+        } catch (refreshError) {
+          // Refresh token gagal
+          localStorage.removeItem("token");
+          localStorage.removeItem("refreshToken");
+          window.location.href = "/login";
+          return Promise.reject(refreshError);
+        }
+      }
+
+      // ❌ Jika tidak expired tapi 401 (berarti token tidak cocok di backend)
+      if (isUnauthorized && !isExpired) {
         localStorage.removeItem("token");
         localStorage.removeItem("refreshToken");
         window.location.href = "/login";
-
-        return Promise.reject(err);
+        return Promise.reject(error);
+      }
+    } catch (decodeError) {
+      // ❌ Token asal-asalan (tidak bisa didecode)
+      if (isUnauthorized) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        window.location.href = "/login";
+        return Promise.reject(error);
       }
     }
 

@@ -1,12 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../../../component/token/refreshToken";
 import ButtonCreateUpdate from "@/app/component/button/button";
+import instance from "@/app/component/api/api";
 
 export default function AddProfile({ params }) {
   const [profile, setProfile] = useState({
@@ -43,30 +41,13 @@ export default function AddProfile({ params }) {
     }
   }, []);
 
-  // cek token
-  useEffect(() => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
-      const decoded = jwtDecode(refreshToken);
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
-
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      }
-    } else {
-      router.push(`/login`);
-    }
-  }, []);
-
   //CARI DATA OUTLET BERDASARKAN ID KETIKA EDIT
   useEffect(() => {
     const fetchData = async () => {
       try {
         if (slug === "edit") {
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outletId}`
+          const response = await instance.get(
+            `/api/v1/outlet/show/${outletId}`
           );
 
           const data = response.data;
@@ -89,8 +70,8 @@ export default function AddProfile({ params }) {
         if (slug === "edit") {
           const idProfile = localStorage.getItem("id_profile");
 
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/profile/show/${idProfile}`
+          const response = await instance.get(
+            `/api/v1/profile/show/${idProfile}`
           );
 
           const data = response.data;
@@ -123,31 +104,18 @@ export default function AddProfile({ params }) {
     }
 
     try {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
       setLoadingButton(true);
 
-      await axios.put(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/profile/update/${profile.id}`,
-        formData,
-        { headers }
-      );
+      await instance.put(`/api/v1/profile/update/${profile.id}`, formData);
       router.push("/admin");
       localStorage.setItem("newData", "updated successfully!");
       setLoadingButton(false);
     } catch (error) {
       if (error.response.status === 401) {
         try {
-          const token = await getNewAccessToken();
-          const headersWithNewToken = { Authorization: `Bearer ${token}` };
-
           setLoadingButton(true);
 
-          await axios.put(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/profile/update/${profile.id}`,
-            formData,
-            { headers: headersWithNewToken }
-          );
+          await instance.put(`/api/v1/profile/update/${profile.id}`, formData);
           alert("Data berhasil diperbaruiiiiii!");
           localStorage.removeItem("id_profile");
           router.push("/admin");

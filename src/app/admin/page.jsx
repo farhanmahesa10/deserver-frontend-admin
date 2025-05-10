@@ -1,11 +1,10 @@
 "use client";
 
+///ieu dicirian
+
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { jwtDecode } from "jwt-decode";
 import { useRouter } from "next/navigation";
 import EditDataSkeleton from "../component/skeleton/editDataSkeleton";
-import { getNewAccessToken } from "../component/token/refreshToken";
 import { IoEyeOutline, IoEyeOffOutline, IoCaretForward } from "react-icons/io5";
 import { HiMiniPencilSquare } from "react-icons/hi2";
 import { useFormik } from "formik";
@@ -13,6 +12,8 @@ import { Toaster, toast } from "react-hot-toast";
 import * as yup from "yup";
 import Input from "../component/form/input";
 import { Collapse } from "react-collapse";
+import instance from "../component/api/api";
+import { useSelector } from "react-redux";
 
 export default function AddProfile({ params }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -23,6 +24,7 @@ export default function AddProfile({ params }) {
   const [updatePassword, setUpdatePassword] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingButton, setLoadingButton] = useState(false);
+  const dataOutlet = useSelector((state) => state.counter.outlet);
   const router = useRouter();
 
   //function untuk password terlihat atau tidak
@@ -36,78 +38,37 @@ export default function AddProfile({ params }) {
     setIsOpenVerify(!isOpenVerify);
   };
 
-  // cek token
   useEffect(() => {
-    const savedToken = localStorage.getItem("refreshToken");
-    const token = localStorage.getItem("token");
+    setIsLoading(true);
+    const fetchData = async () => {
+      try {
+        const response = await instance.get(
+          `/api/v1/outlet/show/${dataOutlet.id}`
+        );
 
-    if (savedToken) {
-      const decoded = jwtDecode(savedToken);
-      const outlet_id = decoded.id;
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
-
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      } else {
-        axios
-          .get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show/${outlet_id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          )
-          .then((response) => {
-            const data = response.data.data;
-            formik.setValues({
-              id: data.id,
-              outlet_name: data.outlet_name,
-              email: data.email,
-              role: data.role,
-              address: data.address,
-              history: data.history,
-              logo: data.logo,
-              password: "",
-              confirmationPassword: "",
-              varifyPassword: "",
-            });
-            setIsLoading(false);
-          })
-          .catch((error) => {
-            console.error("Error fetching data:", error);
-            setIsLoading(false);
-          });
-      }
-    } else {
-      router.push(`/login`);
-    }
-  }, [router]);
-
-  const onSubmit = async (e) => {
-    const handleError = async (error) => {
-      if (error.response?.status === 401) {
-        try {
-          const newToken = await getNewAccessToken();
-          localStorage.setItem("token", newToken);
-          await handleSubmit(e);
-        } catch (err) {
-          console.error("Failed to refresh token:", err);
-          alert("Session Anda telah berakhir. Silakan login ulang.");
-          localStorage.clear();
-          router.push("/login");
-        }
-      } else {
-        alert(error.response.data.message);
-        setLoadingButton(false);
+        const data = response.data.data;
+        formik.setValues({
+          id: data.id,
+          outlet_name: data.outlet_name,
+          email: data.email,
+          role: data.role,
+          address: data.address,
+          history: data.history,
+          logo: data.logo,
+          password: "",
+          confirmationPassword: "",
+          varifyPassword: "",
+        });
+        setIsLoading(false);
+      } catch (error) {
+        console.error(error);
       }
     };
+    fetchData();
+  }, []);
 
+  const onSubmit = async (e) => {
     try {
-      const token = localStorage.getItem("token");
-
       setLoadingButton(true);
       const formData = new FormData();
       formData.append("outlet_name", formik.values.outlet_name);
@@ -119,22 +80,13 @@ export default function AddProfile({ params }) {
       formData.append("history", formik.values.history);
       formData.append("logo", formik.values.logo);
 
-      await axios.put(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/update/${formik.values.id}`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      await instance.put(`/api/v1/outlet/update/${formik.values.id}`, formData);
 
       toast.success("update successfully!");
       setLoadingButton(false);
       router.push(`/admin`);
     } catch (error) {
-      await handleError(error);
+      console.error(error);
     }
   };
 

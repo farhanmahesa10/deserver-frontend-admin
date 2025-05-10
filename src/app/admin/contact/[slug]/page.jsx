@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
 import ButtonCreateUpdate from "@/app/component/button/button";
@@ -10,8 +8,8 @@ import { useFormik } from "formik";
 import * as yup from "yup";
 import Input from "@/app/component/form/input";
 import Select from "@/app/component/form/select";
-import { handleApiError } from "@/app/component/handleError/handleError";
 import { useSelector } from "react-redux";
+import instance from "@/app/component/api/api";
 
 export default function AddContact({ params }) {
   const [outlet, setOutlet] = useState([]);
@@ -60,31 +58,23 @@ export default function AddContact({ params }) {
     formData.append("logo", formik.values.logo);
 
     try {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
-
       if (formik.values.id) {
         setLoadingButton(true);
-        await axios.put(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/contact/update/${formik.values.id}`,
-          formData,
-          { headers }
+        await instance.put(
+          `/api/v1/contact/update/${formik.values.id}`,
+          formData
         );
         router.push("/admin/contact");
         localStorage.removeItem("id_contact");
         localStorage.setItem("newData", "update successfully!");
       } else {
         setLoadingButton(true);
-        await axios.post(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/contact/create`,
-          formData,
-          { headers }
-        );
+        await instance.post(`/api/v1/contact/create`, formData);
         router.push("/admin/contact");
         localStorage.setItem("newData", "create successfully!");
       }
     } catch (error) {
-      await handleApiError(error, onSubmit, router);
+      console.error(error);
     }
   };
 
@@ -130,23 +120,6 @@ export default function AddContact({ params }) {
     }
   }, [formik.values.contact_name]);
 
-  // cek token
-  useEffect(() => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
-      const decoded = jwtDecode(refreshToken);
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
-
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      }
-    } else {
-      router.push(`/login`);
-    }
-  }, []);
-
   useEffect(() => {
     if (dataOutlet.role !== "admin pusat") {
       formik.setFieldValue("id_outlet", dataOutlet.id);
@@ -163,23 +136,15 @@ export default function AddContact({ params }) {
   useEffect(() => {
     setIsLoading(true);
     const fetchData = async () => {
-      const token = localStorage.getItem("token");
       try {
-        // Mengambil data transaksi menggunakan axios dengan query params
-        const response = await axios.get(
-          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        // Mengambil data transaksi menggunakan instance dengan query params
+        const response = await instance.get(`/api/v1/outlet/show`);
 
         const data = response.data.data;
 
         setOutlet(data);
       } catch (error) {
-        await handleApiError(error, () => fetchData(), router);
+        console.error(error);
       }
     };
 
@@ -191,18 +156,12 @@ export default function AddContact({ params }) {
   //mengambildata contact ketika edit
   useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem("token");
       try {
         if (slug === "edit") {
           const idContact = localStorage.getItem("id_contact");
 
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/contact/show/${idContact}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+          const response = await instance.get(
+            `/api/v1/contact/show/${idContact}`
           );
 
           const data = response.data.data;
@@ -213,7 +172,7 @@ export default function AddContact({ params }) {
           setIsLoading(false);
         }
       } catch (error) {
-        await handleApiError(error, () => fetchData(), router);
+        console.error(error);
       }
     };
 
