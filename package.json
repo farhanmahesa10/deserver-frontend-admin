@@ -23,6 +23,7 @@
     "nextjs-toploader": "^3.7.15",
     "nprogress": "^0.2.0",
     "react": "^19.0.0",
+    "react-apexcharts": "^1.7.0",
     "react-collapse": "^5.1.1",
     "react-datepicker": "^8.3.0",
     "react-dom": "^19.0.0",

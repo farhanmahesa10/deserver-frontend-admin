@@ -173,9 +173,7 @@ export default function Transaction() {
   const handleRemove = async () => {
     try {
       setIsLoading(true);
-      const response = await instance.delete(
-        `/api/v1/transaction/delete/${dataToRemove}`
-      );
+      const response = await instance.delete(`/api/v1/transaction/delete/${dataToRemove}`);
 
       if (response.status === 200) {
         closeModalOrder(dataToRemove);
@@ -194,22 +192,19 @@ export default function Transaction() {
     };
 
     socket.emit(
-      "cancelOrderByAdmin",
+      "confirmOrderByAdmin",
       {
         roomCode: dataTable.table_code,
         outletCode: dataTable.id_outlet,
         status: data.status,
         date: new Date(),
-        room: dataTable.number_table,
+        number_table: dataTable.number_table,
       },
       async (socketResponse) => {
         if (socketResponse.status === "success") {
           try {
             setIsLoading(true);
-            const apiResponse = await instance.put(
-              `/api/v1/transaction/update/${idUpdate}`,
-              data
-            );
+            const apiResponse = await instance.put(`/api/v1/transaction/update/${idUpdate}`, data);
 
             if (apiResponse.status === 200) {
               closeModalOrder(idUpdate);
@@ -255,9 +250,7 @@ export default function Transaction() {
 
   //handle close gambar besar
   const closeModalOrder = (id_transaction) => {
-    setOrders((prevOrders) =>
-      prevOrders.filter((order) => order.id_transaction !== id_transaction)
-    );
+    setOrders((prevOrders) => prevOrders.filter((order) => order.id_transaction !== id_transaction));
   };
 
   return (
@@ -267,9 +260,7 @@ export default function Transaction() {
         <div className=" pl-5 pt-20  w-full bg-white overflow-auto lg:border-l-2">
           <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
             <Toaster position="top-center" reverseOrder={false} />
-            <h1 className="my-2 md:my-5 font-ubuntu font-semibold text-darkgray text-lg md:text-xl">
-              Transaction Data Settings
-            </h1>
+            <h1 className="my-2 md:my-5 font-ubuntu font-semibold text-darkgray text-lg md:text-xl">Transaction Data Settings</h1>
 
             <div className="flex justify-between mb-4 ">
               <div className="flex items-center ">
@@ -292,11 +283,7 @@ export default function Transaction() {
                 />
               </div>
 
-              <CardRevenue
-                value={orderActive}
-                desc="Active Orders"
-                classRevenue=" max-w-[150px]"
-              />
+              <CardRevenue value={orderActive} desc="Active Orders" classRevenue=" max-w-[150px]" />
             </div>
 
             <div className="rounded-lg  bg-white overflow-x-auto ">
@@ -308,45 +295,26 @@ export default function Transaction() {
                     {searchQuery &&
                       searchQuery.map((item, index) => {
                         return (
-                          <div
-                            key={item.id}
-                            className="bg-white border border-gray-300 shadow-sm rounded-lg p-4 w-full flex flex-col justify-between relative"
-                          >
+                          <div key={item.id} className="bg-white border border-gray-300 shadow-sm rounded-lg p-4 w-full flex flex-col justify-between relative">
                             {/* Nomor Meja */}
-                            <div className="absolute top-0 left-0 rounded-tl-md rounded-br-md bg-white border  w-14 h-8 flex items-center justify-center font-bold text-sm">
-                              {item.id_table}
-                            </div>
+                            <div className="absolute top-0 left-0 rounded-tl-md rounded-br-md bg-white border  w-14 h-8 flex items-center justify-center font-bold text-sm">{item.id_table}</div>
 
                             {/* Status */}
                             <div
                               className={`absolute top-0 right-0 px-2 py-1  w-16 h-8 text-xs rounded-tr-md rounded-bl-md bg-gray-100 font-semibold capitalize flex items-center justify-center
-                            ${
-                              item.status === "active"
-                                ? "text-yellow-600"
-                                : item.status === "onprocess"
-                                ? "text-green-600"
-                                : item.status === "success"
-                                ? "text-blue-600"
-                                : item.status === "failed"
-                                ? "text-red-600"
-                                : ""
-                            }`}
+                            ${item.status === "active" ? "text-yellow-600" : item.status === "onprocess" ? "text-green-600" : item.status === "success" ? "text-blue-600" : item.status === "failed" ? "text-red-600" : ""}`}
                             >
                               {item.status}
                             </div>
 
                             {/* Outlet & Customer */}
                             <div className="mt-10">
-                              <p className="text-sm text-gray-500">
-                                {HighlightText(item.by_name, by_name)}
-                              </p>
+                              <p className="text-sm text-gray-500">{HighlightText(item.by_name, by_name)}</p>
                             </div>
 
                             {/* Pesanan */}
                             <div className="mt-2 bg-gray-50 rounded p-2">
-                              <p className="font-semibold text-sm mb-1 text-gray-800">
-                                Order:
-                              </p>
+                              <p className="font-semibold text-sm mb-1 text-gray-800">Order:</p>
                               {item.Orders.map((order) => (
                                 <div key={order.id} className="mb-1 text-sm">
                                   <div className="flex justify-between">
@@ -366,49 +334,23 @@ export default function Transaction() {
                             {/* Tombol */}
                             <div className="mt-4 flex gap-2">
                               {item.status === "active" && (
-                                <button
-                                  className="bg-blue-100 w-1/2 text-blue-700 text-sm py-1 rounded hover:bg-blue-200"
-                                  onClick={() =>
-                                    confirmUpdate(
-                                      item.id,
-                                      "onprocess",
-                                      item.Table
-                                    )
-                                  }
-                                >
+                                <button className="bg-blue-100 w-1/2 text-blue-700 text-sm py-1 rounded hover:bg-blue-200" onClick={() => confirmUpdate(item.id, "onprocess", item.Table)}>
                                   Paid
                                 </button>
                               )}
                               {item.status === "onprocess" && (
-                                <button
-                                  className="w-1/2 bg-green-100 text-green-700 text-sm py-1 rounded hover:bg-green-200"
-                                  onClick={() =>
-                                    confirmUpdate(
-                                      item.id,
-                                      "success",
-                                      item.Table
-                                    )
-                                  }
-                                >
+                                <button className="w-1/2 bg-green-100 text-green-700 text-sm py-1 rounded hover:bg-green-200" onClick={() => confirmUpdate(item.id, "success", item.Table)}>
                                   Finish Order
                                 </button>
                               )}
 
                               {item.status === "success" && (
-                                <button
-                                  className="w-full bg-gray-200 text-gray-700 text-sm py-1 rounded hover:bg-gray-200"
-                                  onClick={() => setPrintData([item])}
-                                >
+                                <button className="w-full bg-gray-200 text-gray-700 text-sm py-1 rounded hover:bg-gray-200" onClick={() => setPrintData([item])}>
                                   Print
                                 </button>
                               )}
                               {!["success", "failed"].includes(item.status) && (
-                                <button
-                                  className="w-1/2 bg-red-100 text-red-600 text-sm py-1 rounded hover:bg-red-200"
-                                  onClick={() =>
-                                    confirmUpdate(item.id, "failed", item.Table)
-                                  }
-                                >
+                                <button className="w-1/2 bg-red-100 text-red-600 text-sm py-1 rounded hover:bg-red-200" onClick={() => confirmUpdate(item.id, "failed", item.Table)}>
                                   Cancel
                                 </button>
                               )}
@@ -425,37 +367,22 @@ export default function Transaction() {
                       .reverse()
                       .map((item, index) => {
                         return (
-                          <div
-                            key={item.id_transaction}
-                            className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50"
-                          >
+                          <div key={item.id_transaction} className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
                             <div className="bg-white shadow-md rounded-lg p-2 w-[222px] border border-gray-300 hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between">
-                              <div className="absolute top-2 right-3 text-sm font-bold text-gray-500">
-                                {countdown}s
-                              </div>
+                              <div className="absolute top-2 right-3 text-sm font-bold text-gray-500">{countdown}s</div>
 
                               <div className="flex flex-col gap-1 flex-grow">
-                                <h2 className="text-xl font-bold text-gray-800 text-center">
-                                  {item.outlet_name}
-                                </h2>
+                                <h2 className="text-xl font-bold text-gray-800 text-center">{item.outlet_name}</h2>
                                 <div className="flex flex-col text-gray-700">
                                   <p className="text-md">
-                                    <span className="font-semibold text-sm">
-                                      Customer:
-                                    </span>{" "}
-                                    {item.by_name}
+                                    <span className="font-semibold text-sm">Customer:</span> {item.by_name}
                                   </p>
                                   <p className="text-sm">
-                                    <span className="font-semibold">
-                                      Table Number:
-                                    </span>{" "}
-                                    {item.number_table}
+                                    <span className="font-semibold">Table Number:</span> {item.number_table}
                                   </p>
                                 </div>
                                 <div className="bg-gray-100 rounded-lg p-2">
-                                  <p className="font-semibold text-sm text-gray-800">
-                                    Order:
-                                  </p>
+                                  <p className="font-semibold text-sm text-gray-800">Order:</p>
                                   {item.orderData.map((order) => (
                                     <div key={order.title} className="mb-1">
                                       <div className="flex justify-between text-sm">
@@ -475,23 +402,13 @@ export default function Transaction() {
                               </div>
                               <button
                                 onClick={() => {
-                                  closeModalOrder(item.id_transaction),
-                                    fetchDataPaginated(true);
+                                  closeModalOrder(item.id_transaction), fetchDataPaginated(true);
                                 }}
                                 className="bg-gray-800 text-white text-sm rounded-lg py-2 w-full hover:bg-gray-700 transition-colors duration-300 mt-2"
                               >
                                 Accept
                               </button>
-                              <button
-                                onClick={() =>
-                                  confirmUpdate(
-                                    item.id_transaction,
-                                    "failed",
-                                    item.Table
-                                  )
-                                }
-                                className="bg-red-500 text-white text-sm rounded-lg py-2 w-full hover:bg-red-600 transition-colors duration-300 mt-2"
-                              >
+                              <button onClick={() => confirmUpdate(item.id_transaction, "failed", item.Table)} className="bg-red-500 text-white text-sm rounded-lg py-2 w-full hover:bg-red-600 transition-colors duration-300 mt-2">
                                 Reject
                               </button>
                             </div>
@@ -503,14 +420,7 @@ export default function Transaction() {
             </div>
 
             {/* Tampilkan navigasi pagination */}
-            {searchQuery.length > 0 && (
-              <Pagination
-                itemsPerPage={itemsPerPage}
-                rows={rows}
-                paginate={paginate}
-                currentPage={currentPage}
-              />
-            )}
+            {searchQuery.length > 0 && <Pagination itemsPerPage={itemsPerPage} rows={rows} paginate={paginate} currentPage={currentPage} />}
 
             {/* Tampilkan pesan data kosong jika tidak ada data */}
             {isLoading === false && searchQuery.length === 0 && <NotData />}
@@ -519,26 +429,13 @@ export default function Transaction() {
           {printData &&
             printData.map((item) => {
               return (
-                <div
-                  key={item.id}
-                  className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50"
-                >
+                <div key={item.id} className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
                   <div className="w-[350px]  p-4  bg-white shadow-md rounded-md font-mono text-sm">
                     <div className="flex justify-center ">
-                      <div className="flex p-1 w-14 h-10">
-                        {item.Outlet.logo && (
-                          <img
-                            src={`${process.env.NEXT_PUBLIC_IMAGE_URL}/${item.Outlet.logo}`}
-                            className="w-full h-full object-contain"
-                            alt="Logo"
-                          />
-                        )}
-                      </div>
+                      <div className="flex p-1 w-14 h-10">{item.Outlet.logo && <img src={`${process.env.NEXT_PUBLIC_IMAGE_URL}/${item.Outlet.logo}`} className="w-full h-full object-contain" alt="Logo" />}</div>
                     </div>
                     <div>
-                      <h1 className="font-bold text-lg w-full text-center">
-                        {item.Outlet.outlet_name}
-                      </h1>
+                      <h1 className="font-bold text-lg w-full text-center">{item.Outlet.outlet_name}</h1>
                       <p className="text-center">{item.Outlet.address}</p>
                     </div>
 
@@ -593,10 +490,7 @@ export default function Transaction() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={closeModal}
-                    className=" -mt-96 ml-10 h-8 pb-4 w-8 bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full  text-red-600 text-2xl flex text-center justify-center"
-                  >
+                  <button onClick={closeModal} className=" -mt-96 ml-10 h-8 pb-4 w-8 bg-black bg-opacity-50 hover:bg-opacity-75 rounded-full  text-red-600 text-2xl flex text-center justify-center">
                     &times;
                   </button>
                 </div>
@@ -604,19 +498,8 @@ export default function Transaction() {
             })}
 
           {/* modal konfirmasi delete */}
-          {showConfirmModal && (
-            <HanldeRemove
-              handleRemove={handleRemove}
-              setShowConfirmModal={() => setShowConfirmModal(false)}
-            />
-          )}
-          {showConfirmModalUpdate && (
-            <HanldeUpdateStatus
-              handleUpdate={handleUpdate}
-              setShowConfirmModalUpdate={() => setShowConfirmModalUpdate(false)}
-              text={dataToUpdate}
-            />
-          )}
+          {showConfirmModal && <HanldeRemove handleRemove={handleRemove} setShowConfirmModal={() => setShowConfirmModal(false)} />}
+          {showConfirmModalUpdate && <HanldeUpdateStatus handleUpdate={handleUpdate} setShowConfirmModalUpdate={() => setShowConfirmModalUpdate(false)} text={dataToUpdate} />}
         </div>
       </div>
     </div>
