@@ -27,7 +27,7 @@ const CardOrder = (props) => {
             >
               {/* Nomor Meja */}
               <div className="absolute top-0 left-0 rounded-tl-md rounded-br-md bg-white border w-14 h-8 flex items-center justify-center font-bold text-sm">
-                {item.id_table}
+                {item.Table.number_table}
               </div>
 
               {/* Status */}

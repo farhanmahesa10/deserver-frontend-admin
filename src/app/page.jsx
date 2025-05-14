@@ -10,7 +10,8 @@ import Layout2 from "./component/layout/layout2";
 import { NotData } from "./component/notData/notData";
 import { TableSkeleton } from "./component/skeleton/adminSkeleton";
 import InputSearch from "./component/form/inputSearch";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { addOrderNotif } from "@/store/slice";
 import HanldeRemove from "./component/handleRemove/handleRemove";
 import HanldeUpdateStatus from "./component/handleUpdate/updateStatus";
 import CardRevenue from "./component/card/cardRevenue";
@@ -31,13 +32,14 @@ export default function Transaction() {
   const [searchQuery, setSearchQuery] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dataToRemove, setDataToRemove] = useState(null);
-  const [dataTable, setdataTable] = useState([]);
-  const [idUpdate, setIdUpdate] = useState(null);
-  const [dataToUpdate, setDataToUpdate] = useState(null);
+  const [dataUpdate, setDataUpdate] = useState([]);
+  const [statusToUpdate, setStatusToUpdate] = useState([]);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showConfirmModalUpdate, setShowConfirmModalUpdate] = useState(false);
   const dataOutlet = useSelector((state) => state.counter.outlet);
-  const [countdown, setCountdown] = useState(100); // start dari 10
+  const [countdown, setCountdown] = useState(120);
+  const [canClose, setCanClose] = useState(false);
+  const dispatch = useDispatch();
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
@@ -60,24 +62,33 @@ export default function Transaction() {
     let timer;
 
     if (orders.length > 0) {
+      setCountdown(120);
+      setCanClose(false); // reset
+
       timer = setInterval(() => {
         setCountdown((prev) => {
           if (prev === 1) {
             clearInterval(timer);
 
-            // Hapus orders berdasarkan id_transaction saat countdown selesai
-            const orderToRemove = orders[0]; // Misalnya, kita hapus order pertama yang sedang di-map
-            closeModalOrder(orderToRemove.id_transaction); // Menghapus berdasarkan ID transaksi
-            // toast.success("Order Received");
+            // Close otomatis saat 120 detik habis
+            const orderToRemove = orders[0];
+            closeModalOrder(orderToRemove.id_transaction);
             fetchDataPaginated(true);
-            return 10; // Reset countdown jika ingin dipakai ulang
+
+            return 0;
           }
+
+          // Aktifkan manual close saat sisa waktu tinggal 60 detik
+          if (prev === 110) {
+            setCanClose(true);
+          }
+
           return prev - 1;
         });
       }, 1000);
     }
 
-    return () => clearInterval(timer); // Cleanup ketika komponen di-unmount
+    return () => clearInterval(timer);
   }, [orders]);
 
   //integrasi socket.io
@@ -92,7 +103,8 @@ export default function Transaction() {
       if (orderData) {
         toast.success("New Order!");
       }
-
+      const newOrder = { ...orderData.data.payload, seen: false };
+      dispatch(addOrderNotif(newOrder));
       setOrders((prevOrders) => [...prevOrders, orderData.data.payload]);
     });
 
@@ -140,7 +152,7 @@ export default function Transaction() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await instance.get(`/api/v1/grafik/info/`);
+        const response = await instance.get(`/api/v1/grafik/info`);
 
         const data = response.data;
         setOrderActive(data.active + data.onprocess);
@@ -151,7 +163,7 @@ export default function Transaction() {
     };
 
     fetchData();
-  }, [searchQuery]);
+  }, []);
 
   // useEffect mengambil data transaksi by limit
   useEffect(() => {
@@ -189,52 +201,53 @@ export default function Transaction() {
     }
   };
   const handleUpdate = async () => {
-    const data = {
-      status: dataToUpdate,
-    };
-
-    socket.emit(
-      "cancelOrderByAdmin",
-      {
-        roomCode: dataTable.table_code,
-        outletCode: dataTable.id_outlet,
-        status: data.status,
-        date: new Date(),
-        room: dataTable.number_table,
+    const payload = {
+      id: dataUpdate.id,
+      id_outlet: dataOutlet.id,
+      outletCode: dataOutlet.outlet_code,
+      outlet_name: dataOutlet.outlet_name,
+      by_name: dataUpdate.by_name,
+      total_pay: dataUpdate.total_pay,
+      status: statusToUpdate,
+      date: new Date(),
+      Table: {
+        table_code: dataUpdate.Table.table_code,
+        number_table: dataUpdate.Table.number_table,
       },
-      async (socketResponse) => {
-        if (socketResponse.status === "success") {
-          try {
-            setIsLoading(true);
-            const apiResponse = await instance.put(
-              `/api/v1/transaction/update/${idUpdate}`,
-              data
-            );
+      Orders: dataUpdate.Orders,
+    };
+    console.log(payload);
 
-            if (apiResponse.status === 200) {
-              closeModalOrder(idUpdate);
-              await fetchDataPaginated();
-              setShowConfirmModalUpdate(false);
+    socket.emit("confirmOrderByAdmin", payload, async (socketResponse) => {
+      if (socketResponse.status === "success") {
+        try {
+          setIsLoading(true);
+          const apiResponse = await instance.put(
+            `/api/v1/transaction/update/${dataUpdate.id}`,
+            statusToUpdate
+          );
 
-              if (dataToUpdate === "rejected") {
-                toast.success("Order successfully rejected");
-              } else if (dataToUpdate === "onprocess") {
-                toast.success("Order is being processed");
-              } else if (dataToUpdate === "cancel") {
-                toast.success("Order successfully canceled");
-              } else if (dataToUpdate === "success") {
-                toast.success("Order completed successfully");
-              }
+          if (apiResponse.status === 200) {
+            closeModalOrder(dataUpdate.id);
+            await fetchDataPaginated();
+            setShowConfirmModalUpdate(false);
+
+            if (statusToUpdate === "failed") {
+              toast.success("Order successfully failed");
+            } else if (statusToUpdate === "onprocess") {
+              toast.success("Order is being processed");
+            } else if (statusToUpdate === "success") {
+              toast.success("Order completed successfully");
             }
-          } catch (error) {
-            console.error(error);
-            toast.error("Failed to update order");
-          } finally {
-            setIsLoading(false);
           }
+        } catch (error) {
+          console.error(error);
+          toast.error("Failed to update order");
+        } finally {
+          setIsLoading(false);
         }
       }
-    );
+    });
   };
 
   //handle close modal
@@ -246,10 +259,9 @@ export default function Transaction() {
     setDataToRemove(dataRemove);
     setShowConfirmModal(true);
   };
-  const confirmUpdate = (id, data, dataTable) => {
-    setdataTable(dataTable);
-    setIdUpdate(id);
-    setDataToUpdate(data);
+  const confirmUpdate = (data, status) => {
+    setDataUpdate(data);
+    setStatusToUpdate(status);
     setShowConfirmModalUpdate(true);
   };
 
@@ -314,7 +326,7 @@ export default function Transaction() {
                           >
                             {/* Nomor Meja */}
                             <div className="absolute top-0 left-0 rounded-tl-md rounded-br-md bg-white border  w-14 h-8 flex items-center justify-center font-bold text-sm">
-                              {item.id_table}
+                              {item.Table.number_table}
                             </div>
 
                             {/* Status */}
@@ -369,11 +381,7 @@ export default function Transaction() {
                                 <button
                                   className="bg-blue-100 w-1/2 text-blue-700 text-sm py-1 rounded hover:bg-blue-200"
                                   onClick={() =>
-                                    confirmUpdate(
-                                      item.id,
-                                      "onprocess",
-                                      item.Table
-                                    )
+                                    confirmUpdate(item, "onprocess")
                                   }
                                 >
                                   Paid
@@ -382,13 +390,7 @@ export default function Transaction() {
                               {item.status === "onprocess" && (
                                 <button
                                   className="w-1/2 bg-green-100 text-green-700 text-sm py-1 rounded hover:bg-green-200"
-                                  onClick={() =>
-                                    confirmUpdate(
-                                      item.id,
-                                      "success",
-                                      item.Table
-                                    )
-                                  }
+                                  onClick={() => confirmUpdate(item, "success")}
                                 >
                                   Finish Order
                                 </button>
@@ -405,9 +407,7 @@ export default function Transaction() {
                               {!["success", "failed"].includes(item.status) && (
                                 <button
                                   className="w-1/2 bg-red-100 text-red-600 text-sm py-1 rounded hover:bg-red-200"
-                                  onClick={() =>
-                                    confirmUpdate(item.id, "failed", item.Table)
-                                  }
+                                  onClick={() => confirmUpdate(item, "failed")}
                                 >
                                   Cancel
                                 </button>
@@ -449,7 +449,7 @@ export default function Transaction() {
                                     <span className="font-semibold">
                                       Table Number:
                                     </span>{" "}
-                                    {item.number_table}
+                                    {item.Table.number_table}
                                   </p>
                                 </div>
                                 <div className="bg-gray-100 rounded-lg p-2">
@@ -474,22 +474,21 @@ export default function Transaction() {
                                 </div>
                               </div>
                               <button
+                                disabled={!canClose}
                                 onClick={() => {
-                                  closeModalOrder(item.id_transaction),
-                                    fetchDataPaginated(true);
+                                  closeModalOrder(item.id_transaction);
+                                  fetchDataPaginated(true);
                                 }}
-                                className="bg-gray-800 text-white text-sm rounded-lg py-2 w-full hover:bg-gray-700 transition-colors duration-300 mt-2"
+                                className={`${
+                                  canClose
+                                    ? "bg-gray-800 hover:bg-gray-700"
+                                    : "bg-gray-400 cursor-not-allowed"
+                                } text-white text-sm rounded-lg py-2 w-full transition-colors duration-300 mt-2`}
                               >
                                 Accept
                               </button>
                               <button
-                                onClick={() =>
-                                  confirmUpdate(
-                                    item.id_transaction,
-                                    "failed",
-                                    item.Table
-                                  )
-                                }
+                                onClick={() => confirmUpdate(item, "failed")}
                                 className="bg-red-500 text-white text-sm rounded-lg py-2 w-full hover:bg-red-600 transition-colors duration-300 mt-2"
                               >
                                 Reject
@@ -614,7 +613,7 @@ export default function Transaction() {
             <HanldeUpdateStatus
               handleUpdate={handleUpdate}
               setShowConfirmModalUpdate={() => setShowConfirmModalUpdate(false)}
-              text={dataToUpdate}
+              text={statusToUpdate}
             />
           )}
         </div>

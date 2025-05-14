@@ -2,12 +2,19 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "nextjs-toploader/app";
-import { IoExit, IoPersonCircle } from "react-icons/io5";
+import {
+  IoExit,
+  IoPersonCircle,
+  IoChatboxEllipsesOutline,
+  IoNotifications,
+} from "react-icons/io5";
 import HanldeRemove from "../handleRemove/handleRemove";
 import { usePathname } from "next/navigation";
-import { IoNotifications } from "react-icons/io5";
-import { useSelector } from "react-redux";
+import { MdOutlineSmsFailed } from "react-icons/md";
+import { useDispatch, useSelector } from "react-redux";
+import { addOrderNotif, markAllSeen, resetNotifCount } from "@/store/slice";
 import socket from "../socket/socketIo";
+import { FormatDate, FormatDateAndTime } from "../utils/formatDate";
 
 export default function Header({ isOpen, onClickHeader }) {
   const router = useRouter();
@@ -15,25 +22,18 @@ export default function Header({ isOpen, onClickHeader }) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [url, setUrl] = useState("");
   const [showNotifBox, setShowNotifBox] = useState(false); // untuk buka/tutup box
-  const [order, setOrder] = useState([]); // daftar order aktif
-  const [notifCount, setNotifCount] = useState(0); // angka di ikon
-  const [hasSeenNotif, setHasSeenNotif] = useState(false);
   const dataOutlet = useSelector((state) => state.counter.outlet);
+  const dispatch = useDispatch();
+  const order = useSelector((state) => state.counter.order);
+  const notifCount = useSelector((state) => state.counter.notifCount);
 
   const handleNotif = () => {
     if (!showNotifBox) {
-      // Buka notif box (bg abu-abu tetap)
-      setShowNotifBox(true);
+      setShowNotifBox(true); // buka box, bg tetap
     } else {
-      // Tutup notif box → baru tandai semua notif sudah dilihat (seen: true)
       setShowNotifBox(false);
-      setOrder((prev) =>
-        prev.map((item) => ({
-          ...item,
-          seen: true,
-        }))
-      );
-      setNotifCount(0);
+      dispatch(markAllSeen()); // tandai semua sudah dilihat
+      dispatch(resetNotifCount()); // reset angka notif
     }
   };
 
@@ -67,8 +67,9 @@ export default function Header({ isOpen, onClickHeader }) {
 
     socket.on("AdminReceiveCanceled", (orderData) => {
       const newOrder = { ...orderData, seen: false };
-      setOrder((prev) => [newOrder, ...prev]);
-      setNotifCount((prev) => prev + 1);
+
+      dispatch(addOrderNotif(newOrder));
+      // setNotifCount((prev) => prev + 1);
     });
 
     return () => {
@@ -119,32 +120,54 @@ export default function Header({ isOpen, onClickHeader }) {
               <IoExit className="text-inherit" />
             </button>
             {showNotifBox && (
-              <div className="absolute right-20 top-16 w-80 max-h-96 overflow-y-auto bg-white border border-gray-300 shadow-lg rounded-lg z-20">
-                <div className="p-4">
-                  <h3 className="font-semibold mb-2">Notifikasi Order</h3>
+              <div className="absolute right-20 top-16 w-80 max-h-72 bg-white border border-gray-300 shadow-lg rounded-lg z-20  ">
+                <div className="p-2">
+                  <h3 className="font-semibold mb-2">Notification Orders</h3>
                   {order.length === 0 ? (
                     <p className="text-sm text-gray-500">
-                      Belum ada notifikasi.
+                      No notification yet.
                     </p>
                   ) : (
-                    <ul className="mt-2 max-h-64 overflow-y-auto space-y-2">
+                    <div className="mt-2 max-h-52 overflow-y-auto overflow-x-hidden  custom-scrollbar space-y-2">
                       {order.map((item, index) => (
-                        <li
+                        <div
                           key={index}
-                          className={`p-2 rounded-md shadow-sm text-sm ${
+                          className={`flex items-start gap-3 p-2 rounded-xl shadow-sm hover:bg-gray-50 transition ${
                             !item.seen ? "bg-gray-200/70" : "bg-white"
                           }`}
                         >
-                          <p>
-                            <strong>Nomor Order:</strong> {item?.order_code}
-                          </p>
-                          <p>
-                            <strong>Alasan:</strong>{" "}
-                            {item?.cancel_reason || "Tanpa alasan"}
-                          </p>
-                        </li>
+                          {item.status == "failed" ? (
+                            <div className="flex-shrink-0">
+                              <div className="w-8 h-8 bg-red-100 text-red-600 flex items-center justify-center rounded-full text-lg">
+                                <MdOutlineSmsFailed />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex-shrink-0">
+                              <div className="w-8 h-8 bg-green-100 text-green-600 flex items-center justify-center rounded-full text-lg">
+                                <IoChatboxEllipsesOutline />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Isi Notifikasi */}
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-700">
+                              <span className="font-semibold text-black">
+                                Room {item.number_table}
+                              </span>{" "}
+                              {item.status == "failed"
+                                ? "cancel the"
+                                : "create the"}{" "}
+                              order
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {FormatDateAndTime(item.date)}
+                            </p>
+                          </div>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   )}
                 </div>
               </div>
