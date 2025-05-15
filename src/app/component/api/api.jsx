@@ -22,10 +22,8 @@ instance.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
     const token = localStorage.getItem("token");
-
     if (!token) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("refreshToken");
+      localStorage.clear();
       window.location.href = "/login";
       return Promise.reject(error);
     }
@@ -52,25 +50,22 @@ instance.interceptors.response.use(
           return instance(originalRequest);
         } catch (refreshError) {
           // Refresh token gagal
-          localStorage.removeItem("token");
-          localStorage.removeItem("refreshToken");
+          localStorage.clear();
           window.location.href = "/login";
           return Promise.reject(refreshError);
         }
       }
 
-      // ❌ Jika tidak expired tapi 401 (berarti token tidak cocok di backend)
+      //  Jika tidak expired tapi 401 (berarti token tidak cocok di backend)
       if (isUnauthorized && !isExpired) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
+        localStorage.clear();
         window.location.href = "/login";
         return Promise.reject(error);
       }
     } catch (decodeError) {
-      // ❌ Token asal-asalan (tidak bisa didecode)
+      //  Token asal-asalan (tidak bisa didecode)
       if (isUnauthorized) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("refreshToken");
+        localStorage.clear();
         window.location.href = "/login";
         return Promise.reject(error);
       }
