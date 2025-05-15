@@ -8,7 +8,7 @@ import { setCollapse } from "@/store/slice";
 import { Collapse } from "react-collapse";
 import { IoBagHandle, IoCallSharp, IoImages, IoStorefront, IoCaretForward } from "react-icons/io5";
 import { BiSolidFoodMenu } from "react-icons/bi";
-import { MdDashboard, MdFastfood, MdOutlineFoodBank, MdTableRestaurant } from "react-icons/md";
+import { MdFastfood, MdOutlineFoodBank, MdTableRestaurant } from "react-icons/md";
 import { TfiGallery } from "react-icons/tfi";
 import SidebarComp from "./sidebarComponent";
 
@@ -43,7 +43,7 @@ function Sidebar({ isOpen, setIsOpen }) {
           <SidebarComp handleRoute={() => handleRoute("/")} url={url} route={"/"} icon={<IoBagHandle />} menuName={"Transaction"} />
 
           <SidebarComp handleRoute={() => handleRoute("/admin/history")} url={url} route={"/admin/history"} icon={<IoBagHandle />} menuName={"History"} />
-          <SidebarComp handleRoute={() => handleRoute("/admin/dashboard")} url={url} route={"/admin/dashboard"} icon={<MdDashboard />} menuName={"Dashboard"} />
+          <SidebarComp handleRoute={() => handleRoute("/admin/dashboard")} url={url} route={"/admin/dashboard"} icon={<IoBagHandle />} menuName={"Dashboard"} />
         </div>
 
         <hr className="border-gray-200" />

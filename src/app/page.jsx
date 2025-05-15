@@ -20,6 +20,7 @@ import { FormatIDR } from "./component/utils/formatIDR";
 import { FormatDate } from "./component/utils/formatDate";
 import instance from "./component/api/api";
 import socket from "./component/socket/socketIo";
+import AcceptOrder from "./component/button/acceptOrder";
 
 export default function Transaction() {
   const [transaction, setTransaction] = useState([]);
@@ -37,7 +38,8 @@ export default function Transaction() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showConfirmModalUpdate, setShowConfirmModalUpdate] = useState(false);
   const dataOutlet = useSelector((state) => state.counter.outlet);
-  const [countdown, setCountdown] = useState(120);
+  const [countdown, setCountdown] = useState({});
+  const timersRef = useRef({});
   const [canClose, setCanClose] = useState(false);
   const dispatch = useDispatch();
 
@@ -58,38 +60,44 @@ export default function Transaction() {
     targetRef.current.scrollIntoView({ behavior: "smooth" });
   }, [currentPage]);
 
-  useEffect(() => {
-    let timer;
+  console.log(countdown);
 
-    if (orders.length > 0) {
-      setCountdown(120);
-      setCanClose(false); // reset
+  // useEffect(() => {
+  //   orders.forEach((order) => {
+  //     const id = order.id;
 
-      timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev === 1) {
-            clearInterval(timer);
+  //     // Hanya buat timer jika belum ada
+  //     if (!timersRef.current[id] && countdown[id] === undefined) {
+  //       setCountdown((prev) => ({ ...prev, [id]: 120 }));
 
-            // Close otomatis saat 120 detik habis
-            const orderToRemove = orders[0];
-            closeModalOrder(orderToRemove.id_transaction);
-            fetchDataPaginated(true);
+  //       timersRef.current[id] = setInterval(() => {
+  //         setCountdown((prev) => {
+  //           const current = prev[id];
 
-            return 0;
-          }
+  //           if (current === 1) {
+  //             clearInterval(timersRef.current[id]);
+  //             delete timersRef.current[id];
 
-          // Aktifkan manual close saat sisa waktu tinggal 60 detik
-          if (prev === 110) {
-            setCanClose(true);
-          }
+  //             closeModalOrder(id);
+  //             fetchDataPaginated(true);
 
-          return prev - 1;
-        });
-      }, 1000);
-    }
+  //             const updated = { ...prev };
+  //             delete updated[id];
+  //             return updated;
+  //           }
 
-    return () => clearInterval(timer);
-  }, [orders]);
+  //           return { ...prev, [id]: current - 1 };
+  //         });
+  //       }, 1000);
+  //     }
+  //   });
+
+  //   return () => {
+  //     Object.values(timersRef.current).forEach(clearInterval);
+  //     timersRef.current = {};
+  //   };
+  // }, [orders]); // << countdown DIHAPUS dari dependency
+  // tambahkan countdown di dep list
 
   //integrasi socket.io
   useEffect(() => {
@@ -114,6 +122,8 @@ export default function Transaction() {
       // socket.disconnect();
     };
   }, [dataOutlet?.id]);
+
+  console.log(orders, "pppppp");
 
   // useEffect untuk search
   useEffect(() => {
@@ -199,47 +209,53 @@ export default function Transaction() {
     }
   };
   const handleUpdate = async () => {
-    const data = {
-      status: dataToUpdate,
+    const status = {
+      status: statusToUpdate,
     };
 
-    socket.emit(
-      "cancelOrderByAdmin",
-      {
-        roomCode: dataTable.table_code,
-        outletCode: dataTable.id_outlet,
-        status: data.status,
-        date: new Date(),
-        room: dataTable.number_table,
+    const payload = {
+      id: dataUpdate.id,
+      id_outlet: dataOutlet.id,
+      outletCode: dataOutlet.outlet_code,
+      outlet_name: dataOutlet.outlet_name,
+      by_name: dataUpdate.by_name,
+      total_pay: dataUpdate.total_pay,
+      status: statusToUpdate,
+      date: new Date(),
+      Table: {
+        table_code: dataUpdate.Table.table_code,
+        number_table: dataUpdate.Table.number_table,
       },
-      async (socketResponse) => {
-        if (socketResponse.status === "success") {
-          try {
-            setIsLoading(true);
-            const apiResponse = await instance.put(`/api/v1/transaction/update/${idUpdate}`, data);
+      Orders: dataUpdate.Orders,
+    };
+    console.log(payload);
+    socket.emit("confirmOrderByAdmin", payload, async (socketResponse) => {
+      if (socketResponse.status === "success") {
+        try {
+          setIsLoading(true);
+          const apiResponse = await instance.put(`/api/v1/transaction/update/${dataUpdate.id}`, status);
 
-            if (apiResponse.status === 200) {
-              closeModalOrder(dataUpdate.id);
-              await fetchDataPaginated();
-              setShowConfirmModalUpdate(false);
+          if (apiResponse.status === 200) {
+            closeModalOrder(dataUpdate.id);
+            await fetchDataPaginated();
+            setShowConfirmModalUpdate(false);
 
-              if (statusToUpdate === "failed") {
-                toast.success("Order successfully failed");
-              } else if (statusToUpdate === "onprocess") {
-                toast.success("Order is being processed");
-              } else if (statusToUpdate === "success") {
-                toast.success("Order completed successfully");
-              }
+            if (statusToUpdate === "failed") {
+              toast.success("Order successfully failed");
+            } else if (statusToUpdate === "onprocess") {
+              toast.success("Order is being processed");
+            } else if (statusToUpdate === "success") {
+              toast.success("Order completed successfully");
             }
-          } catch (error) {
-            console.error(error);
-            toast.error("Failed to update order");
-          } finally {
-            setIsLoading(false);
           }
+        } catch (error) {
+          console.error(error);
+          toast.error("Failed to update order");
+        } finally {
+          setIsLoading(false);
         }
       }
-    );
+    });
   };
 
   //handle close modal
@@ -258,8 +274,8 @@ export default function Transaction() {
   };
 
   //handle close gambar besar
-  const closeModalOrder = (id_transaction) => {
-    setOrders((prevOrders) => prevOrders.filter((order) => order.id_transaction !== id_transaction));
+  const closeModalOrder = (id) => {
+    setOrders((prevOrders) => prevOrders.filter((order) => order.id !== id));
   };
 
   return (
@@ -295,137 +311,141 @@ export default function Transaction() {
               <CardRevenue value={orderActive} desc="Active Orders" classRevenue=" max-w-[150px]" />
             </div>
 
-            <div className="rounded-lg  bg-white overflow-x-auto ">
-              <div className="min-w-full">
-                {isLoading ? (
-                  <TableSkeleton />
-                ) : (
-                  <div className="text-gray-700 flex flex-wrap md:grid md:grid-cols-2 gap-2">
-                    {searchQuery &&
-                      searchQuery.map((item, index) => {
-                        return (
-                          <div key={item.id} className="bg-white border border-gray-300 shadow-sm rounded-lg p-4 w-full flex flex-col justify-between relative">
-                            {/* Nomor Meja */}
-                            <div className="absolute top-0 left-0 rounded-tl-md rounded-br-md bg-white border  w-14 h-8 flex items-center justify-center font-bold text-sm">{item.id_table}</div>
+            <div className="rounded-lg bg-white overflow-x-auto">
+              <div className="min-w-full px-4 py-4">
+                <div className="text-gray-700 font-nunitoSans mb-4">
+                  {orders && orders.length > 0 && <div className="text-lg font-semibold mb-3">Waiting Orders .....</div>}
 
-                            {/* Status */}
-                            <div
-                              className={`absolute top-0 right-0 px-2 py-1  w-16 h-8 text-xs rounded-tr-md rounded-bl-md bg-gray-100 font-semibold capitalize flex items-center justify-center
-                            ${item.status === "active" ? "text-yellow-600" : item.status === "onprocess" ? "text-green-600" : item.status === "success" ? "text-blue-600" : item.status === "failed" ? "text-red-600" : ""}`}
-                            >
-                              {item.status}
-                            </div>
-
-                            {/* Outlet & Customer */}
-                            <div className="mt-10">
-                              <p className="text-sm text-gray-500">{HighlightText(item.by_name, by_name)}</p>
-                            </div>
-
-                            {/* Pesanan */}
-                            <div className="mt-2 bg-gray-50 rounded p-2">
-                              <p className="font-semibold text-sm mb-1 text-gray-800">Order:</p>
-                              {item.Orders.map((order) => (
-                                <div key={order.id} className="mb-1 text-sm">
-                                  <div className="flex justify-between">
-                                    <p>{order.Menu.title}</p>
-                                    <p>{FormatIDR(order.total_price)}</p>
-                                  </div>
-                                  <p className="text-xs text-gray-500">
-                                    {order.qty} x {FormatIDR(order.Menu.price)}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                            <div className="flex justify-end font-bold text-sm mt-1 p-2">
-                              <p>{FormatIDR(item.total_pay)}</p>
-                            </div>
-
-                            {/* Tombol */}
-                            <div className="mt-4 flex gap-2">
-                              {item.status === "active" && (
-                                <button className="bg-blue-100 w-1/2 text-blue-700 text-sm py-1 rounded hover:bg-blue-200" onClick={() => confirmUpdate(item.id, "onprocess", item.Table)}>
-                                  Paid
-                                </button>
-                              )}
-                              {item.status === "onprocess" && (
-                                <button className="w-1/2 bg-green-100 text-green-700 text-sm py-1 rounded hover:bg-green-200" onClick={() => confirmUpdate(item.id, "success", item.Table)}>
-                                  Finish Order
-                                </button>
-                              )}
-
-                              {item.status === "success" && (
-                                <button className="w-full bg-gray-200 text-gray-700 text-sm py-1 rounded hover:bg-gray-200" onClick={() => setPrintData([item])}>
-                                  Print
-                                </button>
-                              )}
-                              {!["success", "failed"].includes(item.status) && (
-                                <button className="w-1/2 bg-red-100 text-red-600 text-sm py-1 rounded hover:bg-red-200" onClick={() => confirmUpdate(item.id, "failed", item.Table)}>
-                                  Cancel
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
-                <div className="text-gray-700 font-nunitoSans">
-                  {orders &&
-                    orders
+                  {/* Wrapper semua card orders */}
+                  <div className="flex flex-wrap gap-4">
+                    {orders
                       .slice()
                       .reverse()
-                      .map((item, index) => {
-                        return (
-                          <div key={item.id_transaction} className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50">
-                            <div className="bg-white shadow-md rounded-lg p-2 w-[222px] border border-gray-300 hover:shadow-xl transition-shadow duration-300 flex flex-col justify-between">
-                              <div className="absolute top-2 right-3 text-sm font-bold text-gray-500">{countdown}s</div>
-
-                              <div className="flex flex-col gap-1 flex-grow">
-                                <h2 className="text-xl font-bold text-gray-800 text-center">{item.outlet_name}</h2>
-                                <div className="flex flex-col text-gray-700">
-                                  <p className="text-md">
-                                    <span className="font-semibold text-sm">Customer:</span> {item.by_name}
-                                  </p>
-                                  <p className="text-sm">
-                                    <span className="font-semibold">Table Number:</span> {item.number_table}
-                                  </p>
-                                </div>
-                                <div className="bg-gray-100 rounded-lg p-2">
-                                  <p className="font-semibold text-sm text-gray-800">Order:</p>
-                                  {item.orderData.map((order) => (
-                                    <div key={order.title} className="mb-1">
-                                      <div className="flex justify-between text-sm">
-                                        <p>{order.title}</p>
-                                        <p>{FormatIDR(order.total_price)}</p>
-                                      </div>
-                                      <p className="text-sm">
-                                        {order.qty} x {FormatIDR(order.price)}
-                                      </p>
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="flex justify-between font-bold text-sm">
-                                  <p>Total</p>
-                                  <p>{FormatIDR(item.total_pay)}</p>
-                                </div>
+                      .map((item, index) => (
+                        <div key={item.id} className="flex items-center w-full sm:w-auto">
+                          <div className="flex flex-col justify-between bg-white shadow-md rounded-lg p-3 w-[222px] border border-gray-300 hover:shadow-xl transition-shadow duration-300">
+                            <div className="flex flex-col gap-1 flex-grow">
+                              <h2 className="text-xl font-bold text-gray-800 text-center">{item.outlet_name}</h2>
+                              <div className="flex flex-col text-gray-700 text-sm">
+                                <p>
+                                  <span className="font-semibold text-sm">Customer:</span> {item.by_name}
+                                </p>
+                                <p>
+                                  <span className="font-semibold">Table Number:</span> {item.Table.number_table}
+                                </p>
                               </div>
-                              <button
-                                disabled={!canClose}
-                                onClick={() => {
-                                  closeModalOrder(item.id_transaction), fetchDataPaginated(true);
+                              <div className="bg-gray-100 rounded-lg p-2 mt-1">
+                                <p className="font-semibold text-sm text-gray-800 mb-1">Order:</p>
+                                {item.orderData.map((order) => (
+                                  <div key={order.title} className="mb-1">
+                                    <div className="flex justify-between text-sm">
+                                      <p>{order.title}</p>
+                                      <p>{FormatIDR(order.total_price)}</p>
+                                    </div>
+                                    <p className="text-sm text-gray-600">
+                                      {order.qty} x {FormatIDR(order.price)}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="flex justify-between font-bold text-sm mt-2">
+                                <p>Total</p>
+                                <p>{FormatIDR(item.total_pay)}</p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <AcceptOrder
+                                createdAt={item.date}
+                                status={item.status}
+                                handleAccept={() => {
+                                  closeModalOrder(item.id);
+                                  fetchDataPaginated(true);
                                 }}
-                                className={`${canClose ? "bg-gray-800 hover:bg-gray-700" : "bg-gray-400 cursor-not-allowed"} text-white text-sm rounded-lg py-2 w-full transition-colors duration-300 mt-2`}
-                              >
-                                Accept
-                              </button>
-                              <button onClick={() => confirmUpdate(item.id_transaction, "failed", item.Table)} className="bg-red-500 text-white text-sm rounded-lg py-2 w-full hover:bg-red-600 transition-colors duration-300 mt-2">
+                              />
+                              <button onClick={() => confirmUpdate(item, "failed")} className="bg-red-500 text-white text-sm rounded-lg py-2 w-full hover:bg-red-600 transition-colors duration-300 mt-2">
                                 Reject
                               </button>
                             </div>
                           </div>
-                        );
-                      })}
+                        </div>
+                      ))}
+                  </div>
                 </div>
+
+                {/* Garis pemisah antar section */}
+                <hr className="my-6 border-t border-gray-200" />
+
+                {/* Section searchQuery */}
+                {isLoading ? (
+                  <TableSkeleton />
+                ) : (
+                  <div className="text-gray-700 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {searchQuery &&
+                      searchQuery.map((item, index) => (
+                        <div key={item.id} className="bg-white border border-gray-300 shadow-sm rounded-lg p-4 w-full flex flex-col justify-between relative">
+                          {/* Nomor Meja */}
+                          <div className="absolute top-0 left-0 rounded-tl-md rounded-br-md bg-white border w-14 h-8 flex items-center justify-center font-bold text-sm">{item.Table.number_table}</div>
+
+                          {/* Status */}
+                          <div
+                            className={`absolute top-0 right-0 px-2 py-1 w-16 h-8 text-xs rounded-tr-md rounded-bl-md bg-gray-100 font-semibold capitalize flex items-center justify-center
+                ${item.status === "active" ? "text-yellow-600" : item.status === "onprocess" ? "text-green-600" : item.status === "success" ? "text-blue-600" : item.status === "failed" ? "text-red-600" : ""}`}
+                          >
+                            {item.status}
+                          </div>
+
+                          {/* Outlet & Customer */}
+                          <div className="mt-10">
+                            <p className="text-sm text-gray-500">{HighlightText(item.by_name, by_name)}</p>
+                          </div>
+
+                          {/* Pesanan */}
+                          <div className="mt-2 bg-gray-50 rounded p-2">
+                            <p className="font-semibold text-sm mb-1 text-gray-800">Order:</p>
+                            {item.Orders.map((order) => (
+                              <div key={order.id} className="mb-1 text-sm">
+                                <div className="flex justify-between">
+                                  <p>{order.Menu.title}</p>
+                                  <p>{FormatIDR(order.total_price)}</p>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  {order.qty} x {FormatIDR(order.Menu.price)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="flex justify-end font-bold text-sm mt-1 p-2">
+                            <p>{FormatIDR(item.total_pay)}</p>
+                          </div>
+
+                          {/* Tombol */}
+                          <div className="mt-4 flex gap-2">
+                            {item.status === "active" && (
+                              <button className="bg-blue-100 w-1/2 text-blue-700 text-sm py-1 rounded hover:bg-blue-200" onClick={() => confirmUpdate(item, "onprocess")}>
+                                Paid
+                              </button>
+                            )}
+                            {item.status === "onprocess" && (
+                              <button className="w-1/2 bg-green-100 text-green-700 text-sm py-1 rounded hover:bg-green-200" onClick={() => confirmUpdate(item, "success")}>
+                                Finish Order
+                              </button>
+                            )}
+                            {item.status === "success" && (
+                              <button className="w-full bg-gray-200 text-gray-700 text-sm py-1 rounded hover:bg-gray-200" onClick={() => setPrintData([item])}>
+                                Print
+                              </button>
+                            )}
+                            {!["success", "failed"].includes(item.status) && (
+                              <button className="w-1/2 bg-red-100 text-red-600 text-sm py-1 rounded hover:bg-red-200" onClick={() => confirmUpdate(item, "failed")}>
+                                Cancel
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -509,7 +529,7 @@ export default function Transaction() {
 
           {/* modal konfirmasi delete */}
           {showConfirmModal && <HanldeRemove handleRemove={handleRemove} setShowConfirmModal={() => setShowConfirmModal(false)} />}
-          {showConfirmModalUpdate && <HanldeUpdateStatus handleUpdate={handleUpdate} setShowConfirmModalUpdate={() => setShowConfirmModalUpdate(false)} text={dataToUpdate} />}
+          {showConfirmModalUpdate && <HanldeUpdateStatus handleUpdate={handleUpdate} setShowConfirmModalUpdate={() => setShowConfirmModalUpdate(false)} text={statusToUpdate} />}
         </div>
       </div>
     </div>

@@ -230,7 +230,6 @@ export default function Event() {
         <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
           Event Data Settings
         </h1>
-
         <div>
           <InputSearch
             role={dataOutlet.role}
@@ -246,7 +245,6 @@ export default function Event() {
             isLoading={isLoading}
           />
         </div>
-
         <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
           {isLoading ? (
             <TableSkeleton />
@@ -262,7 +260,6 @@ export default function Event() {
             />
           )}
         </div>
-
         {/* Tampilkan navigasi pagination */}
         {searchQuery && searchQuery.length > 0 && (
           <Pagination
@@ -273,7 +270,6 @@ export default function Event() {
             isLoading={isLoading}
           />
         )}
-
         {/* modal konfirmasi delete */}
         {showConfirmModal && (
           <HanldeRemove

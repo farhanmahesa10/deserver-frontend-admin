@@ -1,15 +1,13 @@
 "use client";
 
 import FilterDrawer from "@/app/component/filterDrawer/page.jsx";
-import { getNewAccessToken } from "@/app/component/token/refreshToken";
-import axios from "axios";
-import { jwtDecode } from "jwt-decode";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FaFilter } from "react-icons/fa";
 import { Toaster, toast } from "react-hot-toast";
-import socket from "@/app/component/socket/socketIo";
+import { io } from "socket.io-client";
+import instance from "@/app/component/api/api";
 
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
@@ -18,7 +16,6 @@ export default function Dashboard() {
   const [series, setSeries] = useState([]);
   const [options, setOptions] = useState({});
   const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState(null);
   const [modal, setModal] = useState(false);
   const [revenueData, setRevenueData] = useState({
     total: 0,
@@ -31,6 +28,10 @@ export default function Dashboard() {
   const [dateRange, setDateRange] = useState([null, null]);
 
   useEffect(() => {
+    const socket = io("http://localhost:3000", {
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
     socket.on("AdminReceiveCanceled", (response) => {
       alert("canceled");
       if ((response.status = "success")) {
@@ -44,40 +45,13 @@ export default function Dashboard() {
     };
   }, []);
 
-  useEffect(() => {
-    const checkToken = () => {
-      const accessToken = localStorage.getItem("token");
-      const refreshToken = localStorage.getItem("refreshToken");
-
-      if (!refreshToken) {
-        router.push("/login");
-        return;
-      }
-
-      const decoded = jwtDecode(refreshToken);
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
-
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push("/login");
-      } else {
-        setToken(accessToken);
-      }
-    };
-
-    checkToken();
-  }, [router]);
-
-  const fetchChartDataWithToken = async (accessToken, query = {}) => {
+  const fetchChartDataWithToken = async (query = {}) => {
     try {
       setLoading(true);
       const params = new URLSearchParams(query).toString();
       console.log(params, "params");
 
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/grafik/sales?${params}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const res = await instance.get(`/api/v1/grafik/sales?${params}`);
 
       const chartData = res.data.data;
 
@@ -135,42 +109,18 @@ export default function Dashboard() {
         failed: chartData.totalRevenueFailed,
       });
     } catch (error) {
-      await handleError(error, query);
+      console.log(error);
     } finally {
       setLoading(false);
     }
   };
+  useEffect(() => {
+    fetchChartData();
+  }, []);
 
   const fetchChartData = async (query = {}) => {
-    if (token) {
-      await fetchChartDataWithToken(token, query);
-    }
+    await fetchChartDataWithToken(query);
   };
-
-  const handleError = async (error, query = {}) => {
-    if (error.response?.status === 401) {
-      try {
-        const newToken = await getNewAccessToken();
-        localStorage.setItem("token", newToken);
-        setToken(newToken);
-
-        await fetchChartDataWithToken(newToken, query);
-      } catch (err) {
-        console.error("Failed to refresh token:", err);
-        toast.error("Session Anda telah berakhir. Silakan login ulang.");
-        localStorage.clear();
-        router.push("/login");
-      }
-    } else {
-      toast.error(error.response?.data?.message || "Terjadi kesalahan");
-    }
-  };
-
-  useEffect(() => {
-    if (token) {
-      fetchChartData();
-    }
-  }, [token]);
 
   const handleApplyFilter = () => {
     const [startDate, endDate] = dateRange;

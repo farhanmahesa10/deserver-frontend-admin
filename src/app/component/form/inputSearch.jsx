@@ -38,16 +38,14 @@ const InputSearch = (props) => {
                 id={idLeft}
                 value={valueLeft}
                 onChange={onchangeLeft}
-                className={`${
-                  role === "admin pusat" ? "block" : "hidden"
-                } px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[190px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm`}
+                className={` px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[190px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-primary50 rounded-md shadow-sm`}
               />
             </div>
           ))}
 
         <div
           className={`${
-            role == "admin" ? "flex" : "hidden"
+            role == "admin pusat" ? "flex" : "hidden"
           }  gap-3 items-center`}
         >
           {isLoading ? (
