@@ -20,6 +20,7 @@ import { FormatIDR } from "./component/utils/formatIDR";
 import { FormatDate } from "./component/utils/formatDate";
 import instance from "./component/api/api";
 import socket from "./component/socket/socketIo";
+import AcceptOrder from "./component/button/acceptOrder";
 
 export default function Transaction() {
   const [transaction, setTransaction] = useState([]);
@@ -37,7 +38,7 @@ export default function Transaction() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showConfirmModalUpdate, setShowConfirmModalUpdate] = useState(false);
   const dataOutlet = useSelector((state) => state.counter.outlet);
-  const [countdown, setCountdown] = useState(120);
+  const [countdown, setCountdown] = useState({});
   const timersRef = useRef({});
   const [canClose, setCanClose] = useState(false);
   const dispatch = useDispatch();
@@ -59,38 +60,44 @@ export default function Transaction() {
     targetRef.current.scrollIntoView({ behavior: "smooth" });
   }, [currentPage]);
 
-  useEffect(() => {
-    let timer;
+  console.log(countdown);
 
-    if (orders.length > 0) {
-      setCountdown(120);
-      setCanClose(false); // reset
+  // useEffect(() => {
+  //   orders.forEach((order) => {
+  //     const id = order.id;
 
-      timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev === 1) {
-            clearInterval(timer);
+  //     // Hanya buat timer jika belum ada
+  //     if (!timersRef.current[id] && countdown[id] === undefined) {
+  //       setCountdown((prev) => ({ ...prev, [id]: 120 }));
 
-            // Close otomatis saat 120 detik habis
-            const orderToRemove = orders[0];
-            closeModalOrder(orderToRemove.id);
-            fetchDataPaginated(true);
+  //       timersRef.current[id] = setInterval(() => {
+  //         setCountdown((prev) => {
+  //           const current = prev[id];
 
-            return 0;
-          }
+  //           if (current === 1) {
+  //             clearInterval(timersRef.current[id]);
+  //             delete timersRef.current[id];
 
-          // Aktifkan manual close saat sisa waktu tinggal 60 detik
-          if (prev === 110) {
-            setCanClose(true);
-          }
+  //             closeModalOrder(id);
+  //             fetchDataPaginated(true);
 
-          return prev - 1;
-        });
-      }, 1000);
-    }
+  //             const updated = { ...prev };
+  //             delete updated[id];
+  //             return updated;
+  //           }
 
-    return () => clearInterval(timer);
-  }, [orders]);
+  //           return { ...prev, [id]: current - 1 };
+  //         });
+  //       }, 1000);
+  //     }
+  //   });
+
+  //   return () => {
+  //     Object.values(timersRef.current).forEach(clearInterval);
+  //     timersRef.current = {};
+  //   };
+  // }, [orders]); // << countdown DIHAPUS dari dependency
+  // tambahkan countdown di dep list
 
   //integrasi socket.io
   useEffect(() => {
@@ -270,10 +277,8 @@ export default function Transaction() {
   };
 
   //handle close gambar besar
-  const closeModalOrder = (id_transaction) => {
-    setOrders((prevOrders) =>
-      prevOrders.filter((order) => order.id_transaction !== id_transaction)
-    );
+  const closeModalOrder = (id) => {
+    setOrders((prevOrders) => prevOrders.filter((order) => order.id !== id));
   };
 
   return (
@@ -318,87 +323,81 @@ export default function Transaction() {
             <div className="rounded-lg bg-white overflow-x-auto">
               <div className="min-w-full px-4 py-4">
                 <div className="text-gray-700 font-nunitoSans mb-4">
-                  <div className="text-lg font-semibold mb-3">
-                    Waiting Orders .....
-                  </div>
+                  {orders && orders.length > 0 && (
+                    <div className="text-lg font-semibold mb-3">
+                      Waiting Orders .....
+                    </div>
+                  )}
 
                   {/* Wrapper semua card orders */}
                   <div className="flex flex-wrap gap-4">
-                    {orders &&
-                      orders
-                        .slice()
-                        .reverse()
-                        .map((item, index) => (
-                          <div
-                            key={item.id_transaction}
-                            className="flex items-center w-full sm:w-auto"
-                          >
-                            <div className="flex flex-col justify-between bg-white shadow-md rounded-lg p-3 w-[222px] border border-gray-300 hover:shadow-xl transition-shadow duration-300">
-                              <div className="flex flex-col gap-1 flex-grow">
-                                <h2 className="text-xl font-bold text-gray-800 text-center">
-                                  {item.outlet_name}
-                                </h2>
-                                <div className="flex flex-col text-gray-700 text-sm">
-                                  <p>
-                                    <span className="font-semibold text-sm">
-                                      Customer:
-                                    </span>{" "}
-                                    {item.by_name}
-                                  </p>
-                                  <p>
-                                    <span className="font-semibold">
-                                      Table Number:
-                                    </span>{" "}
-                                    {item.Table.number_table}
-                                  </p>
-                                </div>
-                                <div className="bg-gray-100 rounded-lg p-2 mt-1">
-                                  <p className="font-semibold text-sm text-gray-800 mb-1">
-                                    Order:
-                                  </p>
-                                  {item.orderData.map((order) => (
-                                    <div key={order.title} className="mb-1">
-                                      <div className="flex justify-between text-sm">
-                                        <p>{order.title}</p>
-                                        <p>{FormatIDR(order.total_price)}</p>
-                                      </div>
-                                      <p className="text-sm text-gray-600">
-                                        {order.qty} x {FormatIDR(order.price)}
-                                      </p>
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="flex justify-between font-bold text-sm mt-2">
-                                  <p>Total</p>
-                                  <p>{FormatIDR(item.total_pay)}</p>
-                                </div>
+                    {orders
+                      .slice()
+                      .reverse()
+                      .map((item, index) => (
+                        <div
+                          key={item.id}
+                          className="flex items-center w-full sm:w-auto"
+                        >
+                          <div className="flex flex-col justify-between bg-white shadow-md rounded-lg p-3 w-[222px] border border-gray-300 hover:shadow-xl transition-shadow duration-300">
+                            <div className="flex flex-col gap-1 flex-grow">
+                              <h2 className="text-xl font-bold text-gray-800 text-center">
+                                {item.outlet_name}
+                              </h2>
+                              <div className="flex flex-col text-gray-700 text-sm">
+                                <p>
+                                  <span className="font-semibold text-sm">
+                                    Customer:
+                                  </span>{" "}
+                                  {item.by_name}
+                                </p>
+                                <p>
+                                  <span className="font-semibold">
+                                    Table Number:
+                                  </span>{" "}
+                                  {item.Table.number_table}
+                                </p>
                               </div>
-                              <div className="flex gap-2">
-                                <button
-                                  disabled={!canClose}
-                                  onClick={() => {
-                                    confirmUpdate(item, "onproses");
-                                    fetchDataPaginated(true);
-                                  }}
-                                  className={`${
-                                    canClose
-                                      ? "bg-gray-800 hover:bg-gray-700"
-                                      : "bg-gray-400 cursor-not-allowed"
-                                  } flex gap-4 justify-center text-white text-sm rounded-lg py-2 w-full transition-colors duration-300 mt-2`}
-                                >
-                                  <p className="">Accept</p>
-                                  {`(${countdown})`}
-                                </button>
-                                <button
-                                  onClick={() => confirmUpdate(item, "failed")}
-                                  className="bg-red-500 text-white text-sm rounded-lg py-2 w-full hover:bg-red-600 transition-colors duration-300 mt-2"
-                                >
-                                  Reject
-                                </button>
+                              <div className="bg-gray-100 rounded-lg p-2 mt-1">
+                                <p className="font-semibold text-sm text-gray-800 mb-1">
+                                  Order:
+                                </p>
+                                {item.orderData.map((order) => (
+                                  <div key={order.title} className="mb-1">
+                                    <div className="flex justify-between text-sm">
+                                      <p>{order.title}</p>
+                                      <p>{FormatIDR(order.total_price)}</p>
+                                    </div>
+                                    <p className="text-sm text-gray-600">
+                                      {order.qty} x {FormatIDR(order.price)}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="flex justify-between font-bold text-sm mt-2">
+                                <p>Total</p>
+                                <p>{FormatIDR(item.total_pay)}</p>
                               </div>
                             </div>
+                            <div className="flex gap-2">
+                              <AcceptOrder
+                                createdAt={item.date}
+                                status={item.status}
+                                handleAccept={() => {
+                                  closeModalOrder(item.id);
+                                  fetchDataPaginated(true);
+                                }}
+                              />
+                              <button
+                                onClick={() => confirmUpdate(item, "failed")}
+                                className="bg-red-500 text-white text-sm rounded-lg py-2 w-full hover:bg-red-600 transition-colors duration-300 mt-2"
+                              >
+                                Reject
+                              </button>
+                            </div>
                           </div>
-                        ))}
+                        </div>
+                      ))}
                   </div>
                 </div>
 
