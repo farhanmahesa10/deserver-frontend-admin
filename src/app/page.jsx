@@ -123,6 +123,8 @@ export default function Transaction() {
     };
   }, [dataOutlet?.id]);
 
+  console.log(orders, "pppppp");
+
   // useEffect untuk search
   useEffect(() => {
     setSearchQuery(transaction);
