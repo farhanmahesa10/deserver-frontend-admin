@@ -33,7 +33,7 @@ export default function Menu() {
   //use state untuk pagination
   const [rows, setRows] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(7); // 5 item per halaman
+  const [itemsPerPage] = useState(10);
   const targetRef = useRef(null);
 
   // Menghitung indeks awal dan akhir untuk menampilkan nomber
@@ -63,12 +63,14 @@ export default function Menu() {
 
   const fetchDataPaginated = async (isSearchMode = false) => {
     setIsLoading(true);
+
+    const pageToFetch = isSearchMode ? 1 : currentPage;
     if (isSearchMode) {
       setCurrentPage(1); // Reset ke page 1 jika pencarian
     }
 
     const params = {
-      page: isSearchMode ? 1 : currentPage,
+      page: pageToFetch,
       limit: itemsPerPage,
       search: dataOutlet.role == "admin" ? dataOutlet.outlet_name : query,
       search_title: queryMenu,
@@ -80,8 +82,19 @@ export default function Menu() {
       });
 
       const data = response.data.data;
+      const pagination = response.data.pagination;
+
+      // Jika current page melebihi totalPages, set ulang currentPage saja
+      if (
+        !isSearchMode &&
+        pagination.totalPages > 0 &&
+        pageToFetch > pagination.totalPages
+      ) {
+        setCurrentPage(pagination.totalPages);
+        return; // jangan lanjutkan render, tunggu useEffect panggil ulang
+      }
       setMenu(data);
-      setRows(response.data.pagination.totalItems);
+      setRows(pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
       console.error(error);

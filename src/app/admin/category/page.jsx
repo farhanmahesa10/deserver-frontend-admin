@@ -29,7 +29,7 @@ export default function Category() {
   //use state untuk pagination
   const [rows, setRows] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10); // 5 item per halaman
+  const [itemsPerPage] = useState(10);
   const targetRef = useRef(null);
 
   // Menghitung indeks awal dan akhir untuk menampilkan nomber
@@ -55,12 +55,13 @@ export default function Category() {
   // function mengambil data lapangan by limit
   const fetchDataPaginated = async (isSearchMode = false) => {
     setIsLoading(true);
+    const pageToFetch = isSearchMode ? 1 : currentPage;
     if (isSearchMode) {
       setCurrentPage(1);
     }
 
     const params = {
-      page: isSearchMode ? 1 : currentPage,
+      page: pageToFetch,
       limit: itemsPerPage,
       search: query,
     };
@@ -71,8 +72,20 @@ export default function Category() {
       });
 
       const data = response.data.data;
+      const pagination = response.data.pagination;
+
+      // Jika current page melebihi totalPages, set ulang currentPage saja
+      if (
+        !isSearchMode &&
+        pagination.totalPages > 0 &&
+        pageToFetch > pagination.totalPages
+      ) {
+        setCurrentPage(pagination.totalPages);
+        return; // jangan lanjutkan render, tunggu useEffect panggil ulang
+      }
+
       setCategory(data);
-      setRows(response.data.pagination.totalItems);
+      setRows(pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
       console.error(error);

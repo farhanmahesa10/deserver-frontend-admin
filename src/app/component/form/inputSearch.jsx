@@ -24,7 +24,7 @@ const InputSearch = (props) => {
 
   return (
     <div
-      className={`flex flex-wrap justify-between items-center gap-4 md:gap-6 w-full`}
+      className={`flex flex-wrap justify-between items-center gap-4 md:gap-6 w-full mb-4`}
     >
       <div className="flex flex-wrap gap-4">
         {inputLeft &&
@@ -52,7 +52,7 @@ const InputSearch = (props) => {
             <SearchSkeleton />
           ) : (
             <input
-              className={`px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[190px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-poppins border border-gray-300 focus:outline-yellow-700 rounded-md shadow-sm ${classInput}`}
+              className={`px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] w-[190px] md:w-[300px] text-gray-700 body-text-sm md:body-text-base font-nunito border border-gray-300 focus:outline-yellow-700 rounded-md shadow-sm ${classInput}`}
               {...rest}
             />
           )}

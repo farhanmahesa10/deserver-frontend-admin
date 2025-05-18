@@ -2,9 +2,7 @@
 
 import Pagination from "./component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { Toaster, toast } from "react-hot-toast";
-import { io } from "socket.io-client";
 import { IoSearch } from "react-icons/io5";
 import Layout2 from "./component/layout/layout2";
 import { NotData } from "./component/notData/notData";
@@ -12,7 +10,6 @@ import { TableSkeleton } from "./component/skeleton/adminSkeleton";
 import InputSearch from "./component/form/inputSearch";
 import { useDispatch, useSelector } from "react-redux";
 import { addOrderNotif } from "@/store/slice";
-import HanldeRemove from "./component/handleRemove/handleRemove";
 import HanldeUpdateStatus from "./component/handleUpdate/updateStatus";
 import CardRevenue from "./component/card/cardRevenue";
 import { HighlightText } from "./component/utils/highlightText";
@@ -26,27 +23,21 @@ export default function Transaction() {
   const [transaction, setTransaction] = useState([]);
   const [orders, setOrders] = useState([]);
   const [orderActive, setOrderActive] = useState([]);
-  const router = useRouter();
   const [query, setQuery] = useState("");
   const [by_name, setQueryByName] = useState("");
   const [printData, setPrintData] = useState("");
   const [searchQuery, setSearchQuery] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [dataToRemove, setDataToRemove] = useState(null);
   const [dataUpdate, setDataUpdate] = useState([]);
   const [statusToUpdate, setStatusToUpdate] = useState([]);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showConfirmModalUpdate, setShowConfirmModalUpdate] = useState(false);
   const dataOutlet = useSelector((state) => state.counter.outlet);
-  const [countdown, setCountdown] = useState({});
-  const timersRef = useRef({});
-  const [canClose, setCanClose] = useState(false);
   const dispatch = useDispatch();
 
   //use state untuk pagination
   const [rows, setRows] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(12); // 5 item per halaman
+  const [itemsPerPage] = useState(10);
   const targetRef = useRef(null);
 
   // Menghitung indeks awal dan akhir untuk menampilkan nomber
@@ -59,45 +50,6 @@ export default function Transaction() {
   useEffect(() => {
     targetRef.current.scrollIntoView({ behavior: "smooth" });
   }, [currentPage]);
-
-  console.log(countdown);
-
-  // useEffect(() => {
-  //   orders.forEach((order) => {
-  //     const id = order.id;
-
-  //     // Hanya buat timer jika belum ada
-  //     if (!timersRef.current[id] && countdown[id] === undefined) {
-  //       setCountdown((prev) => ({ ...prev, [id]: 120 }));
-
-  //       timersRef.current[id] = setInterval(() => {
-  //         setCountdown((prev) => {
-  //           const current = prev[id];
-
-  //           if (current === 1) {
-  //             clearInterval(timersRef.current[id]);
-  //             delete timersRef.current[id];
-
-  //             closeModalOrder(id);
-  //             fetchDataPaginated(true);
-
-  //             const updated = { ...prev };
-  //             delete updated[id];
-  //             return updated;
-  //           }
-
-  //           return { ...prev, [id]: current - 1 };
-  //         });
-  //       }, 1000);
-  //     }
-  //   });
-
-  //   return () => {
-  //     Object.values(timersRef.current).forEach(clearInterval);
-  //     timersRef.current = {};
-  //   };
-  // }, [orders]); // << countdown DIHAPUS dari dependency
-  // tambahkan countdown di dep list
 
   //integrasi socket.io
   useEffect(() => {
@@ -119,11 +71,8 @@ export default function Transaction() {
     // Membersihkan listener saat komponen unmount
     return () => {
       socket.off("newOrder");
-      // socket.disconnect();
     };
   }, [dataOutlet?.id]);
-
-  console.log(orders, "pppppp");
 
   // useEffect untuk search
   useEffect(() => {
@@ -133,12 +82,14 @@ export default function Transaction() {
   // function mengambil data lapangan by limit
   const fetchDataPaginated = async (isSearchMode = false) => {
     setIsLoading(true);
+
+    const pageToFetch = isSearchMode ? 1 : currentPage;
     if (isSearchMode) {
       setCurrentPage(1); // Reset ke page 1 jika pencarian
     }
 
     const params = {
-      page: isSearchMode ? 1 : currentPage,
+      page: pageToFetch,
       limit: itemsPerPage,
       search: dataOutlet.role == "admin" ? dataOutlet.outlet_name : query,
       by_name: by_name,
@@ -150,8 +101,20 @@ export default function Transaction() {
       });
 
       const data = response.data.data;
+      const pagination = response.data.pagination;
+
+      // Jika current page melebihi totalPages, set ulang currentPage saja
+      if (
+        !isSearchMode &&
+        pagination.totalPages > 0 &&
+        pageToFetch > pagination.totalPages
+      ) {
+        setCurrentPage(pagination.totalPages);
+        return; // jangan lanjutkan render, tunggu useEffect panggil ulang
+      }
+
       setTransaction(data);
-      setRows(response.data.pagination.totalItems);
+      setRows(pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
       console.error(error);
@@ -191,25 +154,6 @@ export default function Transaction() {
     loadData();
   }, [itemsPerPage, currentPage, dataOutlet.role, dataOutlet.outlet_name]);
 
-  //handle untuk menghapus data
-  const handleRemove = async () => {
-    try {
-      setIsLoading(true);
-      const response = await instance.delete(
-        `/api/v1/transaction/delete/${dataToRemove}`
-      );
-
-      if (response.status === 200) {
-        closeModalOrder(dataToRemove);
-        await fetchDataPaginated();
-        setShowConfirmModal(false);
-        setIsLoading(false);
-        toast.success("Order successfully deleted");
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
   const handleUpdate = async () => {
     const status = {
       status: statusToUpdate,
@@ -246,7 +190,7 @@ export default function Transaction() {
             setShowConfirmModalUpdate(false);
 
             if (statusToUpdate === "failed") {
-              toast.success("Order successfully failed");
+              toast.success("Order successfully cancel");
             } else if (statusToUpdate === "onprocess") {
               toast.success("Order is being processed");
             } else if (statusToUpdate === "success") {
@@ -268,10 +212,6 @@ export default function Transaction() {
     setPrintData("");
   };
 
-  const confirmRemove = (dataRemove) => {
-    setDataToRemove(dataRemove);
-    setShowConfirmModal(true);
-  };
   const confirmUpdate = (data, status) => {
     setDataUpdate(data);
     setStatusToUpdate(status);
@@ -324,11 +264,20 @@ export default function Transaction() {
 
             <div className="rounded-lg bg-white overflow-x-auto">
               <div className="min-w-full px-4 py-4">
-                <div className="text-gray-700 font-nunitoSans mb-4">
+                <div className="text-gray-700 font-nunito mb-4">
                   {orders && orders.length > 0 && (
-                    <div className="text-lg font-semibold mb-3">
-                      Waiting Orders .....
-                    </div>
+                    <>
+                      <div className="flex items-center gap-2 mb-3">
+                        <h2 className="text-lg font-semibold text-gray-800">
+                          Waiting Orders
+                        </h2>
+                        <span className="flex gap-[2px] mt-2">
+                          <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:0ms]"></span>
+                          <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:150ms]"></span>
+                          <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:300ms]"></span>
+                        </span>
+                      </div>
+                    </>
                   )}
 
                   {/* Wrapper semua card orders */}
@@ -336,7 +285,7 @@ export default function Transaction() {
                     {orders
                       .slice()
                       .reverse()
-                      .map((item, index) => (
+                      .map((item) => (
                         <div
                           key={item.id}
                           className="flex items-center w-full sm:w-auto"
@@ -348,7 +297,7 @@ export default function Transaction() {
                               </h2>
                               <div className="flex flex-col text-gray-700 text-sm">
                                 <p>
-                                  <span className="font-semibold text-sm">
+                                  <span className="font-semibold">
                                     Customer:
                                   </span>{" "}
                                   {item.by_name}
@@ -360,6 +309,7 @@ export default function Transaction() {
                                   {item.Table.number_table}
                                 </p>
                               </div>
+
                               <div className="bg-gray-100 rounded-lg p-2 mt-1">
                                 <p className="font-semibold text-sm text-gray-800 mb-1">
                                   Order:
@@ -376,12 +326,14 @@ export default function Transaction() {
                                   </div>
                                 ))}
                               </div>
+
                               <div className="flex justify-between font-bold text-sm mt-2">
                                 <p>Total</p>
                                 <p>{FormatIDR(item.total_pay)}</p>
                               </div>
                             </div>
-                            <div className="flex gap-2">
+
+                            <div className="flex gap-2 mt-2">
                               <AcceptOrder
                                 createdAt={item.date}
                                 status={item.status}
@@ -392,7 +344,7 @@ export default function Transaction() {
                               />
                               <button
                                 onClick={() => confirmUpdate(item, "failed")}
-                                className="bg-red-500 text-white text-sm rounded-lg py-2 w-full hover:bg-red-600 transition-colors duration-300 mt-2"
+                                className="bg-red-500 text-white text-sm rounded-lg py-2 w-full hover:bg-red-600 transition-colors duration-300"
                               >
                                 Reject
                               </button>
@@ -402,9 +354,6 @@ export default function Transaction() {
                       ))}
                   </div>
                 </div>
-
-                {/* Garis pemisah antar section */}
-                <hr className="my-6 border-t border-gray-200" />
 
                 {/* Section searchQuery */}
                 {isLoading ? (
@@ -425,17 +374,17 @@ export default function Transaction() {
                           {/* Status */}
                           <div
                             className={`absolute top-0 right-0 px-2 py-1 w-16 h-8 text-xs rounded-tr-md rounded-bl-md bg-gray-100 font-semibold capitalize flex items-center justify-center
-                ${
-                  item.status === "active"
-                    ? "text-yellow-600"
-                    : item.status === "onprocess"
-                    ? "text-green-600"
-                    : item.status === "success"
-                    ? "text-blue-600"
-                    : item.status === "failed"
-                    ? "text-red-600"
-                    : ""
-                }`}
+                             ${
+                               item.status === "active"
+                                 ? "text-yellow-600"
+                                 : item.status === "onprocess"
+                                 ? "text-green-600"
+                                 : item.status === "success"
+                                 ? "text-blue-600"
+                                 : item.status === "failed"
+                                 ? "text-red-600"
+                                 : ""
+                             }`}
                           >
                             {item.status}
                           </div>
@@ -532,7 +481,7 @@ export default function Transaction() {
                   key={item.id}
                   className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-70 z-50"
                 >
-                  <div className="w-[350px]  p-4  bg-white shadow-md rounded-md font-mono text-sm">
+                  <div className="w-[350px]  p-4  bg-white shadow-md rounded-md font-nunito text-sm">
                     <div className="flex justify-center ">
                       <div className="flex p-1 w-14 h-10">
                         {item.Outlet.logo && (
@@ -612,13 +561,6 @@ export default function Transaction() {
               );
             })}
 
-          {/* modal konfirmasi delete */}
-          {showConfirmModal && (
-            <HanldeRemove
-              handleRemove={handleRemove}
-              setShowConfirmModal={() => setShowConfirmModal(false)}
-            />
-          )}
           {showConfirmModalUpdate && (
             <HanldeUpdateStatus
               handleUpdate={handleUpdate}

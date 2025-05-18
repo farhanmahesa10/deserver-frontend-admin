@@ -32,12 +32,8 @@ const CardOrder = (props) => {
 
               {/* Status */}
               <div
-                className={`absolute top-0 right-0 px-2 py-1 w-16 h-8 text-xs rounded-tr-md rounded-bl-md font-semibold capitalize flex items-center justify-center ${
-                  item.status === "not pay"
-                    ? "bg-yellow-50 text-yellow-600"
-                    : item.status === "onproses"
-                    ? "bg-green-50 text-green-600"
-                    : item.status === "success"
+                className={`absolute top-0 right-0 px-2 py-1 w-16 h-8 text-xs rounded-tr-md rounded-bl-md bg-gray-100 font-semibold capitalize flex items-center justify-center ${
+                  item.status === "success"
                     ? "bg-blue-50 text-blue-600"
                     : item.status === "failed"
                     ? "bg-red-50 text-red-600"
