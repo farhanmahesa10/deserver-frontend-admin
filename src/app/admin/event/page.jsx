@@ -1,15 +1,12 @@
 "use client";
 
-import axios from "axios";
 import React, { useState, useEffect, useRef } from "react";
-import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
 import Pagination from "../../component/paginate/paginate";
 import Modal from "../../component/modal/cardImage";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 import { TableSkeleton } from "@/app/component/skeleton/adminSkeleton";
-import { handleApiError } from "@/app/component/handleError/handleError";
 import { Toaster, toast } from "react-hot-toast";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
@@ -17,6 +14,7 @@ import Table from "@/app/component/table/table";
 import { Collapse } from "react-collapse";
 import { useSelector } from "react-redux";
 import { HighlightText } from "@/app/component/utils/highlightText";
+import instance from "@/app/component/api/api";
 
 export default function Event() {
   const [event, setEvent] = useState([]);
@@ -34,7 +32,7 @@ export default function Event() {
   //use state untuk pagination
   const [rows, setRows] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5); // 5 item per halaman
+  const [itemsPerPage] = useState(10);
   const targetRef = useRef(null);
 
   // Menghitung indeks awal dan akhir untuk menampilkan nomber
@@ -52,23 +50,6 @@ export default function Event() {
     }
   }, []);
 
-  // cek token
-  useEffect(() => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
-      const decoded = jwtDecode(refreshToken);
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
-
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      }
-    } else {
-      router.push(`/login`);
-    }
-  }, []);
-
   // useEffect untuk search
   useEffect(() => {
     setSearchQuery(event);
@@ -77,38 +58,41 @@ export default function Event() {
   // function mengambil data lapangan by limit
   const fetchDataPaginated = async (isSearchMode = false) => {
     setIsLoading(true);
+
+    const pageToFetch = isSearchMode ? 1 : currentPage;
     if (isSearchMode) {
       setCurrentPage(1); // Reset ke page 1 jika pencarian
     }
-    const token = localStorage.getItem("token");
 
     const params = {
-      page: isSearchMode ? 1 : currentPage,
+      page: pageToFetch,
       limit: itemsPerPage,
       search: query,
     };
     try {
-      // Mengambil data transaksi menggunakan axios dengan query params
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/event/showpaginated`,
-        {
-          params: params,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // Mengambil data transaksi menggunakan instance dengan query params
+      const response = await instance.get(`/api/v1/event/showpaginated`, {
+        params: params,
+      });
 
       const data = response.data.data;
+      const pagination = response.data.pagination;
+
+      // Jika current page melebihi totalPages, set ulang currentPage saja
+      if (
+        !isSearchMode &&
+        pagination.totalPages > 0 &&
+        pageToFetch > pagination.totalPages
+      ) {
+        setCurrentPage(pagination.totalPages);
+        return; // jangan lanjutkan render, tunggu useEffect panggil ulang
+      }
+
       setEvent(data);
-      setRows(response.data.pagination.totalItems);
+      setRows(pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
-      await handleApiError(
-        error,
-        () => fetchDataPaginated(isSearchMode),
-        router
-      );
+      console.error(error);
     }
   };
 
@@ -132,13 +116,10 @@ export default function Event() {
 
   //handle untuk menghapus data
   const handleRemove = async () => {
-    const savedToken = localStorage.getItem("token");
-
     try {
       setIsLoading(true);
-      const response = await axios.delete(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/event/delete/${dataToRemove}`,
-        { headers: { Authorization: `Bearer ${savedToken}` } }
+      const response = await instance.delete(
+        `/api/v1/event/delete/${dataToRemove}`
       );
 
       if (response.status === 200) {
@@ -147,7 +128,7 @@ export default function Event() {
         setIsLoading(false);
       }
     } catch (error) {
-      await handleApiError(error, handleRemove, router);
+      console.error(error);
     }
   };
 
@@ -175,7 +156,7 @@ export default function Event() {
       id: "No",
       header: "No",
       cell: ({ row }) =>
-        dataOutlet.role !== "admin"
+        dataOutlet.role !== "admin pusat"
           ? row.index + 1
           : indexOfFirstItem + row.index + 1,
     },
@@ -263,7 +244,6 @@ export default function Event() {
         <h1 className="my-2 md:my-5 font-nunitoSans text-darkgray body-text-base-bold text-lg md:text-xl">
           Event Data Settings
         </h1>
-
         <div>
           <InputSearch
             role={dataOutlet.role}
@@ -279,7 +259,6 @@ export default function Event() {
             isLoading={isLoading}
           />
         </div>
-
         <div className="rounded-lg shadow-lg bg-white overflow-x-auto ">
           {isLoading ? (
             <TableSkeleton />
@@ -295,7 +274,6 @@ export default function Event() {
             />
           )}
         </div>
-
         {/* Tampilkan navigasi pagination */}
         {searchQuery && searchQuery.length > 0 && (
           <Pagination
@@ -306,7 +284,6 @@ export default function Event() {
             isLoading={isLoading}
           />
         )}
-
         {/* modal konfirmasi delete */}
         {showConfirmModal && (
           <HanldeRemove

@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
 import EditDataSkeleton from "../../../component/skeleton/editDataSkeleton";
 import ButtonCreateUpdate from "@/app/component/button/button";
@@ -10,8 +8,8 @@ import { useFormik } from "formik";
 import * as yup from "yup";
 import Input from "@/app/component/form/input";
 import Select from "@/app/component/form/select";
-import { handleApiError } from "@/app/component/handleError/handleError";
 import { useSelector } from "react-redux";
+import instance from "@/app/component/api/api";
 
 export default function AddMenu({ params }) {
   const [outlet, setOutlet] = useState([]);
@@ -34,32 +32,21 @@ export default function AddMenu({ params }) {
     formData.append("photo", formik.values.photo);
 
     try {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
-
       if (formik.values.id) {
         setLoadingButton(true);
-        await axios.put(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/update/${formik.values.id}`,
-          formData,
-          { headers }
-        );
+        await instance.put(`/api/v1/menu/update/${formik.values.id}`, formData);
         router.push("/admin/menu");
         localStorage.removeItem("id_menu");
         localStorage.removeItem("outlet_name");
         localStorage.setItem("newData", "update successfully!");
       } else {
         setLoadingButton(true);
-        await axios.post(
-          `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/create`,
-          formData,
-          { headers }
-        );
+        await instance.post(`/api/v1/menu/create`, formData);
         router.push("/admin/menu");
         localStorage.setItem("newData", "create successfully!");
       }
     } catch (error) {
-      await handleApiError(error, onSubmit, router);
+      console.error(error);
     }
   };
 
@@ -104,27 +91,10 @@ export default function AddMenu({ params }) {
     }),
   });
 
-  // cek token
-  useEffect(() => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
-      const decoded = jwtDecode(refreshToken);
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
-
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      }
-    } else {
-      router.push(`/login`);
-    }
-  }, []);
-
   useEffect(() => {
     const outletName = localStorage.getItem("outlet_name");
 
-    if (dataOutlet.role === "admin") {
+    if (dataOutlet.role === "admin pusat") {
       if (slug == "edit") {
         formik.setFieldValue("outlet_name", outletName);
       }
@@ -135,25 +105,17 @@ export default function AddMenu({ params }) {
 
   //menampilkan semua DATA OUTLET
   useEffect(() => {
-    const token = localStorage.getItem("token");
     setIsLoading(true);
     const fetchData = async () => {
       try {
-        // Mengambil data transaksi menggunakan axios dengan query params
-        const response = await axios.get(
-          ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        // Mengambil data transaksi menggunakan instance dengan query params
+        const response = await instance.get(`/api/v1/outlet/show`);
 
         const data = response.data.data;
 
         setOutlet(data);
       } catch (error) {
-        console.error("Error fetching transaction data:", error);
+        console.error(error);
       }
     };
 
@@ -164,19 +126,13 @@ export default function AddMenu({ params }) {
 
   //menampilkan semua sub category
   useEffect(() => {
-    const token = localStorage.getItem("token");
     setIsLoading(true);
     const fetchData = async () => {
       if (formik.values.outlet_name) {
         try {
-          // Mengambil data transaksi menggunakan axios dengan query params
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/subcategory/showcafename/${formik.values.outlet_name}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
+          // Mengambil data transaksi menggunakan instance dengan query params
+          const response = await instance.get(
+            `/api/v1/subcategory/showcafename/${formik.values.outlet_name}`
           );
 
           const data = response.data.data;
@@ -195,20 +151,12 @@ export default function AddMenu({ params }) {
 
   //MENAMPILKAN DATA MENU KETIKA EDIT
   useEffect(() => {
-    const token = localStorage.getItem("token");
     const fetchData = async () => {
       try {
         if (slug === "edit") {
           const idMenu = localStorage.getItem("id_menu");
 
-          const response = await axios.get(
-            `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/menu/show/${idMenu}`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
+          const response = await instance.get(`/api/v1/menu/show/${idMenu}`);
 
           const data = response.data.data.SubCategories[0].Menus[0];
 
@@ -218,7 +166,7 @@ export default function AddMenu({ params }) {
           setIsLoading(false);
         }
       } catch (error) {
-        console.error("Error fetching data:", error);
+        console.error(error);
       }
     };
 
@@ -255,8 +203,8 @@ export default function AddMenu({ params }) {
           >
             <div
               className={`${
-                dataOutlet.role !== "admin" ? "hidden" : "flex"
-              } gap-4 mb-2`}
+                dataOutlet.role !== "admin pusat" ? "hidden" : "flex"
+              } ${slug == "edit" ? "hidden" : "flex"} gap-4 mb-2`}
             >
               <Select
                 label="Outlate Name:"
