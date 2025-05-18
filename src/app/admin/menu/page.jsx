@@ -97,6 +97,7 @@ export default function Menu() {
       setRows(pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
+      // console.error(error);
       console.error(error);
     }
   };
