@@ -1,17 +1,13 @@
 "use client";
 
-import axios from "axios";
 import Pagination from "../../component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
-import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
 import { Toaster, toast } from "react-hot-toast";
 import "react-loading-skeleton/dist/skeleton.css";
 import { IoFilterOutline, IoCloudDownload } from "react-icons/io5";
 import { TableSkeleton } from "../../component/skeleton/adminSkeleton";
-import { handleApiError } from "@/app/component/handleError/handleError";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
-import InputSearch from "@/app/component/form/inputSearch";
 import Table from "@/app/component/table/table";
 import { useSelector } from "react-redux";
 import CardOrder from "@/app/component/modal/cardOrder";
@@ -20,11 +16,14 @@ import "react-datepicker/dist/react-datepicker.css";
 import { format } from "date-fns";
 import RadioButton from "@/app/component/form/radioButton";
 import ExcelJS from "exceljs";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import CardRevenue from "@/app/component/card/cardRevenue";
 import Select from "@/app/component/form/select";
 import { FormatIDR } from "@/app/component/utils/formatIDR";
 import { FormatDate } from "@/app/component/utils/formatDate";
 import { HighlightText } from "@/app/component/utils/highlightText";
+import instance from "@/app/component/api/api";
 
 export default function AdminOutlet() {
   const [transaction, setTransaction] = useState([]);
@@ -54,7 +53,7 @@ export default function AdminOutlet() {
   //use state untuk pagination
   const [rows, setRows] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(9); // 5 item per halaman
+  const [itemsPerPage] = useState(10);
   const targetRef = useRef(null);
 
   // Menghitung indeks awal dan akhir untuk menampilkan nomber
@@ -62,23 +61,6 @@ export default function AdminOutlet() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage; // Data yang disimpan dalam state
   //set untuk page yg di tampilkan
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
-
-  // cek token
-  useEffect(() => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
-      const decoded = jwtDecode(refreshToken);
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
-
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      }
-    } else {
-      router.push(`/login`);
-    }
-  }, []);
 
   // useEffect untuk search
   useEffect(() => {
@@ -88,38 +70,48 @@ export default function AdminOutlet() {
   // function mengambil data transaksi by limit
   const fetchDataPaginated = async (isSearchMode = false) => {
     setIsLoading(true);
+
+    const pageToFetch = isSearchMode ? 1 : currentPage;
     if (isSearchMode) {
       setCurrentPage(1); // Reset ke page 1 jika pencarian
     }
-    const token = localStorage.getItem("token");
 
     const params = {
-      page: isSearchMode ? 1 : currentPage,
+      page: pageToFetch,
       limit: itemsPerPage,
-      outlet_name: dataOutlet.role == "admin" ? query : dataOutlet.outlet_name,
+      outlet_name:
+        dataOutlet.role == "admin pusat" ? query : dataOutlet.outlet_name,
       status: selectedChecked,
       startDate: startDate ? format(startDate, "yyyy-MM-dd") : "",
       endDate: endDate ? format(endDate, "yyyy-MM-dd") : "",
     };
 
     try {
-      // Mengambil data transaksi menggunakan axios dengan query params
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/transaction/showpaginatedhistory`,
+      // Mengambil data transaksi menggunakan instance dengan query params
+      const response = await instance.get(
+        `/api/v1/transaction/showpaginatedhistory`,
         {
           params: params,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         }
       );
 
       const data = response.data;
+      const pagination = response.data.pagination;
+
+      // Jika current page melebihi totalPages, set ulang currentPage saja
+      if (
+        !isSearchMode &&
+        pagination.totalPages > 0 &&
+        pageToFetch > pagination.totalPages
+      ) {
+        setCurrentPage(pagination.totalPages);
+        return; // jangan lanjutkan render, tunggu useEffect panggil ulang
+      }
       setTransaction(data.data);
       if (data.data?.[0]?.Outlet?.outlet_name) {
         setByName(data.data[0].Outlet.outlet_name);
       }
-      setRows(data.pagination.totalItems);
+      setRows(pagination.totalItems);
       setIsLoading(false);
       setTotalRevenue(data.totalRevenue);
       setTotalRevenueSuccess(data.totalRevenueSuccess);
@@ -128,11 +120,7 @@ export default function AdminOutlet() {
       setCountFailed(data.countFailed);
       setCountSuccess(data.countSuccess);
     } catch (error) {
-      await handleApiError(
-        error,
-        () => fetchDataPaginated(isSearchMode),
-        router
-      );
+      console.error(error);
     }
   };
 
@@ -157,13 +145,10 @@ export default function AdminOutlet() {
 
   //handle untuk menghapus data
   const handleRemove = async () => {
-    const savedToken = localStorage.getItem("token");
-
     try {
       setIsLoading(true);
-      const response = await axios.delete(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/delete/${dataToRemove}`,
-        { headers: { Authorization: `Bearer ${savedToken}` } }
+      const response = await instance.delete(
+        `/api/v1/outlet/delete/${dataToRemove}`
       );
 
       if (response.status === 200) {
@@ -172,7 +157,7 @@ export default function AdminOutlet() {
         setIsLoading(false);
       }
     } catch (error) {
-      await handleApiError(error, handleRemove, router);
+      console.error(error);
     }
   };
 
@@ -184,25 +169,17 @@ export default function AdminOutlet() {
   //mengambil data outlet
   useEffect(() => {
     setIsLoading(true);
-    const token = localStorage.getItem("token");
-    if (dataOutlet.role == "admin") {
+    if (dataOutlet.role == "admin pusat") {
       const fetchData = async () => {
         try {
-          // Mengambil data transaksi menggunakan axios dengan query params
-          const response = await axios.get(
-            ` ${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/show`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
+          // Mengambil data transaksi menggunakan instance dengan query params
+          const response = await instance.get(`/api/v1/outlet/show`);
 
           const data = response.data.data;
 
           setOutlet(data);
         } catch (error) {
-          await handleApiError(error, () => fetchData(), router);
+          console.error(error);
         }
       };
 
@@ -270,29 +247,21 @@ export default function AdminOutlet() {
   };
 
   const downloadData = async () => {
-    const token = localStorage.getItem("token");
-
     const params = {
-      search: dataOutlet.role == "user" ? dataOutlet.outlet_name : by_name,
+      search: dataOutlet.role == "admin" ? dataOutlet.outlet_name : by_name,
       status: selectedChecked,
       startDate: startDate ? format(startDate, "yyyy-MM-dd") : "",
       endDate: endDate ? format(endDate, "yyyy-MM-dd") : "",
     };
     try {
-      // Mengambil data transaksi menggunakan axios dengan query params
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/report/download`,
-        {
-          params: params,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // Mengambil data transaksi menggunakan instance dengan query params
+      const response = await instance.get(`/api/v1/report/download`, {
+        params: params,
+      });
 
       return response.data.data;
     } catch (error) {
-      await handleApiError(error, () => downloadData(), router);
+      console.error(error);
     }
   };
 
@@ -379,9 +348,9 @@ export default function AdminOutlet() {
         } else {
           itemMap[title] = {
             title,
-            amount: 1,
+            amount: order.qty,
             unit_price: price,
-            total: price,
+            total: order.qty * price,
           };
         }
       });
@@ -488,6 +457,119 @@ export default function AdminOutlet() {
     document.body.removeChild(a);
   };
 
+  const exportToPDF = async () => {
+    const transaksiData = await downloadData();
+
+    if (transaksiData.length === 0) {
+      toast.error("No data can be downloaded!");
+      return;
+    }
+
+    const doc = new jsPDF();
+    let y = 10;
+
+    const outletName =
+      transaksiData[0]?.Outlet?.outlet_name || "Unknown Outlet";
+    const updatedAt = transaksiData[0]?.updatedAt || new Date();
+
+    // Format tanggal
+    let tanggalLabel = "-";
+    if (startDate && endDate) {
+      tanggalLabel = `${FormatDate(startDate)} - ${FormatDate(endDate)}`;
+    } else if (startDate) {
+      tanggalLabel = `${FormatDate(startDate)}`;
+    }
+
+    // Judul
+    doc.setFontSize(16);
+    doc.text("Financial Statements", 105, y, { align: "center" });
+    y += 10;
+    doc.setFontSize(12);
+    doc.text(outletName, 105, y, { align: "center" });
+    y += 10;
+    doc.text(`Date: ${tanggalLabel}`, 14, y);
+    y += 10;
+
+    // Proses data transaksi
+    const itemMap = {};
+    transaksiData.forEach((transaksi) => {
+      transaksi.Orders.forEach((order) => {
+        const title = order.Menu.title;
+        const price = order.Menu.price;
+
+        if (itemMap[title]) {
+          itemMap[title].amount += 1;
+          itemMap[title].total += price;
+        } else {
+          itemMap[title] = {
+            title,
+            amount: order.qty,
+            unit_price: price,
+            total: order.qty * price,
+          };
+        }
+      });
+    });
+
+    const rows = Object.values(itemMap);
+    let grandTotal = 0;
+
+    const tableData = rows.map((row, index) => {
+      grandTotal += row.total;
+      return [
+        index + 1,
+        row.title,
+        row.amount,
+        row.unit_price.toLocaleString(),
+        row.total.toLocaleString(),
+      ];
+    });
+
+    // Tabel utama
+    autoTable(doc, {
+      startY: y,
+      head: [["No", "Title", "Amount", "Unit Price", "Total"]],
+      body: tableData,
+      styles: { halign: "left" },
+    });
+
+    //GRAND TOTAL
+    const finalY = doc.lastAutoTable.finalY + 10;
+    const totalColX = 160;
+    const labelX = totalColX - 30;
+    const valueX = totalColX + 13;
+
+    doc.setFontSize(12);
+    doc.text("Grand Total:", labelX, finalY);
+    doc.text(grandTotal.toLocaleString(), valueX, finalY, { align: "right" });
+
+    // Tambah Data Ringkasan jika tidak selectedChecked
+    if (!selectedChecked) {
+      const summaryY = finalY + 10;
+
+      const summaryData = [
+        { label: "Successful Transaction", value: countSuccess },
+        { label: "Failed Transaction", value: countFailed },
+        {
+          label: "Overall Transaction",
+          value: countSuccess + countFailed,
+        },
+        { label: "Total Revenue Success", value: totalRevenueSuccess },
+        { label: "Total Revenue Failed", value: totalRevenueFailed },
+        { label: "Total Revenue", value: totalRevenue },
+      ];
+
+      summaryData.forEach((item, idx) => {
+        const y = summaryY + idx * 7;
+        doc.text(`${item.label}:`, 14, y);
+        doc.text(`${item.value.toLocaleString()}`, 200, y, { align: "right" });
+      });
+    }
+
+    // Simpan sebagai PDF
+    doc.save("Financial_Statements.pdf");
+  };
+
   return (
     <div
       ref={targetRef}
@@ -500,12 +582,24 @@ export default function AdminOutlet() {
         </h1>
 
         <div className="flex items-center justify-between mb-2 ">
-          <button
-            className="flex items-center justify-center bg-yellow-700 text-white h-10 w-10 rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
-            onClick={exportToExcel}
-          >
-            <IoCloudDownload size={20} />
-          </button>
+          <div className="flex gap-4">
+            <div className="flex flex-wrap gap-3">
+              <button
+                className="flex items-center gap-2 bg-yellow-700 text-white px-4 py-2 rounded-md shadow-md hover:bg-yellow-600 transition duration-300"
+                onClick={exportToExcel}
+              >
+                <IoCloudDownload size={20} />
+                <span>Download as Excel</span>
+              </button>
+              <button
+                className="flex items-center gap-2 bg-yellow-700 text-white px-4 py-2 rounded-md shadow-md hover:bg-yellow-600 transition duration-300"
+                onClick={exportToPDF}
+              >
+                <IoCloudDownload size={20} />
+                <span>Download as PDF</span>
+              </button>
+            </div>
+          </div>
 
           <>
             {/* Tombol Buka */}
@@ -542,7 +636,7 @@ export default function AdminOutlet() {
                 <div className="flex flex-wrap ">
                   <div
                     className={`${
-                      dataOutlet.role !== "admin" ? "hidden" : "flex"
+                      dataOutlet.role !== "admin pusat" ? "hidden" : "flex"
                     } w-full  gap-4 mb-2`}
                   >
                     <Select

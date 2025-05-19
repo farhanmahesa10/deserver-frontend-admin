@@ -5,19 +5,43 @@ export const counterSlice = createSlice({
   initialState: {
     value: 0,
     outlet: [],
-    collapse: false,
+    collapseMaster: false,
+    collapseTransaction: false,
     status: "idle",
+    order: [],
+    notifCount: 0,
     error: null,
   },
   reducers: {
     setOutlet(state, action) {
       state.outlet = action.payload;
     },
-    setCollapse(state, action) {
-      state.collapse = action.payload;
+    setCollapseMaster(state, action) {
+      state.collapseMaster = action.payload;
+    },
+    setCollapseTransaction(state, action) {
+      state.collapseTransaction = action.payload;
+    },
+    addOrderNotif: (state, action) => {
+      state.order.unshift({ ...action.payload, seen: false });
+      state.notifCount++;
+    },
+    markAllSeen: (state) => {
+      state.order = state.order.map((item) => ({ ...item, seen: true }));
+      state.notifCount = 0;
+    },
+    resetNotifCount: (state) => {
+      state.notifCount = 0;
     },
   },
 });
 
-export const { setOutlet, setCollapse } = counterSlice.actions;
+export const {
+  setOutlet,
+  setCollapseMaster,
+  setCollapseTransaction,
+  addOrderNotif,
+  markAllSeen,
+  resetNotifCount,
+} = counterSlice.actions;
 export default counterSlice.reducer;

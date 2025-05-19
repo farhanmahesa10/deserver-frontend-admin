@@ -2,10 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
 import { useDispatch, useSelector } from "react-redux";
-import { setCollapse } from "@/store/slice";
+import { setCollapseMaster, setCollapseTransaction } from "@/store/slice";
 import { Collapse } from "react-collapse";
 import {
   IoBagHandle,
@@ -29,7 +28,10 @@ function Sidebar({ isOpen, setIsOpen }) {
   const router = useRouter();
   const dataOutlet = useSelector((state) => state.counter.outlet);
   const dispatch = useDispatch();
-  const collapse = useSelector((state) => state.counter.collapse);
+  const collapseMaster = useSelector((state) => state.counter.collapseMaster);
+  const collapseTransaction = useSelector(
+    (state) => state.counter.collapseTransaction
+  );
 
   useEffect(() => {
     setUrl(pathname);
@@ -40,23 +42,6 @@ function Sidebar({ isOpen, setIsOpen }) {
     router.push(route);
   };
 
-  // Cek token
-  useEffect(() => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
-      const decoded = jwtDecode(refreshToken);
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
-
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      }
-    } else {
-      router.push(`/login`);
-    }
-  }, []);
-
   return (
     <aside
       className={`${
@@ -66,52 +51,75 @@ function Sidebar({ isOpen, setIsOpen }) {
       <div className="flex flex-col w-full gap-6 overflow-y-auto overflow-x-hidden p-5 lg:p-0 custom-scrollbar ">
         {/* TRANSAKSI */}
         <div className="flex flex-col gap-2">
-          <h3 className="text-xs text-gray-500 font-semibold uppercase tracking-widest px-1">
-            Transaksi
-          </h3>
+          <div
+            className="flex items-center justify-between px-1 cursor-pointer"
+            onClick={() =>
+              dispatch(setCollapseTransaction(!collapseTransaction))
+            }
+          >
+            <h3 className="text-xs text-gray-500 font-semibold uppercase tracking-widest">
+              Transactions
+            </h3>
+            <IoCaretForward
+              className={`text-black transition-transform duration-300 ${
+                collapseTransaction ? "rotate-90" : ""
+              }`}
+            />
+          </div>
 
-          <SidebarComp
-            handleRoute={() => handleRoute("/")}
-            url={url}
-            route={"/"}
-            icon={<IoBagHandle />}
-            menuName={"Transaction"}
-          />
+          <Collapse isOpened={collapseTransaction}>
+            <div className="mt-2 flex flex-col gap-2">
+              <SidebarComp
+                handleRoute={() => handleRoute("/")}
+                url={url}
+                route={"/"}
+                icon={<IoBagHandle />}
+                menuName={"Transaction"}
+              />
 
-          <SidebarComp
-            handleRoute={() => handleRoute("/admin/history")}
-            url={url}
-            route={"/admin/history"}
-            icon={<IoBagHandle />}
-            menuName={"History"}
-          />
+              <SidebarComp
+                handleRoute={() => handleRoute("/admin/history")}
+                url={url}
+                route={"/admin/history"}
+                icon={<IoBagHandle />}
+                menuName={"History"}
+              />
+              <SidebarComp
+                handleRoute={() => handleRoute("/admin/dashboard")}
+                url={url}
+                route={"/admin/dashboard"}
+                icon={<IoBagHandle />}
+                menuName={"Dashboard"}
+              />
+            </div>
+          </Collapse>
         </div>
-
-        <hr className="border-gray-200" />
 
         {/* DATA MASTER */}
         <div className="flex flex-col gap-1">
           <div
             className="flex items-center justify-between px-1 cursor-pointer"
-            onClick={() => dispatch(setCollapse(!collapse))}
+            onClick={() => dispatch(setCollapseMaster(!collapseMaster))}
           >
             <h3 className="text-xs text-gray-500 font-semibold uppercase tracking-widest">
               Data Master
             </h3>
             <IoCaretForward
               className={`text-black transition-transform duration-300 ${
-                collapse ? "rotate-90" : ""
+                collapseMaster ? "rotate-90" : ""
               }`}
             />
           </div>
 
-          <Collapse isOpened={collapse}>
+          <Collapse isOpened={collapseMaster}>
             <div className="mt-2 flex flex-col gap-2">
               <SidebarComp
                 handleRoute={() => handleRoute("/admin/outlet")}
                 url={url}
                 route={"/admin/outlet"}
-                roleAdmin={`${dataOutlet.role !== "admin" ? "hidden" : ""}`}
+                roleAdmin={`${
+                  dataOutlet.role !== "admin pusat" ? "hidden" : ""
+                }`}
                 icon={<IoStorefront />}
                 menuName={"Outlet"}
               />

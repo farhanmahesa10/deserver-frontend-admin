@@ -1,16 +1,13 @@
 "use client";
 
-import axios from "axios";
 import Pagination from "../../component/paginate/paginate";
 import React, { useState, useEffect, useRef } from "react";
-import { jwtDecode } from "jwt-decode";
 import { useRouter } from "nextjs-toploader/app";
 import { Toaster, toast } from "react-hot-toast";
 import "react-loading-skeleton/dist/skeleton.css";
 import { AiFillEdit } from "react-icons/ai";
 import { IoSearch, IoTrash, IoMedkit } from "react-icons/io5";
 import { TableSkeleton } from "../../component/skeleton/adminSkeleton";
-import { handleApiError } from "@/app/component/handleError/handleError";
 import HanldeRemove from "@/app/component/handleRemove/handleRemove";
 import InputSearch from "@/app/component/form/inputSearch";
 import Table from "@/app/component/table/table";
@@ -18,6 +15,7 @@ import { Collapse } from "react-collapse";
 import Modal from "@/app/component/modal/cardImage";
 import { useSelector } from "react-redux";
 import { HighlightText } from "@/app/component/utils/highlightText";
+import instance from "@/app/component/api/api";
 
 export default function AdminOutlet() {
   const [outlet, setOutlet] = useState([]);
@@ -35,7 +33,7 @@ export default function AdminOutlet() {
   //use state untuk pagination
   const [rows, setRows] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5); // 5 item per halaman
+  const [itemsPerPage] = useState(10);
   const targetRef = useRef(null);
 
   // Menghitung indeks awal dan akhir untuk menampilkan nomber
@@ -45,21 +43,21 @@ export default function AdminOutlet() {
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   // cek token
-  useEffect(() => {
-    const refreshToken = localStorage.getItem("refreshToken");
-    if (refreshToken) {
-      const decoded = jwtDecode(refreshToken);
-      const expirationTime = new Date(decoded.exp * 1000);
-      const currentTime = new Date();
+  // useEffect(() => {
+  //   const refreshToken = localStorage.getItem("refreshToken");
+  //   if (refreshToken) {
+  //     const decoded = jwtDecode(refreshToken);
+  //     const expirationTime = new Date(decoded.exp * 1000);
+  //     const currentTime = new Date();
 
-      if (currentTime > expirationTime) {
-        localStorage.clear();
-        router.push(`/login`);
-      }
-    } else {
-      router.push(`/login`);
-    }
-  }, []);
+  //     if (currentTime > expirationTime) {
+  //       localStorage.clear();
+  //       router.push(`/login`);
+  //     }
+  //   } else {
+  //     router.push(`/login`);
+  //   }
+  // }, []);
 
   //toast data baru
   useEffect(() => {
@@ -83,38 +81,40 @@ export default function AdminOutlet() {
   // function mengambil data outlet by limit
   const fetchDataPaginated = async (isSearchMode = false) => {
     setIsLoading(true);
+
+    const pageToFetch = isSearchMode ? 1 : currentPage;
     if (isSearchMode) {
       setCurrentPage(1);
     }
-    const token = localStorage.getItem("token");
 
     const params = {
-      page: isSearchMode ? 1 : currentPage,
+      page: pageToFetch,
       limit: itemsPerPage,
       search: query,
     };
     try {
-      // Mengambil data transaksi menggunakan axios dengan query params
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/showpaginated`,
-        {
-          params: params,
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // Mengambil data transaksi menggunakan instance dengan query params
+      const response = await instance.get(`/api/v1/outlet/showpaginated`, {
+        params: params,
+      });
 
       const data = response.data.data;
+      const pagination = response.data.pagination;
+
+      // Jika current page melebihi totalPages, set ulang currentPage saja
+      if (
+        !isSearchMode &&
+        pagination.totalPages > 0 &&
+        pageToFetch > pagination.totalPages
+      ) {
+        setCurrentPage(pagination.totalPages);
+        return; // jangan lanjutkan render, tunggu useEffect panggil ulang
+      }
       setOutlet(data);
-      setRows(response.data.pagination.totalItems);
+      setRows(pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
-      await handleApiError(
-        error,
-        () => fetchDataPaginated(isSearchMode),
-        router
-      );
+      console.error(error);
     }
   };
 
@@ -122,7 +122,7 @@ export default function AdminOutlet() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        if (dataOutlet.role === "admin") {
+        if (dataOutlet.role === "admin pusat") {
           await fetchDataPaginated();
         }
       } catch (error) {
@@ -139,13 +139,10 @@ export default function AdminOutlet() {
 
   //handle untuk menghapus data
   const handleRemove = async () => {
-    const savedToken = localStorage.getItem("token");
-
     try {
       setIsLoading(true);
-      const response = await axios.delete(
-        `${process.env.NEXT_PUBLIC_BASE_API_URL}/api/v1/outlet/delete/${dataToRemove}`,
-        { headers: { Authorization: `Bearer ${savedToken}` } }
+      const response = await instance.delete(
+        `/api/v1/outlet/delete/${dataToRemove}`
       );
 
       if (response.status === 200) {
@@ -154,7 +151,7 @@ export default function AdminOutlet() {
         setIsLoading(false);
       }
     } catch (error) {
-      await handleApiError(error, handleRemove, router);
+      console.error(error);
     }
   };
 
@@ -208,7 +205,7 @@ export default function AdminOutlet() {
             </Collapse>
             {!isOpen && <p className="line-clamp-2">{row.original.history}</p>}
 
-            {row.original.history.length > 30 && (
+            {row.original.history && row.original.history.length > 30 && (
               <button
                 className={isOpen ? "text-red-500" : "text-primary-500"}
                 onClick={() => handleToggle(row.id)}
