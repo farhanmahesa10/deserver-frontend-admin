@@ -227,7 +227,7 @@ export default function Transaction() {
     <div ref={targetRef} className="pb-8 w-full">
       <div className="flex">
         <Layout2 />
-        <div className=" pl-5 pt-20  w-full bg-white overflow-auto lg:border-l-2">
+        <div className=" pl-5 pt-20 w-full bg-white overflow-auto lg:border-l-2">
           <div className="overflow-y-auto overflow-x-hidden pr-2 lg:max-h-[calc(100vh-80px)] custom-scrollbar">
             <Toaster position="top-center" reverseOrder={false} />
             <h1 className="my-2 md:my-5 font-ubuntu font-semibold text-darkgray text-lg md:text-xl">
