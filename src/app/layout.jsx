@@ -26,7 +26,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={`font-nunito ${geistMono.variable} antialiased`}>
         <StoreProvider>
-          <div className=" min-w-[277px] min-h-screen">
+          <div className=" min-w-[277px] min-h-screen ">
             <NextTopLoader color="#a16207" showSpinner={false} height={3} />
             {children}
           </div>
