@@ -5,7 +5,8 @@ export const counterSlice = createSlice({
   initialState: {
     value: 0,
     outlet: [],
-    collapse: false,
+    collapseMaster: false,
+    collapseTransaction: false,
     status: "idle",
     order: [],
     notifCount: 0,
@@ -15,8 +16,11 @@ export const counterSlice = createSlice({
     setOutlet(state, action) {
       state.outlet = action.payload;
     },
-    setCollapse(state, action) {
-      state.collapse = action.payload;
+    setCollapseMaster(state, action) {
+      state.collapseMaster = action.payload;
+    },
+    setCollapseTransaction(state, action) {
+      state.collapseTransaction = action.payload;
     },
     addOrderNotif: (state, action) => {
       state.order.unshift({ ...action.payload, seen: false });
@@ -34,7 +38,8 @@ export const counterSlice = createSlice({
 
 export const {
   setOutlet,
-  setCollapse,
+  setCollapseMaster,
+  setCollapseTransaction,
   addOrderNotif,
   markAllSeen,
   resetNotifCount,
