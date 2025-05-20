@@ -1,4 +1,4 @@
-export const FormatIDR = (number) => {
+export const FormatIdr = (number) => {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: "IDR",

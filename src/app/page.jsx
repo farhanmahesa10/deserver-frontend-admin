@@ -13,16 +13,18 @@ import { addOrderNotif } from "@/store/slice";
 import HanldeUpdateStatus from "./component/handleUpdate/updateStatus";
 import CardRevenue from "./component/card/cardRevenue";
 import { HighlightText } from "./component/utils/highlightText";
-import { FormatIDR } from "./component/utils/formatIDR";
+import { FormatIdr } from "./component/utils/formatIdr";
 import { FormatDate } from "./component/utils/formatDate";
 import instance from "./component/api/api";
 import socket from "./component/socket/socketIo";
 import AcceptOrder from "./component/button/acceptOrder";
+import OrderPraActive from "./component/card/cardPraActive";
 
 export default function Transaction() {
   const [transaction, setTransaction] = useState([]);
   const [orders, setOrders] = useState([]);
-  const [orderActive, setOrderActive] = useState([]);
+  const [orderActive, setOrderActive] = useState(0);
+  const [orderPraActive, setOrderPraActive] = useState([]);
   const [query, setQuery] = useState("");
   const [by_name, setQueryByName] = useState("");
   const [printData, setPrintData] = useState("");
@@ -127,8 +129,29 @@ export default function Transaction() {
       try {
         const response = await instance.get(`/api/v1/grafik/info`);
 
+        const data = response.data.data;
+        const total =
+          Number(data?.active ?? 0) +
+          Number(data?.onprocess ?? 0) +
+          Number(data?.praActive ?? 0);
+        setOrderActive(total);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  //order praActive
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await instance.get(`/api/v1/grafik/info`);
+
         const data = response.data;
-        setOrderActive(data.active + data.onprocess);
+        // setOrderPraActive(data);
         setIsLoading(false);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -282,7 +305,7 @@ export default function Transaction() {
 
                   {/* Wrapper semua card orders */}
                   <div className="flex flex-wrap gap-4">
-                    {orders
+                    {/* {orders
                       .slice()
                       .reverse()
                       .map((item) => (
@@ -318,10 +341,10 @@ export default function Transaction() {
                                   <div key={order.title} className="mb-1">
                                     <div className="flex justify-between text-sm">
                                       <p>{order.title}</p>
-                                      <p>{FormatIDR(order.total_price)}</p>
+                                      <p>{FormatIdr(order.total_price)}</p>
                                     </div>
                                     <p className="text-sm text-gray-600">
-                                      {order.qty} x {FormatIDR(order.price)}
+                                      {order.qty} x {FormatIdr(order.price)}
                                     </p>
                                   </div>
                                 ))}
@@ -329,7 +352,7 @@ export default function Transaction() {
 
                               <div className="flex justify-between font-bold text-sm mt-2">
                                 <p>Total</p>
-                                <p>{FormatIDR(item.total_pay)}</p>
+                                <p>{FormatIdr(item.total_pay)}</p>
                               </div>
                             </div>
 
@@ -351,7 +374,19 @@ export default function Transaction() {
                             </div>
                           </div>
                         </div>
-                      ))}
+                      ))} */}
+                    <OrderPraActive
+                      orders={orders}
+                      closeModalOrder={closeModalOrder}
+                      fetchDataPaginated={fetchDataPaginated}
+                      confirmUpdate={confirmUpdate}
+                    />
+                    <OrderPraActive
+                      orders={orderPraActive}
+                      closeModalOrder={closeModalOrder}
+                      fetchDataPaginated={fetchDataPaginated}
+                      confirmUpdate={confirmUpdate}
+                    />
                   </div>
                 </div>
 
@@ -405,17 +440,17 @@ export default function Transaction() {
                               <div key={order.id} className="mb-1 text-sm">
                                 <div className="flex justify-between">
                                   <p>{order.Menu.title}</p>
-                                  <p>{FormatIDR(order.total_price)}</p>
+                                  <p>{FormatIdr(order.total_price)}</p>
                                 </div>
                                 <p className="text-xs text-gray-500">
-                                  {order.qty} x {FormatIDR(order.Menu.price)}
+                                  {order.qty} x {FormatIdr(order.Menu.price)}
                                 </p>
                               </div>
                             ))}
                           </div>
 
                           <div className="flex justify-end font-bold text-sm mt-1 p-2">
-                            <p>{FormatIDR(item.total_pay)}</p>
+                            <p>{FormatIdr(item.total_pay)}</p>
                           </div>
 
                           {/* Tombol */}
@@ -516,10 +551,10 @@ export default function Transaction() {
                       <div key={order.id} className="mb-1">
                         <div className="flex justify-between text-sm">
                           <p>{order.Menu.title}</p>
-                          <p>{FormatIDR(order.total_price)}</p>
+                          <p>{FormatIdr(order.total_price)}</p>
                         </div>
                         <p className="text-sm">
-                          {order.qty} x {FormatIDR(order.Menu.price)}
+                          {order.qty} x {FormatIdr(order.Menu.price)}
                         </p>
                       </div>
                     ))}
@@ -528,11 +563,11 @@ export default function Transaction() {
 
                     <div className="flex justify-between font-bold">
                       <p>Total</p>
-                      <p>{FormatIDR(item.total_pay)}</p>
+                      <p>{FormatIdr(item.total_pay)}</p>
                     </div>
                     <div className="flex justify-between">
                       <p>Payed ({item.pays_method})</p>
-                      <p>{FormatIDR(item.total_pay)}</p>
+                      <p>{FormatIdr(item.total_pay)}</p>
                     </div>
 
                     <div className="border-t border-dashed my-2"></div>

@@ -14,7 +14,7 @@ import { MdOutlineSmsFailed } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 import { addOrderNotif, markAllSeen, resetNotifCount } from "@/store/slice";
 import socket from "../socket/socketIo";
-import { FormatDate, FormatDateAndTime } from "../utils/formatDate";
+import { FormatDateAndTime } from "../utils/formatDate";
 
 export default function Header({ isOpen, onClickHeader }) {
   const router = useRouter();
@@ -66,7 +66,7 @@ export default function Header({ isOpen, onClickHeader }) {
     }
 
     socket.on("AdminReceiveCanceled", (orderData) => {
-      const newOrder = { ...orderData, seen: false };
+      const newOrder = { ...orderData.data.payload, seen: false };
       console.log(newOrder, "PPPP");
 
       dispatch(addOrderNotif(newOrder));
@@ -170,7 +170,7 @@ export default function Header({ isOpen, onClickHeader }) {
                               order
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
-                              {FormatDateAndTime(item.date)}
+                              {FormatDateAndTime(item.createdAt)}
                             </p>
                           </div>
                         </div>

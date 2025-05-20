@@ -20,7 +20,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import CardRevenue from "@/app/component/card/cardRevenue";
 import Select from "@/app/component/form/select";
-import { FormatIDR } from "@/app/component/utils/formatIDR";
+import { FormatIdr } from "@/app/component/utils/formatIdr";
 import { FormatDate } from "@/app/component/utils/formatDate";
 import { HighlightText } from "@/app/component/utils/highlightText";
 import instance from "@/app/component/api/api";
@@ -222,7 +222,7 @@ export default function AdminOutlet() {
     {
       header: "Total",
       accessorKey: "total_pay",
-      cell: ({ getValue }) => FormatIDR(getValue()),
+      cell: ({ getValue }) => FormatIdr(getValue()),
     },
     {
       header: "Order",
@@ -739,16 +739,16 @@ export default function AdminOutlet() {
             classRevenue="bg-primary-50 text-primary-700"
           />
           <CardRevenue
-            value={FormatIDR(totalRevenueSuccess)}
+            value={FormatIdr(totalRevenueSuccess)}
             desc="Revenue Success"
           />
           <CardRevenue
-            value={FormatIDR(totalRevenueFailed)}
+            value={FormatIdr(totalRevenueFailed)}
             desc="Revenue Failed"
             classRevenue="bg-red-100 text-red-700"
           />
           <CardRevenue
-            value={FormatIDR(totalRevenue)}
+            value={FormatIdr(totalRevenue)}
             desc="Revenue All"
             classRevenue="bg-primary-50 text-primary-700"
           />
