@@ -49,7 +49,7 @@ const CardOrder = (props) => {
               </div>
 
               {/* Pesanan */}
-              <div className="mt-2 bg-gray-50 rounded p-2">
+              <div className="mt-2 bg-gray-50 rounded p-2 max-h-[150px] overflow-y-auto custom-scrollbar-ramping">
                 <p className="font-semibold text-sm mb-1 text-gray-800">
                   Order:
                 </p>

@@ -37,7 +37,7 @@ const OrderPraActive = (props) => {
                       </p>
                     </div>
 
-                    <div className="bg-gray-100 rounded-lg p-2 mt-1">
+                    <div className="bg-gray-100 rounded-lg p-2 mt-1 max-h-[150px] overflow-y-auto custom-scrollbar-ramping">
                       <p className="font-semibold text-sm text-gray-800 mb-1">
                         Order:
                       </p>

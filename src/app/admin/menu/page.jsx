@@ -15,6 +15,7 @@ import { Collapse } from "react-collapse";
 import { useSelector } from "react-redux";
 import { HighlightText } from "@/app/component/utils/highlightText";
 import instance from "@/app/component/api/api";
+import socket from "@/app/component/socket/socketIo";
 
 export default function Menu() {
   const [menu, setMenu] = useState([]);
@@ -167,27 +168,38 @@ export default function Menu() {
       console.error(error);
     }
   };
-  const handleUpdateStok = async (idUpdate, stok) => {
+  const handleUpdateStok = async (idUpdate, outletCode, stok) => {
     const data = {
       status: stok,
     };
 
-    try {
-      setIsLoading(true);
-      const response = await instance.put(
-        `/api/v1/menu/update/${idUpdate}`,
-        data
-      );
+    const payload = {
+      outlet_code: outletCode,
+      updatedAt: new Date(),
+    };
 
-      if (response.status === 200) {
-        if (dataOutlet.role) {
-          await fetchDataPaginated();
+    socket.emit("updateMenu", payload, async (socketResponse) => {
+      if (socketResponse.status === "success") {
+        try {
+          setIsLoading(true);
+          const response = await instance.put(
+            `/api/v1/menu/update/${idUpdate}`,
+            data
+          );
+
+          if (response.status === 200) {
+            if (dataOutlet.role) {
+              await fetchDataPaginated();
+            }
+            setIsLoading(false);
+          }
+        } catch (error) {
+          console.error(error);
+        } finally {
+          setIsLoading(false);
         }
-        setIsLoading(false);
       }
-    } catch (error) {
-      console.error(error);
-    }
+    });
   };
 
   // haldle untuk memperbesar gambar
@@ -273,11 +285,18 @@ export default function Menu() {
       id: "stok",
       cell: ({ row }) => {
         const { id, status } = row.original;
+        const outlet_code =
+          row.original.SubCategory.Category.Outlet.outlet_code;
+
         return (
           <button
             className="bg-yellow-700 text-white rounded-lg p-2"
             onClick={() =>
-              handleUpdateStok(id, status === "Ready" ? "SoldOut" : "Ready")
+              handleUpdateStok(
+                id,
+                outlet_code,
+                status === "Ready" ? "SoldOut" : "Ready"
+              )
             }
           >
             {status}
@@ -307,6 +326,7 @@ export default function Menu() {
       id: "action",
       cell: ({ row }) => {
         const { id, SubCategory } = row.original;
+
         return (
           <div className="flex justify-center gap-2">
             <a

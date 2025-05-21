@@ -202,4 +202,19 @@
   .custom-scrollbar::-webkit-scrollbar {
     display: none; /* Safari & Chrome */
   }
+
+  /* Custom scrollbar ukuran sedang dengan tidak panah */
+  .custom-scrollbar-ramping {
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: #c0c0c0 #f5f5f5;
+  }
+
+  /* Chrome, Edge, Safari */
+  .custom-scrollbar-ramping::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .custom-scrollbar-ramping::-webkit-scrollbar-button {
+    display: none; /* hilangkan panah */
+  }
 }
