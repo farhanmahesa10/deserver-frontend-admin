@@ -220,6 +220,10 @@ export default function AdminOutlet() {
       accessorKey: "id_table",
     },
     {
+      header: "Status",
+      accessorKey: "status",
+    },
+    {
       header: "Total",
       accessorKey: "total_pay",
       cell: ({ getValue }) => FormatIdr(getValue()),

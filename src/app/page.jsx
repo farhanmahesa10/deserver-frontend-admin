@@ -145,21 +145,17 @@ export default function Transaction() {
   }, []);
 
   //order praActive
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await instance.get(`/api/v1/grafik//infopraactive`);
+  const fetchDataPraActive = async () => {
+    try {
+      const response = await instance.get(`/api/v1/grafik//infopraactive`);
 
-        const data = response.data;
-        // setOrderPraActive(data);
-        setIsLoading(false);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-
-    fetchData();
-  }, []);
+      const data = response.data.data;
+      setOrderPraActive(data);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
 
   // useEffect mengambil data transaksi by limit
   useEffect(() => {
@@ -167,6 +163,7 @@ export default function Transaction() {
       setIsLoading(true); // Tampilkan loading
       try {
         await fetchDataPaginated();
+        await fetchDataPraActive();
       } catch (error) {
         console.error("Error fetching data:", error);
       } finally {
@@ -210,6 +207,7 @@ export default function Transaction() {
           if (apiResponse.status === 200) {
             closeModalOrder(dataUpdate.id);
             await fetchDataPaginated();
+            await fetchDataPraActive();
             setShowConfirmModalUpdate(false);
 
             if (statusToUpdate === "failed") {
@@ -308,13 +306,11 @@ export default function Transaction() {
                     <OrderPraActive
                       orders={orders}
                       closeModalOrder={closeModalOrder}
-                      fetchDataPaginated={fetchDataPaginated}
                       confirmUpdate={confirmUpdate}
                     />
                     <OrderPraActive
                       orders={orderPraActive}
                       closeModalOrder={closeModalOrder}
-                      fetchDataPaginated={fetchDataPaginated}
                       confirmUpdate={confirmUpdate}
                     />
                   </div>

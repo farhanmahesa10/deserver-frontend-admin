@@ -1,35 +1,39 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
-const AcceptOrder = ({ createdAt, status, handleAccept }) => {
+const AcceptOrder = ({ createdAt, handleAccept }) => {
   const [secondsLeft, setSecondsLeft] = useState(60);
+  const [isEnabled, setIsEnabled] = useState(false);
 
   useEffect(() => {
+    const createdTime = new Date(createdAt).getTime();
+
     const interval = setInterval(() => {
-      const timeDiff = Date.now() - new Date(createdAt).getTime();
-      const diff = 60000 - timeDiff;
-      setSecondsLeft(Math.max(Math.floor(diff / 1000), 0));
+      const now = Date.now();
+      const diff = 60000 - (now - createdTime); // 60 detik
+
+      if (diff <= 0) {
+        setSecondsLeft(0);
+        setIsEnabled(true); // enable button
+        clearInterval(interval); // hentikan interval
+      } else {
+        setSecondsLeft(Math.floor(diff / 1000));
+      }
     }, 1000);
 
     return () => clearInterval(interval);
   }, [createdAt]);
 
-  // const isCancelable =
-  //   Date.now() - new Date(createdAt).getTime() < 60000 && status !== "failed";
-  const disabled = Date.now() - new Date(createdAt).getTime() > 60000;
-
-  // if (!isCancelable) return null;
-
   return (
     <button
-      disabled={!disabled}
+      disabled={!isEnabled}
       onClick={handleAccept}
       className={`${
-        disabled
+        isEnabled
           ? "bg-gray-800 hover:bg-gray-700"
           : "bg-gray-400 cursor-not-allowed"
       } flex gap-4 justify-center text-white text-sm rounded-lg py-2 w-full transition-colors duration-300 mt-2`}
     >
-      Accept ({secondsLeft}s)
+      {isEnabled ? "Accept" : `Accept (${secondsLeft}s)`}
     </button>
   );
 };
