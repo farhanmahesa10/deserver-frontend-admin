@@ -178,28 +178,27 @@ export default function Menu() {
       updatedAt: new Date(),
     };
 
-    socket.emit("updateMenu", payload, async (socketResponse) => {
-      if (socketResponse.status === "success") {
-        try {
-          setIsLoading(true);
-          const response = await instance.put(
-            `/api/v1/menu/update/${idUpdate}`,
-            data
-          );
+    try {
+      setIsLoading(true);
+      const response = await instance.put(
+        `/api/v1/menu/update/${idUpdate}`,
+        data
+      );
 
-          if (response.status === 200) {
-            if (dataOutlet.role) {
-              await fetchDataPaginated();
-            }
-            setIsLoading(false);
+      if (response.status === 200) {
+        socket.emit("updateMenu", payload, async (socketResponse) => {
+          if (socketResponse.status === "success") {
+            await fetchDataPaginated();
           }
-        } catch (error) {
-          console.error(error);
-        } finally {
-          setIsLoading(false);
-        }
+        });
+
+        setIsLoading(false);
       }
-    });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // haldle untuk memperbesar gambar

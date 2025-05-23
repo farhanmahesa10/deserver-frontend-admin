@@ -10,6 +10,7 @@ import Input from "@/app/component/form/input";
 import Select from "@/app/component/form/select";
 import { useSelector } from "react-redux";
 import instance from "@/app/component/api/api";
+import socket from "@/app/component/socket/socketIo";
 
 export default function AddMenu({ params }) {
   const [outlet, setOutlet] = useState([]);
@@ -34,11 +35,24 @@ export default function AddMenu({ params }) {
     try {
       if (formik.values.id) {
         setLoadingButton(true);
-        await instance.put(`/api/v1/menu/update/${formik.values.id}`, formData);
-        router.push("/admin/menu");
-        localStorage.removeItem("id_menu");
-        localStorage.removeItem("outlet_name");
-        localStorage.setItem("newData", "update successfully!");
+        const apiResponse = await instance.put(
+          `/api/v1/menu/update/${formik.values.id}`,
+          formData
+        );
+
+        if (apiResponse.status == 200) {
+          const payload = {
+            outlet_code: dataOutlet.outlet_code,
+            updatedAt: new Date(),
+          };
+          socket.emit("joinCafe", dataOutlet.id);
+          socket.emit("updateMenu", payload, (serverResponse) => {
+            router.push("/admin/menu");
+            localStorage.removeItem("id_menu");
+            localStorage.removeItem("outlet_name");
+            localStorage.setItem("newData", "update successfully!");
+          });
+        }
       } else {
         setLoadingButton(true);
         await instance.post(`/api/v1/menu/create`, formData);

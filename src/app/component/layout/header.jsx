@@ -55,19 +55,18 @@ export default function Header({ isOpen, onClickHeader }) {
   };
 
   useEffect(() => {
-    if (!dataOutlet?.outlet_code) return;
+    if (!dataOutlet?.id) return;
 
     if (!socket?.connected) {
       socket.on("connect", () => {
-        socket.emit("joinCafe", dataOutlet.outlet_code);
+        socket.emit("joinCafe", dataOutlet.id);
       });
     } else {
-      socket.emit("joinCafe", dataOutlet.outlet_code);
+      socket.emit("joinCafe", dataOutlet.id);
     }
 
     socket.on("AdminReceiveCanceled", (orderData) => {
       const newOrder = { ...orderData.data.payload, seen: false };
-      console.log(newOrder, "PPPP");
 
       dispatch(addOrderNotif(newOrder));
       // setNotifCount((prev) => prev + 1);

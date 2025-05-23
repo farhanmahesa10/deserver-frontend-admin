@@ -25,6 +25,7 @@ export default function Transaction() {
   const [orders, setOrders] = useState([]);
   const [orderActive, setOrderActive] = useState(0);
   const [orderPraActive, setOrderPraActive] = useState([]);
+  const [cencelOrder, setCencelOrder] = useState([]);
   const [query, setQuery] = useState("");
   const [by_name, setQueryByName] = useState("");
   const [printData, setPrintData] = useState("");
@@ -70,11 +71,47 @@ export default function Transaction() {
       setOrders((prevOrders) => [...prevOrders, orderData.data.payload]);
     });
 
+    socket.on("AdminReceiveCanceled", (orderData) => {
+      const newOrder = { ...orderData.data.payload, seen: false };
+      setCencelOrder([newOrder]);
+    });
+
     // Membersihkan listener saat komponen unmount
     return () => {
       socket.off("newOrder");
+      socket.off("AdminReceiveCanceled");
     };
   }, [dataOutlet?.id]);
+
+  //order praActive
+  const fetchDataPraActive = async () => {
+    try {
+      const response = await instance.get(`/api/v1/grafik//infopraactive`);
+
+      const data = response.data.data;
+      setOrderPraActive(data);
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true); // Tampilkan loading
+      try {
+        await fetchDataPraActive();
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false); // Pastikan loading dihentikan
+      }
+    };
+
+    if (cencelOrder.length > 0) {
+      loadData();
+    }
+  }, [cencelOrder]);
 
   // useEffect untuk search
   useEffect(() => {
@@ -129,7 +166,7 @@ export default function Transaction() {
       try {
         const response = await instance.get(`/api/v1/grafik/info`);
 
-        const data = response.data.data;
+        const data = response.data;
         const total =
           Number(data?.active ?? 0) +
           Number(data?.onprocess ?? 0) +
@@ -143,19 +180,6 @@ export default function Transaction() {
 
     fetchData();
   }, []);
-
-  //order praActive
-  const fetchDataPraActive = async () => {
-    try {
-      const response = await instance.get(`/api/v1/grafik//infopraactive`);
-
-      const data = response.data.data;
-      setOrderPraActive(data);
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
-  };
 
   // useEffect mengambil data transaksi by limit
   useEffect(() => {
@@ -194,17 +218,16 @@ export default function Transaction() {
       },
       Orders: dataUpdate.Orders,
     };
+    try {
+      setIsLoading(true);
+      const apiResponse = await instance.put(
+        `/api/v1/transaction/update/${dataUpdate.id}`,
+        status
+      );
 
-    socket.emit("confirmOrderByAdmin", payload, async (socketResponse) => {
-      if (socketResponse.status === "success") {
-        try {
-          setIsLoading(true);
-          const apiResponse = await instance.put(
-            `/api/v1/transaction/update/${dataUpdate.id}`,
-            status
-          );
-
-          if (apiResponse.status === 200) {
+      if (apiResponse.status === 200) {
+        socket.emit("confirmOrderByAdmin", payload, async (socketResponse) => {
+          if (socketResponse.status === "success") {
             closeModalOrder(dataUpdate.id);
             await fetchDataPaginated();
             await fetchDataPraActive();
@@ -218,14 +241,14 @@ export default function Transaction() {
               toast.success("Order completed successfully");
             }
           }
-        } catch (error) {
-          console.error(error);
-          toast.error("Failed to update order");
-        } finally {
-          setIsLoading(false);
-        }
+        });
       }
-    });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update order");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   //handle close modal
