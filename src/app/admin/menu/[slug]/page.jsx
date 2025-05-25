@@ -42,10 +42,16 @@ export default function AddMenu({ params }) {
 
         if (apiResponse.status == 200) {
           const payload = {
-            outlet_code: dataOutlet.outlet_code,
+            outlet_code:
+              subCategory[0]?.Category.Outlet.outlet_code ??
+              dataOutlet.outlet_code,
             updatedAt: new Date(),
           };
-          socket.emit("joinCafe", dataOutlet.id);
+          socket.emit(
+            "joinCafe",
+            subCategory[0]?.Category.Outlet.outlet_code ??
+              dataOutlet.outlet_code
+          );
           socket.emit("updateMenu", payload, (serverResponse) => {
             router.push("/admin/menu");
             localStorage.removeItem("id_menu");

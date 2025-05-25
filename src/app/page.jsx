@@ -56,17 +56,19 @@ export default function Transaction() {
 
   //integrasi socket.io
   useEffect(() => {
-    if (!dataOutlet?.id) return;
+    if (!dataOutlet?.outlet_code) return;
 
     // Bergabung ke outlet tertentu
-    socket.emit("joinCafe", dataOutlet.id);
+    socket.emit("joinCafe", dataOutlet.outlet_code);
 
     // Menerima pesan pesanan baru
     socket.on("newOrder", (orderData) => {
+      console.log("ppppp");
       if (orderData) {
         toast.success("New Order!");
       }
       const newOrder = { ...orderData.data.payload, seen: false };
+
       dispatch(addOrderNotif(newOrder));
       setOrders((prevOrders) => [...prevOrders, orderData.data.payload]);
     });
@@ -81,12 +83,12 @@ export default function Transaction() {
       socket.off("newOrder");
       socket.off("AdminReceiveCanceled");
     };
-  }, [dataOutlet?.id]);
+  }, [dataOutlet?.outlet_code]);
 
   //order praActive
   const fetchDataPraActive = async () => {
     try {
-      const response = await instance.get(`/api/v1/grafik//infopraactive`);
+      const response = await instance.get(`/api/v1/grafik/infopraactive`);
 
       const data = response.data.data;
       setOrderPraActive(data);
@@ -309,20 +311,21 @@ export default function Transaction() {
             <div className="rounded-lg bg-white overflow-x-auto">
               <div className="min-w-full px-4 py-4">
                 <div className="text-gray-700 font-nunito mb-4">
-                  {orders && orders.length > 0 && (
-                    <>
-                      <div className="flex items-center gap-2 mb-3">
-                        <h2 className="text-lg font-semibold text-gray-800">
-                          Waiting Orders
-                        </h2>
-                        <span className="flex gap-[2px] mt-2">
-                          <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:0ms]"></span>
-                          <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:150ms]"></span>
-                          <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:300ms]"></span>
-                        </span>
-                      </div>
-                    </>
-                  )}
+                  {(orders && orders.length > 0) ||
+                    (orderPraActive && orderPraActive.length > 0 && (
+                      <>
+                        <div className="flex items-center gap-2 mb-3">
+                          <h2 className="text-lg font-semibold text-gray-800">
+                            Waiting Orders
+                          </h2>
+                          <span className="flex gap-[2px] mt-2">
+                            <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:0ms]"></span>
+                            <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:150ms]"></span>
+                            <span className="w-1.5 h-1.5 bg-black rounded-full animate-bounce [animation-delay:300ms]"></span>
+                          </span>
+                        </div>
+                      </>
+                    ))}
 
                   {/* Wrapper semua card orders */}
                   <div className="flex flex-wrap gap-4">

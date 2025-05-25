@@ -56,19 +56,18 @@ const InputSearch = (props) => {
               {...rest}
             />
           )}
-
-          {rightButton &&
-            (isLoading ? (
-              <IconSkeleton />
-            ) : (
-              <button
-                onClick={onRightButtonCLick}
-                className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] text-white bg-yellow-700 text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
-              >
-                {rightButton}
-              </button>
-            ))}
         </div>
+        {inputLeft &&
+          (isLoading ? (
+            <IconSkeleton />
+          ) : (
+            <button
+              onClick={onRightButtonCLick}
+              className="px-4 py-2 md:px-5 md:py-3 h-[40px] md:h-[48px] text-white bg-yellow-700 text-xl font-nunitoSans rounded-md shadow-md hover:bg-yellow-600 transition-all duration-300"
+            >
+              {rightButton}
+            </button>
+          ))}
       </div>
 
       {createData &&

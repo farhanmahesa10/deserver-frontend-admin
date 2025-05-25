@@ -55,14 +55,14 @@ export default function Header({ isOpen, onClickHeader }) {
   };
 
   useEffect(() => {
-    if (!dataOutlet?.id) return;
+    if (!dataOutlet?.outlet_code) return;
 
     if (!socket?.connected) {
       socket.on("connect", () => {
-        socket.emit("joinCafe", dataOutlet.id);
+        socket.emit("joinCafe", dataOutlet.outlet_code);
       });
     } else {
-      socket.emit("joinCafe", dataOutlet.id);
+      socket.emit("joinCafe", dataOutlet.outlet_code);
     }
 
     socket.on("AdminReceiveCanceled", (orderData) => {
@@ -161,7 +161,7 @@ export default function Header({ isOpen, onClickHeader }) {
                           <div className="flex-1">
                             <p className="text-sm text-gray-700">
                               <span className="font-semibold text-black">
-                                Room {item.number_table}
+                                Room {item.Table.number_table}
                               </span>{" "}
                               {item.status === "failed"
                                 ? "cancel the"
