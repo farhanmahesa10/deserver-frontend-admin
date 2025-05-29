@@ -1,9 +1,19 @@
-import React from "react";
+import React, { useState } from "react";
 import AcceptOrder from "../button/acceptOrder";
 import { FormatIdr } from "../utils/formatIdr";
+import { Collapse } from "react-collapse";
 
 const OrderPraActive = (props) => {
   const { orders = [], closeModalOrder, confirmUpdate } = props;
+
+  const [isOpen, setIsOpen] = useState({});
+  const handleToggle = (id) => {
+    setIsOpen((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
   return (
     <>
       {orders &&
@@ -11,6 +21,10 @@ const OrderPraActive = (props) => {
           .slice()
           .reverse()
           .map((item) => {
+            const fullNote =
+              item.comment ||
+              "Hic recusandae amet odio fugit ipsam doloremque qui doloremquod possimus! Officiis, veritatis!";
+            const isOpenColapse = isOpen[item.id] || false;
             return (
               <div key={item.id} className="flex items-center w-full sm:w-auto">
                 <div className="flex flex-col justify-between bg-white shadow-md rounded-lg p-3 w-[222px] h-[300px] border border-gray-300 hover:shadow-xl transition-shadow duration-300">
@@ -28,6 +42,34 @@ const OrderPraActive = (props) => {
                         <span className="font-semibold">Table Number:</span>{" "}
                         {item.Table.number_table}
                       </p>
+
+                      <div className="flex items-baseline gap-2 mt-1">
+                        <div className="font-semibold whitespace-nowrap flex gap-2">
+                          Note:{" "}
+                          <span className="flex  flex-wrap min-w-0 max-w-[400px] whitespace-pre-line">
+                            {isOpenColapse ? (
+                              <Collapse isOpened={isOpenColapse}>
+                                <p>{fullNote}</p>
+                              </Collapse>
+                            ) : (
+                              <span className="line-clamp-2">{fullNote}</span>
+                            )}
+
+                            {fullNote && fullNote.length > 5 && (
+                              <button
+                                className={`text-sm ${
+                                  isOpenColapse
+                                    ? "text-red-500"
+                                    : "text-primary-500"
+                                }`}
+                                onClick={() => handleToggle(item.id)}
+                              >
+                                {isOpenColapse ? "closed" : "see more"}
+                              </button>
+                            )}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Scrollable Order Section */}
@@ -47,7 +89,6 @@ const OrderPraActive = (props) => {
                         </div>
                       ))}
                     </div>
-
                     <div className="flex justify-between font-bold text-sm mt-2">
                       <p>Total</p>
                       <p>{FormatIdr(item.total_pay)}</p>

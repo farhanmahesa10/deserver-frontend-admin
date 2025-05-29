@@ -13,7 +13,7 @@ import instance from "../component/api/api";
 export default function Login() {
   const [isOpen, setIsOpen] = useState(false);
   const [loadingButton, setLoadingButton] = useState(false);
-  const [msgError, setMsgError] = useState(false);
+  const [msgError, setMsgError] = useState("");
   const dispatch = useDispatch();
   const router = useRouter();
 

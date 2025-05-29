@@ -43,16 +43,24 @@ export default function Transaction() {
   const [itemsPerPage] = useState(10);
   const targetRef = useRef(null);
 
+  //use state untuk pagination praActive
+  const [rowsPraActive, setRowsPraActive] = useState(null);
+  const [currentPagePraActive, setCurrentPagePraActive] = useState(1);
+  const [itemsPerPagePraActive] = useState(4);
+
   // Menghitung indeks awal dan akhir untuk menampilkan nomber
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage; // Data yang disimpan dalam state
   //set untuk page yg di tampilkan
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  const paginatePraActive = (pageNumber) => setCurrentPagePraActive(pageNumber);
 
   //setiap kali ada perubahan di current page maka scroll ke atas
   useEffect(() => {
     targetRef.current.scrollIntoView({ behavior: "smooth" });
   }, [currentPage]);
+
+  console.log(currentPagePraActive, "ooo");
 
   //integrasi socket.io
   useEffect(() => {
@@ -85,23 +93,47 @@ export default function Transaction() {
     };
   }, [dataOutlet?.outlet_code]);
 
-  //order praActive
   const fetchDataPraActive = async () => {
+    setIsLoading(true);
+
+    const params = {
+      page: currentPagePraActive,
+      limit: itemsPerPagePraActive,
+      search: dataOutlet.role == "admin" ? dataOutlet.outlet_name : query,
+    };
     try {
-      const response = await instance.get(`/api/v1/grafik/infopraactive`);
+      // Mengambil data transaksi menggunakan instance dengan query params
+      const response = await instance.get(`/api/v1/grafik/infopraactive`, {
+        params: params,
+      });
 
       const data = response.data.data;
+      const pagination = response.data.pagination;
+
+      // Jika current page melebihi totalPages, set ulang currentPage saja
+      if (
+        pagination.totalPages > 0 &&
+        currentPagePraActive > pagination.totalPages
+      ) {
+        setCurrentPagePraActive(pagination.totalPages);
+        return; // jangan lanjutkan render, tunggu useEffect panggil ulang
+      }
+
       setOrderPraActive(data);
+      setRowsPraActive(pagination.totalItems);
       setIsLoading(false);
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error(error);
     }
   };
 
+  //praactive CENCEL
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true); // Tampilkan loading
       try {
+        closeModalOrder(cencelOrder[0].id);
+        setCencelOrder([]);
         await fetchDataPraActive();
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -198,7 +230,14 @@ export default function Transaction() {
     };
 
     loadData();
-  }, [itemsPerPage, currentPage, dataOutlet.role, dataOutlet.outlet_name]);
+  }, [
+    itemsPerPage,
+    currentPage,
+    currentPagePraActive,
+    itemsPerPagePraActive,
+    dataOutlet.role,
+    dataOutlet.outlet_name,
+  ]);
 
   const handleUpdate = async () => {
     const status = {
@@ -326,20 +365,30 @@ export default function Transaction() {
                         </div>
                       </>
                     ))}
-
-                  {/* Wrapper semua card orders */}
-                  <div className="flex flex-wrap gap-4">
-                    <OrderPraActive
-                      orders={orders}
-                      closeModalOrder={closeModalOrder}
-                      confirmUpdate={confirmUpdate}
+                  {isLoading ? (
+                    <TableSkeleton />
+                  ) : (
+                    <div className="flex flex-wrap gap-4">
+                      <OrderPraActive
+                        orders={orders}
+                        closeModalOrder={closeModalOrder}
+                        confirmUpdate={confirmUpdate}
+                      />
+                      <OrderPraActive
+                        orders={orderPraActive}
+                        closeModalOrder={closeModalOrder}
+                        confirmUpdate={confirmUpdate}
+                      />
+                    </div>
+                  )}
+                  {orderPraActive.length > 0 && (
+                    <Pagination
+                      itemsPerPage={itemsPerPagePraActive}
+                      rows={rowsPraActive}
+                      paginate={paginatePraActive}
+                      currentPage={currentPagePraActive}
                     />
-                    <OrderPraActive
-                      orders={orderPraActive}
-                      closeModalOrder={closeModalOrder}
-                      confirmUpdate={confirmUpdate}
-                    />
-                  </div>
+                  )}
                 </div>
 
                 {/* Section searchQuery */}
@@ -380,6 +429,11 @@ export default function Transaction() {
                           <div className="mt-10">
                             <p className="text-sm text-gray-500">
                               {HighlightText(item.by_name, by_name)}
+                            </p>
+                          </div>
+                          <div className="">
+                            <p className="text-sm text-gray-500">
+                              {item.comment || ""}
                             </p>
                           </div>
 

@@ -58,9 +58,13 @@ export default function Dashboard() {
       let allSeries = chartData.series;
 
       if (query.status === "success") {
-        allSeries = allSeries.filter((s) => s.name.toLowerCase().includes("success"));
+        allSeries = allSeries.filter((s) =>
+          s.name.toLowerCase().includes("success")
+        );
       } else if (query.status === "failed") {
-        allSeries = allSeries.filter((s) => s.name.toLowerCase().includes("failed"));
+        allSeries = allSeries.filter((s) =>
+          s.name.toLowerCase().includes("failed")
+        );
       }
 
       setSeries(allSeries);
@@ -72,7 +76,9 @@ export default function Dashboard() {
         "failed revenue": "#B91C1C",
       };
 
-      const colors = allSeries.map((s) => colorMap[s.name.trim().toLowerCase()] || "#888");
+      const colors = allSeries.map(
+        (s) => colorMap[s.name.trim().toLowerCase()] || "#888"
+      );
 
       setOptions({
         chart: { id: "sales-chart" },
@@ -145,14 +151,23 @@ export default function Dashboard() {
     fetchChartData(query);
   };
 
-  const successOrders = series.find((s) => s.name.trim().toLowerCase() === "success")?.data.reduce((sum, value) => sum + value, 0) || 0;
-  const failedOrders = series.find((s) => s.name.trim().toLowerCase() === "failed")?.data.reduce((sum, value) => sum + value, 0) || 0;
+  const successOrders =
+    series
+      .find((s) => s.name.trim().toLowerCase() === "success")
+      ?.data.reduce((sum, value) => sum + value, 0) || 0;
+  const failedOrders =
+    series
+      .find((s) => s.name.trim().toLowerCase() === "failed")
+      ?.data.reduce((sum, value) => sum + value, 0) || 0;
 
   return (
-    <div className="p-6 space-y-6 mt-[100px] w-full">
+    <div className="p-6 space-y-6 mt-[100px] lg:max-h-[calc(100vh-80px)] w-full overflow-y-auto overflow-x-hidden custom-scrollbar">
       <div className="flex justify-end gap-4">
         <Toaster position="top-center" reverseOrder={false} />
-        <button onClick={() => setModal(true)} className="bg-blue-500 flex gap-2 text-white px-4 py-2 rounded hover:bg-blue-600">
+        <button
+          onClick={() => setModal(true)}
+          className="bg-blue-500 flex gap-2 text-white px-4 py-2 rounded hover:bg-blue-600"
+        >
           <FaFilter className="align-middle" />
           Filter
         </button>
@@ -160,19 +175,27 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-green-100 text-green-800 p-4 rounded shadow text-center">
-          <div className="text-xl font-bold">{loading ? "Loading..." : successOrders}</div>
+          <div className="text-xl font-bold">
+            {loading ? "Loading..." : successOrders}
+          </div>
           <div>Success Orders</div>
         </div>
         <div className="bg-blue-100 text-blue-800 p-4 rounded shadow text-center">
-          <div className="text-xl font-bold">Rp {revenueData.success.toLocaleString("id-ID")}</div>
+          <div className="text-xl font-bold">
+            Rp {revenueData.success.toLocaleString("id-ID")}
+          </div>
           <div>Success Revenue</div>
         </div>
         <div className="bg-red-100 text-red-800 p-4 rounded shadow text-center">
-          <div className="text-xl font-bold">{loading ? "Loading..." : failedOrders}</div>
+          <div className="text-xl font-bold">
+            {loading ? "Loading..." : failedOrders}
+          </div>
           <div>Failed Orders</div>
         </div>
         <div className="bg-blue-100 text-blue-800 p-4 rounded shadow text-center">
-          <div className="text-xl font-bold">Rp {revenueData.failed.toLocaleString("id-ID")}</div>
+          <div className="text-xl font-bold">
+            Rp {revenueData.failed.toLocaleString("id-ID")}
+          </div>
           <div>Failed Revenue</div>
         </div>
       </div>
@@ -189,7 +212,13 @@ export default function Dashboard() {
         setDateRange={setDateRange}
       />
 
-      <div className="bg-white p-6 rounded shadow">{series.length > 0 && options.xaxis ? <Chart options={options} series={series} type="area" height={350} /> : <div className="text-center text-gray-500">Data there is not</div>}</div>
+      <div className="bg-white p-6 rounded shadow">
+        {series.length > 0 && options.xaxis ? (
+          <Chart options={options} series={series} type="area" height={350} />
+        ) : (
+          <div className="text-center text-gray-500">Data there is not</div>
+        )}
+      </div>
     </div>
   );
 }

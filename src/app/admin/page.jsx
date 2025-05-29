@@ -31,9 +31,9 @@ export default function AddProfile({ params }) {
   const onClickPassword = () => {
     setIsOpen(!isOpen);
   };
-  const onClickUpdatePassword = () => {
-    setUpdatePassword(!updatePassword);
-  };
+  // const onClickUpdatePassword = () => {
+  //   setUpdatePassword(!updatePassword);
+  // };
   const onClickVerifyPassword = () => {
     setIsOpenVerify(!isOpenVerify);
   };
@@ -86,7 +86,11 @@ export default function AddProfile({ params }) {
       setLoadingButton(false);
       router.push(`/admin`);
     } catch (error) {
-      console.error(error);
+      if (error.response.data.message) {
+        toast.error(error.response.data.message);
+      }
+    } finally {
+      setLoadingButton(false);
     }
   };
 
@@ -215,6 +219,7 @@ export default function AddProfile({ params }) {
               <label htmlFor="logo" className="min-w-28 lg:w-52">
                 {formik.values.logo ? "Update" : "Create"} logo:
               </label>
+
               <Input
                 label={`${formik.values.logo ? "Update" : "Create"} logo:`}
                 id="logo"
@@ -364,13 +369,13 @@ export default function AddProfile({ params }) {
 
             <Input
               label="Old Password"
-              type={`${!isOpen ? "password" : "text"}`}
+              type={`${!isOpenVerify ? "password" : "text"}`}
               placeholder="*********"
               id="varifyPassword"
               name="varifyPassword"
               value={formik.values.varifyPassword || ""}
               onChange={handleChange}
-              rightIcon={isOpen ? <IoEyeOutline /> : <IoEyeOffOutline />}
+              rightIcon={isOpenVerify ? <IoEyeOutline /> : <IoEyeOffOutline />}
               errorMessage={formik.errors.varifyPassword}
               isError={
                 formik.touched.varifyPassword && formik.errors.varifyPassword
@@ -381,7 +386,7 @@ export default function AddProfile({ params }) {
               rightIconClassName={"cursor-pointer"}
             />
 
-            <div className={`flex gap-8 text-white justify-end`}>
+            <div className={`flex gap-8 text-white justify-end `}>
               <button
                 type={loadingButton ? "button" : "submit"}
                 className="bg-primary50 border-primary50 body-text-sm-bold font-nunitoSans w-[100px] p-2 rounded-md"
